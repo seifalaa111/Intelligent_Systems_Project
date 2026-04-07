@@ -1,0 +1,20 @@
+﻿# Raw data files - too large for git
+data/raw/*.csv
+data/X_raw.csv
+data/X_raw_scaled.csv
+
+# Models - too large for git
+models/*.pkl
+models/*.joblib
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+.env
+
+# VS Code
+.vscode/
+
+# Jupyter
+.ipynb_checkpoints/
