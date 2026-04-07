@@ -1,20 +1,13 @@
-﻿# Raw data files - too large for git
-data/raw/*.csv
-data/X_raw.csv
-data/X_raw_scaled.csv
-
-# Models - too large for git
+﻿data/raw/*.csv
+data/ml_matrix/*.csv
+data/sarima/*.csv
+data/agent_context/**/*.json
 models/*.pkl
-models/*.joblib
-
-# Python cache
+models/**/*.pkl
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
 .env
-
-# VS Code
-.vscode/
-
-# Jupyter
-.ipynb_checkpoints/
+venv/
+.streamlit/
+.DS_Store
+Thumbs.db
