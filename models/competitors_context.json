@@ -1,0 +1,250 @@
+{
+  "other": [
+    {
+      "Company": "ByteDance",
+      "Valuation ($B)": "$225",
+      "Country": "China",
+      "Industry": "Media & Entertainment"
+    },
+    {
+      "Company": "SpaceX",
+      "Valuation ($B)": "$137",
+      "Country": "United States",
+      "Industry": "Industrials"
+    },
+    {
+      "Company": "Canva",
+      "Valuation ($B)": "$40",
+      "Country": "Australia",
+      "Industry": "Enterprise Tech"
+    },
+    {
+      "Company": "Epic Games",
+      "Valuation ($B)": "$31.50",
+      "Country": "United States",
+      "Industry": "Media & Entertainment"
+    },
+    {
+      "Company": "Databricks",
+      "Valuation ($B)": "$31",
+      "Country": "United States",
+      "Industry": "Enterprise Tech"
+    },
+    {
+      "Company": "OpenAI",
+      "Valuation ($B)": "$29",
+      "Country": "United States",
+      "Industry": "Enterprise Tech"
+    },
+    {
+      "Company": "Xiaohongshu",
+      "Valuation ($B)": "$20",
+      "Country": "China",
+      "Industry": "Media & Entertainment"
+    },
+    {
+      "Company": "J&T Express",
+      "Valuation ($B)": "$20",
+      "Country": "Indonesia",
+      "Industry": "Industrials"
+    },
+    {
+      "Company": "Miro",
+      "Valuation ($B)": "$17.50",
+      "Country": "United States",
+      "Industry": "Enterprise Tech"
+    },
+    {
+      "Company": "DJI Innovations",
+      "Valuation ($B)": "$15",
+      "Country": "China",
+      "Industry": "Industrials"
+    }
+  ],
+  "ecommerce": [
+    {
+      "Company": "SHEIN",
+      "Valuation ($B)": "$66",
+      "Country": "China",
+      "Industry": "Consumer & Retail"
+    },
+    {
+      "Company": "Fanatics",
+      "Valuation ($B)": "$31",
+      "Country": "United States",
+      "Industry": "Consumer & Retail"
+    },
+    {
+      "Company": "Yuanfudao",
+      "Valuation ($B)": "$15.50",
+      "Country": "China",
+      "Industry": "Consumer & Retail"
+    },
+    {
+      "Company": "Gopuff",
+      "Valuation ($B)": "$15",
+      "Country": "United States",
+      "Industry": "Consumer & Retail"
+    },
+    {
+      "Company": "Yuanqi Senlin",
+      "Valuation ($B)": "$15",
+      "Country": "China",
+      "Industry": "Consumer & Retail"
+    },
+    {
+      "Company": "Faire",
+      "Valuation ($B)": "$12.59",
+      "Country": "United States",
+      "Industry": "Consumer & Retail"
+    },
+    {
+      "Company": "Instacart",
+      "Valuation ($B)": "$12",
+      "Country": "United States",
+      "Industry": "Consumer & Retail"
+    },
+    {
+      "Company": "JUUL Labs",
+      "Valuation ($B)": "$12",
+      "Country": "United States",
+      "Industry": "Consumer & Retail"
+    },
+    {
+      "Company": "Xingsheng Selected",
+      "Valuation ($B)": "$12",
+      "Country": "China",
+      "Industry": "Consumer & Retail"
+    },
+    {
+      "Company": "BYJU's",
+      "Valuation ($B)": "$11.50",
+      "Country": "India",
+      "Industry": "Consumer & Retail"
+    }
+  ],
+  "fintech": [
+    {
+      "Company": "Stripe",
+      "Valuation ($B)": "$50",
+      "Country": "United States",
+      "Industry": "Financial Services"
+    },
+    {
+      "Company": "Revolut",
+      "Valuation ($B)": "$33",
+      "Country": "United Kingdom",
+      "Industry": "Financial Services"
+    },
+    {
+      "Company": "Chime",
+      "Valuation ($B)": "$25",
+      "Country": "United States",
+      "Industry": "Financial Services"
+    },
+    {
+      "Company": "Ripple",
+      "Valuation ($B)": "$15",
+      "Country": "United States",
+      "Industry": "Financial Services"
+    },
+    {
+      "Company": "Blockchain.com",
+      "Valuation ($B)": "$14",
+      "Country": "United Kingdom",
+      "Industry": "Financial Services"
+    },
+    {
+      "Company": "Plaid",
+      "Valuation ($B)": "$13.50",
+      "Country": "United States",
+      "Industry": "Financial Services"
+    },
+    {
+      "Company": "GoodLeap",
+      "Valuation ($B)": "$12",
+      "Country": "United States",
+      "Industry": "Financial Services"
+    },
+    {
+      "Company": "Checkout.com",
+      "Valuation ($B)": "$11",
+      "Country": "United Kingdom",
+      "Industry": "Financial Services"
+    },
+    {
+      "Company": "Bolt",
+      "Valuation ($B)": "$11",
+      "Country": "United States",
+      "Industry": "Financial Services"
+    },
+    {
+      "Company": "Gusto",
+      "Valuation ($B)": "$10",
+      "Country": "United States",
+      "Industry": "Financial Services"
+    }
+  ],
+  "healthtech": [
+    {
+      "Company": "Devoted Health",
+      "Valuation ($B)": "$12.60",
+      "Country": "United States",
+      "Industry": "Healthcare & Life Sciences"
+    },
+    {
+      "Company": "Tempus",
+      "Valuation ($B)": "$8.10",
+      "Country": "United States",
+      "Industry": "Healthcare & Life Sciences"
+    },
+    {
+      "Company": "Caris",
+      "Valuation ($B)": "$7.83",
+      "Country": "United States",
+      "Industry": "Healthcare & Life Sciences"
+    },
+    {
+      "Company": "We Doctor",
+      "Valuation ($B)": "$7",
+      "Country": "China",
+      "Industry": "Healthcare & Life Sciences"
+    },
+    {
+      "Company": "Ro",
+      "Valuation ($B)": "$7",
+      "Country": "United States",
+      "Industry": "Healthcare & Life Sciences"
+    },
+    {
+      "Company": "Doctolib",
+      "Valuation ($B)": "$6.40",
+      "Country": "France",
+      "Industry": "Healthcare & Life Sciences"
+    },
+    {
+      "Company": "Hinge Health",
+      "Valuation ($B)": "$6.20",
+      "Country": "United States",
+      "Industry": "Healthcare & Life Sciences"
+    },
+    {
+      "Company": "Benchling",
+      "Valuation ($B)": "$6.10",
+      "Country": "United States",
+      "Industry": "Healthcare & Life Sciences"
+    },
+    {
+      "Company": "Cityblock Health",
+      "Valuation ($B)": "$5.70",
+      "Country": "United States",
+      "Industry": "Healthcare & Life Sciences"
+    },
+    {
+      "Company": "Cerebral",
+      "Valuation ($B)": "$4.80",
+      "Country": "United States",
+      "Industry": "Healthcare & Life Sciences"
+    }
+  ]
+}
