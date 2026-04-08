@@ -1,0 +1,1249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MIDAN — Know Before You Build</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+:root {
+  --acid: #C8FF57;
+  --acid-dim: rgba(200,255,87,0.08);
+  --acid-border: rgba(200,255,87,0.22);
+  --bg: #060608;
+  --card: #0D0D11;
+  --card2: #121217;
+  --border: rgba(255,255,255,0.055);
+  --text: #EDEAF8;
+  --sub: #7B7990;
+  --muted: #3E3D50;
+}
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  overflow-x: hidden;
+  cursor: none;
+}
+
+/* CURSOR */
+#cur { position:fixed; width:8px; height:8px; border-radius:50%; background:var(--acid); pointer-events:none; z-index:9999; transform:translate(-50%,-50%); mix-blend-mode:difference; transition:transform 0.1s; }
+#cur-ring { position:fixed; width:32px; height:32px; border-radius:50%; border:1px solid rgba(200,255,87,0.3); pointer-events:none; z-index:9998; transform:translate(-50%,-50%); transition:transform 0.16s ease-out; }
+body:has(button:hover) #cur { transform:translate(-50%,-50%) scale(2.5); }
+
+/* GRAIN */
+body::after { content:''; position:fixed; inset:0; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)' opacity='0.035'/%3E%3C/svg%3E"); pointer-events:none; z-index:9990; opacity:0.5; }
+
+/* ============ INTRO ============ */
+#intro {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+#three-canvas { position:absolute; inset:0; z-index:0; }
+
+.intro-scene {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  width: min(90vw, 820px);
+  opacity: 0;
+  transition: opacity 1s ease;
+  pointer-events: none;
+  z-index: 2;
+}
+.intro-scene.in { opacity: 1; }
+.intro-scene.out { opacity: 0; transition: opacity 0.5s ease; }
+
+.intro-label {
+  font-size: clamp(13px, 1.4vw, 15px);
+  font-weight: 300;
+  color: rgba(255,255,255,0.35);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 18px;
+}
+
+.intro-headline {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(42px, 7.5vw, 94px);
+  font-weight: 800;
+  line-height: 1.0;
+  letter-spacing: -3px;
+  color: #fff;
+}
+
+.intro-headline em {
+  font-style: normal;
+  color: var(--acid);
+}
+
+.intro-headline .dim {
+  color: rgba(255,255,255,0.18);
+}
+
+#enter-btn {
+  display: none;
+  margin-top: 52px;
+  padding: 18px 56px;
+  background: var(--acid);
+  color: #000;
+  border: none;
+  border-radius: 2px;
+  font-family: 'Syne', sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  pointer-events: all;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 0 0 rgba(200,255,87,0);
+}
+#enter-btn:hover {
+  transform: scale(1.03);
+  box-shadow: 0 0 40px rgba(200,255,87,0.25);
+}
+
+/* progress line */
+#prog-line {
+  position: fixed;
+  bottom: 0; left: 0;
+  height: 2px;
+  background: var(--acid);
+  width: 0%;
+  z-index: 1002;
+  transition: width 0.6s ease;
+}
+
+#skip {
+  position: fixed;
+  top: 28px; right: 32px;
+  z-index: 1003;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.22);
+  background: none; border: none;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  transition: color 0.2s;
+}
+#skip:hover { color: rgba(255,255,255,0.55); }
+
+#intro.exit {
+  animation: exitIntro 1s ease forwards;
+}
+@keyframes exitIntro {
+  0% { opacity:1; filter:blur(0); }
+  100% { opacity:0; filter:blur(8px); pointer-events:none; }
+}
+
+/* ============ LANDING ============ */
+#landing { opacity:0; transition: opacity 0.8s ease 0.3s; }
+#landing.show { opacity:1; }
+
+/* NAV */
+nav {
+  position: fixed; top:0; left:0; right:0; z-index:500;
+  display: flex; align-items:center; justify-content:space-between;
+  padding: 0 48px; height: 62px;
+  background: rgba(6,6,8,0.82);
+  backdrop-filter: blur(28px);
+  border-bottom: 1px solid var(--border);
+  transform: translateY(-100%);
+  transition: transform 0.5s ease;
+}
+nav.show { transform: translateY(0); }
+
+.n-logo {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 17px;
+  letter-spacing: 0.08em;
+  color: var(--text);
+  text-decoration: none;
+  display: flex; align-items: center; gap: 10px;
+}
+.n-mark {
+  width: 22px; height: 22px;
+  background: var(--acid);
+  border-radius: 3px;
+  display: flex; align-items:center; justify-content:center;
+}
+.n-mark svg { width:12px; height:12px; }
+
+.n-links { display:flex; gap:32px; list-style:none; }
+.n-links a { font-size:13px; color:var(--sub); text-decoration:none; letter-spacing:0.02em; transition:color 0.2s; }
+.n-links a:hover { color:var(--text); }
+
+.n-cta {
+  background: transparent;
+  border: 1px solid var(--acid-border);
+  color: var(--acid);
+  padding: 8px 18px;
+  border-radius: 3px;
+  font-size: 12px; font-weight: 700;
+  font-family: 'Syne', sans-serif;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  cursor: pointer; transition: background 0.2s, color 0.2s;
+}
+.n-cta:hover { background: var(--acid); color: #000; }
+
+/* HERO */
+.hero {
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 130px 24px 100px;
+  text-align: center;
+  position: relative; overflow: hidden;
+}
+
+.h-grid {
+  position: absolute; inset: 0;
+  background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: radial-gradient(ellipse 65% 65% at 50% 50%, black 10%, transparent 100%);
+}
+
+.h-glow {
+  position: absolute; top: 25%; left: 50%;
+  transform: translateX(-50%);
+  width: 700px; height: 350px;
+  background: radial-gradient(ellipse, rgba(200,255,87,0.05) 0%, transparent 68%);
+  pointer-events: none;
+}
+
+.eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  border: 1px solid var(--acid-border);
+  padding: 7px 16px; border-radius: 2px;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.15em; text-transform: uppercase;
+  color: var(--acid); margin-bottom: 44px;
+}
+.eb-pulse { width:6px; height:6px; border-radius:50%; background:var(--acid); animation: pulse 1.8s ease infinite; }
+@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.25;} }
+
+.hero h1 {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(56px, 9vw, 120px);
+  font-weight: 800;
+  letter-spacing: -4px;
+  line-height: 0.92;
+  max-width: 980px;
+  margin-bottom: 36px;
+}
+.hero h1 .outline {
+  -webkit-text-stroke: 1.5px rgba(237,234,248,0.22);
+  color: transparent;
+}
+.hero h1 .acid { color: var(--acid); }
+
+.hero-sub {
+  font-size: 18px; color: var(--sub);
+  max-width: 440px; font-weight: 300;
+  line-height: 1.75; margin-bottom: 60px;
+}
+
+/* INPUT WIZARD */
+.input-card {
+  width: 100%; max-width: 680px;
+  background: var(--card);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 16px;
+  transition: border-color 0.2s;
+}
+.input-card:focus-within { border-color: var(--acid-border); }
+
+.input-top {
+  padding: 20px 24px 0;
+  display: flex; align-items: center; gap: 10px;
+}
+.input-dot { width:8px; height:8px; border-radius:50%; background:var(--acid); }
+.input-label { font-size:12px; color:var(--sub); letter-spacing:0.06em; }
+
+.hero-ta {
+  width: 100%;
+  background: transparent;
+  border: none;
+  padding: 14px 24px 22px;
+  font-size: 17px;
+  font-family: 'DM Sans', sans-serif;
+  color: var(--text);
+  outline: none;
+  resize: none;
+  min-height: 64px;
+  line-height: 1.55;
+  font-weight: 300;
+}
+.hero-ta::placeholder { color: var(--muted); }
+
+.input-footer {
+  border-top: 1px solid var(--border);
+  padding: 12px 20px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.input-hint { font-size: 12px; color: var(--muted); }
+.input-hint span { color: var(--sub); }
+
+.analyze-btn {
+  background: var(--acid);
+  color: #000;
+  border: none;
+  border-radius: 6px;
+  padding: 11px 24px;
+  font-size: 13px; font-weight: 800;
+  font-family: 'Syne', sans-serif;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.15s;
+}
+.analyze-btn:hover { opacity:0.88; transform:translateY(-1px); }
+
+.quick-ideas {
+  display: flex; gap: 8px; flex-wrap: wrap;
+  justify-content: center;
+}
+.qi {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--sub);
+  padding: 7px 14px;
+  border-radius: 100px;
+  font-size: 12px; font-weight: 400;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+.qi:hover { border-color: var(--acid-border); color: var(--acid); background: var(--acid-dim); }
+
+/* RESULT PANEL */
+#result-panel {
+  display: none;
+  width: 100%; max-width: 760px;
+  margin-top: 40px;
+  animation: slideIn 0.5s ease;
+}
+#result-panel.show { display: block; }
+
+@keyframes slideIn {
+  from { opacity:0; transform:translateY(20px); }
+  to { opacity:1; transform:translateY(0); }
+}
+
+.rp-wrap {
+  background: var(--card);
+  border: 1px solid var(--acid-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.rp-top {
+  padding: 18px 24px;
+  background: rgba(200,255,87,0.04);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.rp-title { font-family:'Syne',sans-serif; font-size:13px; font-weight:700; letter-spacing:0.06em; }
+.rp-verdict {
+  background: var(--acid);
+  color: #000;
+  padding: 5px 14px;
+  border-radius: 2px;
+  font-size: 11px; font-weight: 800;
+  font-family: 'Syne', sans-serif;
+  letter-spacing: 0.1em; text-transform: uppercase;
+}
+.rp-meta { font-size: 11px; color: var(--muted); letter-spacing: 0.05em; }
+
+.rp-scores {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-bottom: 1px solid var(--border);
+}
+.score-cell {
+  padding: 18px 20px;
+  border-right: 1px solid var(--border);
+}
+.score-cell:last-child { border-right: none; }
+.sc-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; }
+.sc-val {
+  font-family: 'Syne', sans-serif;
+  font-size: 22px; font-weight: 800; letter-spacing: -0.5px;
+}
+.v-green { color: var(--acid); }
+.v-amber { color: #F5A623; }
+.v-white { color: var(--text); font-size: 14px !important; font-weight: 600 !important; letter-spacing: 0 !important; margin-top: 4px; }
+
+.rp-report { padding: 0; }
+
+.rep-row {
+  display: flex; gap: 0;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--border);
+  align-items: flex-start;
+}
+.rep-row:last-child { border-bottom: none; }
+
+.rep-key {
+  font-size: 10px; font-weight: 800;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--acid);
+  width: 110px; flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.rep-val { font-size: 14px; color: var(--sub); line-height: 1.72; font-weight: 300; }
+
+/* MARQUEE */
+.mq-wrap { overflow:hidden; border-top:1px solid var(--border); border-bottom:1px solid var(--border); padding:12px 0; }
+.mq-track { display:flex; width:max-content; animation:mq 40s linear infinite; }
+@keyframes mq { from{transform:translateX(0);} to{transform:translateX(-50%);} }
+.mq-item { display:flex; align-items:center; gap:10px; padding:0 44px; font-size:11px; color:var(--muted); letter-spacing:0.12em; text-transform:uppercase; white-space:nowrap; border-right:1px solid var(--border); font-weight:600; }
+.mq-d { width:4px;height:4px;border-radius:50%;background:var(--acid);flex-shrink:0; }
+
+/* PAIN POINTS SECTION */
+.pain-section {
+  padding: 140px 0 80px;
+  max-width: 1200px; margin: 0 auto;
+}
+
+.container { max-width:1200px; margin:0 auto; padding:0 48px; }
+
+.pain-header { margin-bottom: 72px; }
+
+.section-tag {
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.15em; text-transform: uppercase;
+  color: var(--acid); margin-bottom: 20px;
+}
+
+.section-h {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(38px, 4.5vw, 62px);
+  font-weight: 800;
+  letter-spacing: -2px;
+  line-height: 1.05;
+}
+
+.pain-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--border);
+}
+
+.pain-card {
+  background: var(--bg);
+  padding: 52px 44px;
+  position: relative; overflow: hidden;
+  cursor: default;
+}
+.pain-card:hover { background: var(--card); }
+
+.pain-number {
+  font-family: 'Syne', sans-serif;
+  font-size: 96px; font-weight: 800;
+  color: rgba(200,255,87,0.04);
+  letter-spacing: -5px;
+  line-height: 1; margin-bottom: 40px;
+  transition: color 0.3s;
+}
+.pain-card:hover .pain-number { color: rgba(200,255,87,0.08); }
+
+.pain-q {
+  font-family: 'Syne', sans-serif;
+  font-size: 20px; font-weight: 700;
+  letter-spacing: -0.3px;
+  margin-bottom: 16px; line-height: 1.25;
+}
+
+.pain-a {
+  font-size: 14px; color: var(--sub);
+  line-height: 1.75; font-weight: 300;
+}
+
+.pain-a strong { color: var(--acid); font-weight: 500; }
+
+/* STATS STRIP */
+.stats-strip {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 1px; background: var(--border);
+  margin: 80px 0;
+}
+.stat-cell {
+  background: var(--bg);
+  padding: 44px 40px;
+}
+.stat-cell .n {
+  font-family: 'Syne', sans-serif;
+  font-size: 56px; font-weight: 800;
+  letter-spacing: -3px; line-height: 1;
+  margin-bottom: 10px; color: var(--text);
+}
+.stat-cell .n em { font-style:normal; color:var(--acid); }
+.stat-cell .l { font-size:13px; color:var(--sub); line-height:1.5; }
+
+/* HOW */
+.how-section { padding: 120px 0; }
+
+.step-flow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px; background: var(--border);
+  margin-top: 64px;
+}
+
+.step-card {
+  background: var(--bg);
+  padding: 52px 44px;
+  position: relative; overflow: hidden;
+  transition: background 0.25s;
+}
+.step-card:hover { background: var(--card); }
+
+.step-card::after {
+  content: '';
+  position: absolute; bottom:0; left:0; right:0; height:2px;
+  background: var(--acid);
+  transform: scaleX(0); transform-origin: left;
+  transition: transform 0.4s ease;
+}
+.step-card:hover::after { transform: scaleX(1); }
+
+.step-big {
+  font-family: 'Syne', sans-serif;
+  font-size: 88px; font-weight: 800;
+  color: rgba(200,255,87,0.05);
+  letter-spacing: -5px; line-height: 1;
+  margin-bottom: 40px;
+}
+
+.step-card h3 {
+  font-family: 'Syne', sans-serif;
+  font-size: 22px; font-weight: 700;
+  letter-spacing: -0.4px; margin-bottom: 14px;
+}
+.step-card p { font-size: 14px; color: var(--sub); line-height: 1.78; font-weight: 300; }
+
+/* WHAT YOU GET */
+.get-section { padding: 120px 0; }
+
+.get-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 12px;
+  margin-top: 60px;
+}
+
+.gc {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px; padding: 36px;
+  transition: border-color 0.2s, transform 0.2s;
+}
+.gc:hover { border-color: rgba(200,255,87,0.15); transform: translateY(-2px); }
+
+.gc.c7 { grid-column: span 7; }
+.gc.c5 { grid-column: span 5; }
+.gc.c4 { grid-column: span 4; }
+.gc.c8 { grid-column: span 8; }
+.gc.c6 { grid-column: span 6; }
+.gc.c12 { grid-column: span 12; }
+
+.gc-tag {
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--acid); margin-bottom: 18px;
+}
+
+.gc h3 {
+  font-family: 'Syne', sans-serif;
+  font-size: 22px; font-weight: 700;
+  letter-spacing: -0.4px; margin-bottom: 12px;
+  line-height: 1.2;
+}
+.gc p { font-size: 14px; color: var(--sub); line-height: 1.76; font-weight: 300; }
+
+/* signal bars */
+.sig-bars { margin-top: 28px; }
+.sig-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; font-size:11px; }
+.sig-l { width:88px; color:var(--muted); flex-shrink:0; letter-spacing:0.03em; }
+.sig-t { flex:1; height:4px; background:rgba(255,255,255,0.04); border-radius:100px; overflow:hidden; }
+.sig-f { height:100%; border-radius:100px; background:var(--acid); }
+.sig-v { width:28px; text-align:right; color:var(--muted); font-size:10px; }
+
+/* formula */
+.formula {
+  margin-top: 28px;
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 20px;
+  font-size: 13px; line-height: 2.1;
+  color: var(--sub); letter-spacing: 0.01em;
+}
+.formula .h { color: var(--acid); font-weight: 600; }
+
+/* regimes */
+.regime-g { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:24px; }
+.rp { border:1px solid var(--border); border-radius:4px; padding:10px 14px; font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:var(--sub); transition:all 0.2s; cursor:default; }
+.rp:hover { border-color:var(--acid-border); color:var(--acid); background:var(--acid-dim); }
+
+/* SOCIAL PROOF */
+.proof-section {
+  padding: 100px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.proof-inner {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 80px; align-items: center;
+}
+.proof-text .big-q {
+  font-family: 'Syne', sans-serif;
+  font-size: 64px; font-weight: 800;
+  letter-spacing: -3px; line-height: 1.0;
+  margin-bottom: 28px;
+}
+.proof-text .big-q em { font-style:normal; color:var(--acid); }
+.proof-text p { font-size: 15px; color: var(--sub); line-height: 1.78; font-weight: 300; max-width: 380px; }
+
+.proof-right { display: flex; flex-direction: column; gap: 16px; }
+.proof-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 24px 28px;
+}
+.proof-card .pc-q {
+  font-size: 14px; font-weight: 500; margin-bottom: 10px; color: var(--text);
+}
+.proof-card .pc-a {
+  font-size: 13px; color: var(--sub); line-height: 1.65; font-weight: 300;
+}
+.proof-card .pc-a strong { color: var(--acid); font-weight: 500; }
+
+/* CTA */
+.cta-section { padding: 120px 48px; max-width: 1200px; margin: 0 auto; }
+
+.cta-inner {
+  background: var(--card);
+  border: 1px solid var(--acid-border);
+  border-radius: 12px;
+  padding: 96px 80px;
+  text-align: center;
+  position: relative; overflow: hidden;
+}
+
+.cta-inner::before {
+  content: '';
+  position: absolute;
+  top: -80px; left: 50%; transform: translateX(-50%);
+  width: 600px; height: 300px;
+  background: radial-gradient(ellipse, rgba(200,255,87,0.05) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.cta-inner h2 {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(38px, 5vw, 72px);
+  font-weight: 800;
+  letter-spacing: -2.5px;
+  line-height: 1.0;
+  margin-bottom: 18px;
+}
+.cta-inner h2 em { font-style:normal; color:var(--acid); }
+
+.cta-inner p {
+  font-size: 16px; color: var(--sub);
+  font-weight: 300; margin-bottom: 48px;
+  line-height: 1.7; max-width: 400px;
+  margin-left: auto; margin-right: auto;
+}
+
+.cta-row { display:flex; gap:10px; max-width:400px; margin:0 auto; }
+.cta-inp {
+  flex: 1;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 14px 18px;
+  font-size: 14px;
+  font-family: 'DM Sans', sans-serif;
+  color: var(--text); outline: none;
+  transition: border-color 0.2s;
+}
+.cta-inp::placeholder { color: var(--muted); }
+.cta-inp:focus { border-color: var(--acid-border); }
+
+.cta-b {
+  background: var(--acid); color: #000;
+  border: none; border-radius: 4px;
+  padding: 14px 24px;
+  font-size: 13px; font-weight: 800;
+  font-family: 'Syne', sans-serif;
+  letter-spacing: 0.06em;
+  cursor: pointer; white-space: nowrap;
+  transition: opacity 0.2s;
+}
+.cta-b:hover { opacity: 0.85; }
+
+/* FOOTER */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 36px 48px;
+  max-width: 1200px; margin: 0 auto;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.f-logo { font-family:'Syne',sans-serif; font-weight:800; font-size:15px; color:var(--text); text-decoration:none; letter-spacing:0.08em; }
+.f-links { display:flex; gap:28px; list-style:none; }
+.f-links a { font-size:11px; color:var(--muted); text-decoration:none; letter-spacing:0.1em; text-transform:uppercase; transition:color 0.2s; }
+.f-links a:hover { color:var(--sub); }
+.f-copy { font-size:11px; color:var(--muted); letter-spacing:0.04em; }
+
+/* REVEAL */
+.rev { opacity:0; transform:translateY(24px); transition:opacity 0.65s ease, transform 0.65s ease; }
+.rev.on { opacity:1; transform:translateY(0); }
+.rev-d1 { transition-delay: 0.1s; }
+.rev-d2 { transition-delay: 0.2s; }
+.rev-d3 { transition-delay: 0.3s; }
+
+/* RESPONSIVE */
+@media(max-width:1024px) {
+  .gc.c7,.gc.c5,.gc.c4,.gc.c8,.gc.c6 { grid-column:span 12; }
+  .stats-strip { grid-template-columns: repeat(2,1fr); }
+  .step-flow { grid-template-columns: 1fr; }
+  .pain-grid { grid-template-columns: 1fr; }
+  .proof-inner { grid-template-columns: 1fr; gap:40px; }
+}
+@media(max-width:768px) {
+  nav { padding:0 20px; }
+  .n-links { display:none; }
+  .hero { padding:110px 20px 80px; }
+  .container { padding:0 20px; }
+  .hero h1 { letter-spacing:-2px; }
+  .stats-strip { padding:0; }
+  .cta-inner { padding:52px 28px; }
+  .cta-row { flex-direction:column; }
+  footer { flex-direction:column; gap:20px; text-align:center; }
+  .rp-scores { grid-template-columns: repeat(2,1fr); }
+  .rp-top { flex-direction:column; gap:10px; align-items:flex-start; }
+  .input-footer { flex-direction:column; gap:12px; align-items:flex-start; }
+}
+</style>
+</head>
+<body>
+
+<div id="cur"></div>
+<div id="cur-ring"></div>
+
+<!-- ============ INTRO ============ -->
+<section id="intro">
+  <canvas id="three-canvas"></canvas>
+  <div id="prog-line"></div>
+
+  <div class="intro-scene" id="s0">
+    <div class="intro-label">For every founder who ever wondered</div>
+    <div class="intro-headline">You've had<br>this idea for<br><em>a while now.</em></div>
+  </div>
+
+  <div class="intro-scene" id="s1">
+    <div class="intro-label">You've told people. Some nodded.</div>
+    <div class="intro-headline">But <em>nobody</em><br>actually <span class="dim">knows</span><br>if it'll work.</div>
+  </div>
+
+  <div class="intro-scene" id="s2">
+    <div class="intro-label">The real question keeping you up</div>
+    <div class="intro-headline">Is the market<br><em>ready</em> for<br>this right now?</div>
+  </div>
+
+  <div class="intro-scene" id="s3">
+    <div class="intro-label">Most founders guess. Then build. Then find out.</div>
+    <div class="intro-headline">You <em>don't</em><br>have to <span class="dim">guess.</span></div>
+  </div>
+
+  <div class="intro-scene" id="s4">
+    <div class="intro-label">AI Decision Engine for MENA Founders</div>
+    <div class="intro-headline"><em>MIDAN.</em></div>
+    <button id="enter-btn">Enter the Arena</button>
+  </div>
+
+  <button id="skip">Skip</button>
+</section>
+
+<!-- ============ LANDING ============ -->
+<div id="landing">
+
+  <nav id="main-nav">
+    <a href="#" class="n-logo">
+      <div class="n-mark">
+        <svg viewBox="0 0 12 12" fill="none"><polygon points="6,1 11,3.5 11,8.5 6,11 1,8.5 1,3.5" fill="#000"/></svg>
+      </div>
+      MIDAN
+    </a>
+    <ul class="n-links">
+      <li><a href="#questions">Questions</a></li>
+      <li><a href="#how">How it works</a></li>
+      <li><a href="#signals">The signals</a></li>
+    </ul>
+    <button class="n-cta">Try it free</button>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="h-grid"></div>
+    <div class="h-glow"></div>
+
+    <div class="eyebrow"><div class="eb-pulse"></div>AI Decision Engine — Egypt & MENA</div>
+
+    <h1>
+      Your idea<br>
+      <span class="outline">deserves</span><br>
+      a real <span class="acid">answer.</span>
+    </h1>
+
+    <p class="hero-sub">Describe your startup idea. We read the market, map the competition, and tell you if now is the right time — in seconds.</p>
+
+    <div class="input-card">
+      <div class="input-top">
+        <div class="input-dot"></div>
+        <div class="input-label">Describe your idea — no jargon needed</div>
+      </div>
+      <textarea
+        id="idea-input"
+        class="hero-ta"
+        placeholder="e.g. An app for Egyptian SMEs to get paid faster on their invoices..."
+        rows="2"
+      ></textarea>
+      <div class="input-footer">
+        <span class="input-hint">Try: <span onclick="qi('Fintech payments app for Cairo')">payments app</span> · <span onclick="qi('E-commerce delivery startup Egypt')">delivery startup</span> · <span onclick="qi('Health clinic booking app Egypt')">clinic booking</span></span>
+        <button class="analyze-btn" onclick="analyze()">Get My Answer</button>
+      </div>
+    </div>
+
+    <div id="result-panel">
+      <div class="rp-wrap">
+        <div class="rp-top">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span class="rp-title">Market Intelligence</span>
+            <span class="rp-verdict" id="rp-verdict">READY TO MOVE</span>
+          </div>
+          <span class="rp-meta" id="rp-meta">Fintech · Egypt</span>
+        </div>
+        <div class="rp-scores">
+          <div class="score-cell"><div class="sc-label">Market Temperature</div><div class="sc-val v-green" id="sc-temp">Hot</div></div>
+          <div class="score-cell"><div class="sc-label">Opportunity Score</div><div class="sc-val v-green" id="sc-opp">81 / 100</div></div>
+          <div class="score-cell"><div class="sc-label">Competition</div><div class="sc-val v-white" id="sc-comp">Moderate</div></div>
+          <div class="score-cell"><div class="sc-label">Next 90 Days</div><div class="sc-val v-amber" id="sc-out">Growing</div></div>
+        </div>
+        <div class="rp-report">
+          <div class="rep-row"><div class="rep-key">What we found</div><div class="rep-val" id="r1">The Egyptian fintech market is active — inflation is creating real demand for payment tools. 38 deals happened in the last two years, and the money is still flowing in.</div></div>
+          <div class="rep-row"><div class="rep-key">What it means</div><div class="rep-val" id="r2">There's a clear window right now. SMEs are actively looking for faster payment solutions. The competition exists but hasn't saturated this niche yet.</div></div>
+          <div class="rep-row"><div class="rep-key">What to do next</div><div class="rep-val" id="r3">Move in the next 90 days. Apply to Flat6Labs or Cairo Angels. Go B2B first — pitch directly to SME finance managers, not consumers. Build for offline use outside Cairo.</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MARQUEE -->
+  <div class="mq-wrap">
+    <div class="mq-track">
+      <div class="mq-item"><div class="mq-d"></div>Market Temperature</div>
+      <div class="mq-item"><div class="mq-d"></div>Competition Mapping</div>
+      <div class="mq-item"><div class="mq-d"></div>Timing Analysis</div>
+      <div class="mq-item"><div class="mq-d"></div>90-Day Forecast</div>
+      <div class="mq-item"><div class="mq-d"></div>Opportunity Scoring</div>
+      <div class="mq-item"><div class="mq-d"></div>Live Economic Data</div>
+      <div class="mq-item"><div class="mq-d"></div>Decision Engine</div>
+      <div class="mq-item"><div class="mq-d"></div>Action Plan</div>
+      <div class="mq-item"><div class="mq-d"></div>Egypt & MENA Focus</div>
+      <div class="mq-item"><div class="mq-d"></div>Market Temperature</div>
+      <div class="mq-item"><div class="mq-d"></div>Competition Mapping</div>
+      <div class="mq-item"><div class="mq-d"></div>Timing Analysis</div>
+      <div class="mq-item"><div class="mq-d"></div>90-Day Forecast</div>
+      <div class="mq-item"><div class="mq-d"></div>Opportunity Scoring</div>
+      <div class="mq-item"><div class="mq-d"></div>Live Economic Data</div>
+      <div class="mq-item"><div class="mq-d"></div>Decision Engine</div>
+      <div class="mq-item"><div class="mq-d"></div>Action Plan</div>
+      <div class="mq-item"><div class="mq-d"></div>Egypt & MENA Focus</div>
+    </div>
+  </div>
+
+  <!-- THE QUESTIONS FOUNDERS ASK -->
+  <section id="questions">
+    <div class="container">
+      <div class="pain-section">
+        <div class="pain-header rev">
+          <div class="section-tag">The questions every founder asks</div>
+          <h2 class="section-h">We built MIDAN<br>to answer these.</h2>
+        </div>
+        <div class="pain-grid rev rev-d1">
+          <div class="pain-card">
+            <div class="pain-number">01</div>
+            <div class="pain-q">Is the timing right for my idea?</div>
+            <p class="pain-a">We read <strong>11 live economic signals</strong> — inflation, GDP, investment flow — and tell you if the market is heating up or cooling down right now.</p>
+          </div>
+          <div class="pain-card">
+            <div class="pain-number">02</div>
+            <div class="pain-q">How crowded is this space already?</div>
+            <p class="pain-a">We map your sector's competitive density and tell you if you're entering a <strong>wide-open field or a saturated war zone</strong> — before you build.</p>
+          </div>
+          <div class="pain-card">
+            <div class="pain-number">03</div>
+            <div class="pain-q">What should I actually do next?</div>
+            <p class="pain-a">Not a vague score. A <strong>3-point action plan</strong> — what to prioritize, who to target, and how to move in the next 90 days specific to your market.</p>
+          </div>
+        </div>
+
+        <!-- STATS -->
+        <div class="stats-strip rev rev-d2">
+          <div class="stat-cell"><div class="n">11<em>+</em></div><div class="l">Live market signals read in real time for every analysis</div></div>
+          <div class="stat-cell"><div class="n">90</div><div class="l">Days forecasted so you know what's coming, not just what's now</div></div>
+          <div class="stat-cell"><div class="n">5</div><div class="l">AI models working in parallel to build your full picture</div></div>
+          <div class="stat-cell"><div class="n">30<em>s</em></div><div class="l">From your idea description to a full market intelligence report</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section id="how" class="how-section">
+    <div class="container">
+      <div class="section-tag rev">How it works</div>
+      <h2 class="section-h rev">Three steps.<br>One clear answer.</h2>
+
+      <div class="step-flow rev rev-d1">
+        <div class="step-card">
+          <div class="step-big">01</div>
+          <h3>You describe your idea</h3>
+          <p>Just write it in plain language — what you want to build and where. No forms. No dropdowns. No jargon. MIDAN figures out the sector, country, and context from what you write.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-big">02</div>
+          <h3>We read the market</h3>
+          <p>MIDAN pulls live economic data, scans historical investment patterns in your sector, maps who's already competing, and calculates where your market sits on the heat map right now.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-big">03</div>
+          <h3>You get a clear verdict</h3>
+          <p>Not a confidence percentage. Not a cluster ID. A plain-language market temperature, an opportunity score, and three concrete things you should do next — in your sector, in your market, right now.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- WHAT'S UNDER THE HOOD -->
+  <section id="signals" class="get-section">
+    <div class="container">
+      <div class="rev">
+        <div class="section-tag">Under the hood</div>
+        <h2 class="section-h">What MIDAN actually reads<br>to give you that answer.</h2>
+      </div>
+
+      <div class="get-grid rev rev-d1">
+
+        <div class="gc c7">
+          <div class="gc-tag">Market Segmentation</div>
+          <h3>We find where your idea sits in the competitive landscape</h3>
+          <p>MIDAN groups your sector into natural market clusters — not arbitrary buckets. It finds whether your space is an open field, a crowded runway, or an emerging niche that nobody's claimed yet. Each cluster gets a clear name: Wide Open, Heating Up, Crowded, or Saturated.</p>
+          <div class="regime-g">
+            <div class="rp">Wide Open</div>
+            <div class="rp">Heating Up</div>
+            <div class="rp">Crowded</div>
+            <div class="rp">Saturated</div>
+          </div>
+        </div>
+
+        <div class="gc c5">
+          <div class="gc-tag">Signal Weights</div>
+          <h3>What's actually driving your market verdict</h3>
+          <p>Every answer is explained. MIDAN shows you which signals had the most influence on your result — so you trust the verdict, not just accept it.</p>
+          <div class="sig-bars">
+            <div class="sig-row"><div class="sig-l">Inflation rate</div><div class="sig-t"><div class="sig-f" style="width:82%"></div></div><div class="sig-v">82%</div></div>
+            <div class="sig-row"><div class="sig-l">Deal activity</div><div class="sig-t"><div class="sig-f" style="width:71%;opacity:.6"></div></div><div class="sig-v">71%</div></div>
+            <div class="sig-row"><div class="sig-l">Avg investment</div><div class="sig-t"><div class="sig-f" style="width:58%;opacity:.5"></div></div><div class="sig-v">58%</div></div>
+            <div class="sig-row"><div class="sig-l">GDP growth</div><div class="sig-t"><div class="sig-f" style="width:44%;opacity:.4"></div></div><div class="sig-v">44%</div></div>
+            <div class="sig-row"><div class="sig-l">Internet reach</div><div class="sig-t"><div class="sig-f" style="width:35%;opacity:.3"></div></div><div class="sig-v">35%</div></div>
+          </div>
+        </div>
+
+        <div class="gc c4">
+          <div class="gc-tag">The Classifier</div>
+          <h3>Market temperature — labeled clearly</h3>
+          <p>MIDAN's classification model reads your context against thousands of historical data points and assigns a market temperature in milliseconds. Not a probability. A verdict.</p>
+        </div>
+
+        <div class="gc c4">
+          <div class="gc-tag">90-Day Forecast</div>
+          <h3>Is the market growing or fading?</h3>
+          <p>Using historical sector trend patterns, MIDAN forecasts the next 90 days of activity. You don't just know what's happening now — you know what's coming.</p>
+        </div>
+
+        <div class="gc c4">
+          <div class="gc-tag">The Opportunity Score</div>
+          <h3>One number that tells the whole story</h3>
+          <p>MIDAN combines market temperature, forecast direction, and signal strength into a single Opportunity Score. Above 70 — it fires a Slack alert to your team. Below — it tells you why and what to change.</p>
+          <div class="formula">
+            Score = <span class="h">Temperature</span> × 40%<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ <span class="h">Forecast</span> × 35%<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ <span class="h">Signals</span> × 25%
+          </div>
+        </div>
+
+        <div class="gc c6">
+          <div class="gc-tag">Live Data Ingestion</div>
+          <h3>It reads live. Every single time you ask.</h3>
+          <p>MIDAN doesn't use stale market snapshots. Every time you describe an idea, it pulls live inflation data, current GDP trajectories, and real-time sector investment numbers — then merges them with historical patterns to build your context. The result is always current. Always honest.</p>
+        </div>
+
+        <div class="gc c6">
+          <div class="gc-tag">The Action Plan</div>
+          <h3>Not a dashboard. A directive.</h3>
+          <p>The Trinity Report gives you three things every time: what the data shows, what it means for your specific idea, and what you should do next. No graphs to interpret. No scores to decode. Just: here's your situation, here's what it means, here's your move. Built for founders who need to act — not just understand.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- PROOF SECTION -->
+  <section class="proof-section">
+    <div class="container">
+      <div class="proof-inner rev">
+        <div class="proof-text">
+          <div class="big-q">The market<br>doesn't care<br>about your<br><em>passion.</em></div>
+          <p>Thousands of founders in Egypt and MENA start building before they understand the market. Most find out they were wrong only after they've spent a year and everything they had. MIDAN exists so you find out in 30 seconds instead.</p>
+        </div>
+        <div class="proof-right">
+          <div class="proof-card">
+            <div class="pc-q">What if my sector isn't covered?</div>
+            <div class="pc-a">MIDAN has sector-specific models for the highest-activity verticals. For smaller sectors, it falls back to a <strong>global model</strong> trained across all data — you always get an answer.</div>
+          </div>
+          <div class="proof-card">
+            <div class="pc-q">How current is the data?</div>
+            <div class="pc-a">Live macroeconomic signals are pulled <strong>in real time</strong> from the World Bank API every time you run an analysis. Deal data is refreshed from the most recent available records.</div>
+          </div>
+          <div class="proof-card">
+            <div class="pc-q">Can it tell me if I'll succeed?</div>
+            <div class="pc-a">Honestly — no AI can. What MIDAN tells you is <strong>whether the market conditions are favorable</strong> right now, which is the question you actually need answered first.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <div class="cta-section">
+    <div class="cta-inner rev">
+      <div class="section-tag" style="margin-bottom:24px">Start now — it's free</div>
+      <h2>Stop wondering.<br>Start <em>knowing.</em></h2>
+      <p>Describe your idea above, or drop your email to get early access to the full platform.</p>
+      <div class="cta-row">
+        <input type="email" class="cta-inp" placeholder="your@email.com">
+        <button class="cta-b">Get Early Access</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <a href="#" class="f-logo">MIDAN</a>
+    <ul class="f-links">
+      <li><a href="#questions">Questions</a></li>
+      <li><a href="#how">How it works</a></li>
+      <li><a href="#">GitHub</a></li>
+    </ul>
+    <div class="f-copy">2025 MIDAN — Built for MENA Founders</div>
+  </footer>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* CURSOR */
+const cur = document.getElementById('cur'), ring = document.getElementById('cur-ring');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove', e => { mx=e.clientX; my=e.clientY; });
+(function animC(){
+  rx+=(mx-rx)*0.14; ry+=(my-ry)*0.14;
+  cur.style.left=mx+'px'; cur.style.top=my+'px';
+  ring.style.left=rx+'px'; ring.style.top=ry+'px';
+  requestAnimationFrame(animC);
+})();
+
+/* THREE.JS */
+const canvas=document.getElementById('three-canvas');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.setClearColor(0x000000,1);
+
+const scene=new THREE.Scene();
+const cam=new THREE.PerspectiveCamera(65,innerWidth/innerHeight,0.1,1000);
+cam.position.set(0,0,28);
+
+// PARTICLES
+const N=2200;
+const pos=new Float32Array(N*3), col=new Float32Array(N*3), sz=new Float32Array(N);
+for(let i=0;i<N;i++){
+  const th=Math.random()*Math.PI*2, ph=Math.acos(2*Math.random()-1), r=18+Math.random()*55;
+  pos[i*3]=r*Math.sin(ph)*Math.cos(th);
+  pos[i*3+1]=r*Math.sin(ph)*Math.sin(th);
+  pos[i*3+2]=r*Math.cos(ph);
+  if(Math.random()>0.88){ col[i*3]=0.78; col[i*3+1]=1.0; col[i*3+2]=0.34; }
+  else { const b=0.08+Math.random()*0.22; col[i*3]=b; col[i*3+1]=b; col[i*3+2]=b+0.04; }
+  sz[i]=0.2+Math.random()*1.0;
+}
+
+const pgeo=new THREE.BufferGeometry();
+pgeo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+pgeo.setAttribute('color',new THREE.BufferAttribute(col,3));
+
+const pmat=new THREE.PointsMaterial({size:0.45,vertexColors:true,transparent:true,opacity:0,sizeAttenuation:true,depthWrite:false});
+const pts=new THREE.Points(pgeo,pmat);
+scene.add(pts);
+
+// POLYHEDRA
+const addWire=(geo,opacity)=>{
+  const m=new THREE.MeshBasicMaterial({color:0xc8ff57,wireframe:true,transparent:true,opacity});
+  const mesh=new THREE.Mesh(geo,m); scene.add(mesh); return mesh;
+};
+const oct=addWire(new THREE.OctahedronGeometry(10,1),0);
+const ico=addWire(new THREE.IcosahedronGeometry(5,1),0);
+
+window.addEventListener('resize',()=>{ renderer.setSize(innerWidth,innerHeight); cam.aspect=innerWidth/innerHeight; cam.updateProjectionMatrix(); });
+
+var t=0; var sceneIdx=0; var running=true;
+
+(function anim(){
+  requestAnimationFrame(anim); t+=0.007;
+  var tp=Math.min(sceneIdx/1.5,1);
+  pmat.opacity+=(tp-pmat.opacity)*0.018;
+  if(sceneIdx>=2){ oct.material.opacity+=(0.06-oct.material.opacity)*0.015; ico.material.opacity+=(0.04-ico.material.opacity)*0.015; }
+  pts.rotation.y=t*0.04; pts.rotation.x=Math.sin(t*0.025)*0.08;
+  oct.rotation.x=t*0.06; oct.rotation.y=t*0.04; oct.rotation.z=t*0.02;
+  ico.rotation.x=-t*0.09; ico.rotation.y=t*0.07;
+  cam.position.x=Math.sin(t*0.09)*2.5; cam.position.y=Math.cos(t*0.07)*1.8;
+  cam.lookAt(0,0,0);
+  renderer.render(scene,cam);
+})();
+
+/* INTRO SEQUENCER */
+var scenes=document.querySelectorAll('.intro-scene');
+var prog=document.getElementById('prog-line');
+
+const timings=[2800,2800,2800,2800,0];
+
+function showS(i){
+  scenes.forEach((s,j)=>{ s.classList.remove('in','out'); if(j===i) s.classList.add('in'); else if(j<i) s.classList.add('out'); });
+  sceneIdx=i;
+  prog.style.width=(((i)/(scenes.length-1))*100)+'%';
+  if(i===4){
+    const btn=document.getElementById('enter-btn');
+    btn.style.display='inline-block';
+    setTimeout(()=>btn.style.opacity='1',50);
+  }
+}
+
+function startSeq(){
+  showS(0);
+  let idx=0;
+  function next(){
+    if(!running) return;
+    idx++;
+    if(idx<scenes.length){ showS(idx); if(timings[idx]>0) setTimeout(next,timings[idx]); }
+  }
+  setTimeout(next,timings[0]);
+}
+
+function enterLanding(){
+  running=false;
+  document.getElementById('intro').classList.add('exit');
+  setTimeout(()=>{
+    document.getElementById('intro').style.display='none';
+    document.getElementById('landing').classList.add('show');
+    document.getElementById('main-nav').classList.add('show');
+    document.body.style.overflow='auto';
+    initReveal();
+  },1000);
+}
+
+document.getElementById('enter-btn').addEventListener('click',enterLanding);
+document.getElementById('skip').addEventListener('click',enterLanding);
+document.body.style.overflow='hidden';
+setTimeout(startSeq,500);
+
+/* ANALYZER */
+const data={
+  fintech:{
+    verdict:'READY TO MOVE', temp:'Hot', opp:'81 / 100', comp:'Moderate', out:'Growing',
+    r1:'The Egyptian fintech market is active. Inflation at 29% is creating real demand for faster payment tools — SMEs are desperately looking for solutions. 38 investor deals happened in this sector over the last 24 months.',
+    r2:'There is a clear window right now. The market is hot but not yet saturated in the invoice-financing niche. Investors are still writing cheques. You have roughly a 90-day advantage before this space gets crowded.',
+    r3:'Move now. Apply to Flat6Labs or Cairo Angels this month. Go B2B first — pitch directly to SME finance managers, skip the consumer market. Build your MVP to work offline; most of your customers are outside Cairo.'
+  },
+  ecommerce:{
+    verdict:'THINK CAREFULLY', temp:'Cool', opp:'58 / 100', comp:'Very High', out:'Flat',
+    r1:'Egyptian e-commerce logistics is saturated. There are 62 active funded ventures fighting over the same delivery corridors in Cairo and Alexandria. The easy plays have been made.',
+    r2:'The opportunity score is below the threshold. A general platform will struggle to find air. That said, specific niches — cold chain logistics for food, or last-mile in rural Upper Egypt — still have whitespace.',
+    r3:'Do not build a general delivery platform. Spend 2 weeks mapping the top 3 underserved verticals before writing a single line of code. Consider a partnership with an existing 3PL first to validate demand cheaply.'
+  },
+  health:{
+    verdict:'STRONG SIGNAL', temp:'Warm', opp:'73 / 100', comp:'Low', out:'Growing',
+    r1:'Egyptian healthtech is an emerging market with a strong signal. Only 11 funded ventures are active. The government digital health push is creating real institutional demand that is mostly unmet.',
+    r2:'This is a first-mover opportunity. The market is forming now — the players who enter in the next 6 months will define the category. Government procurement reduces your customer acquisition risk significantly.',
+    r3:'Move fast and go institutional. Secure a pilot agreement with one hospital or clinic this month — even unpaid. Apply to Catalyst Egypt immediately. The government-facing angle will de-risk your fundraise story considerably.'
+  }
+};
+
+function qi(t){ document.getElementById('idea-input').value=t; analyze(); }
+
+function analyze(){
+  const v=document.getElementById('idea-input').value.toLowerCase();
+  let d=data.fintech;
+  if(v.includes('ecommerce')||v.includes('delivery')||v.includes('logistics')) d=data.ecommerce;
+  else if(v.includes('health')||v.includes('clinic')||v.includes('medical')) d=data.health;
+
+  document.getElementById('rp-verdict').textContent=d.verdict;
+  document.getElementById('rp-meta').textContent=v.includes('ecommerce')||v.includes('delivery')?'E-commerce · Egypt':v.includes('health')||v.includes('clinic')?'Healthtech · Egypt':'Fintech · Egypt';
+  document.getElementById('sc-temp').textContent=d.temp;
+  document.getElementById('sc-opp').textContent=d.opp;
+  document.getElementById('sc-comp').textContent=d.comp;
+  document.getElementById('sc-out').textContent=d.out;
+  document.getElementById('r1').textContent=d.r1;
+  document.getElementById('r2').textContent=d.r2;
+  document.getElementById('r3').textContent=d.r3;
+
+  const p=document.getElementById('result-panel');
+  p.classList.add('show');
+  setTimeout(()=>p.scrollIntoView({behavior:'smooth',block:'nearest'}),100);
+}
+
+document.getElementById('idea-input').addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();analyze();} });
+
+/* SCROLL REVEAL */
+function initReveal(){
+  const els=document.querySelectorAll('.rev');
+  const io=new IntersectionObserver(entries=>{
+    entries.forEach(e=>{ if(e.isIntersecting){e.target.classList.add('on');io.unobserve(e.target);} });
+  },{threshold:0.08});
+  els.forEach(el=>io.observe(el));
+}
+</script>
+</body>
+</html>
