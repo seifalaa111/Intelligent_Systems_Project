@@ -518,12 +518,12 @@ if "result" not in st.session_state:
     st.session_state.country = "EG"
 
 # ── RUN ──────────────────────────────────────────────────────
+SECTOR_LABEL_MAP = {
+    "E-commerce":"ecommerce","Healthtech":"healthtech",
+    "Edtech":"edtech","SaaS":"saas","Logistics":"logistics",
+    "Agritech":"agritech","Other":"other","Fintech":"fintech"
+}
 if run and MODELS_LOADED:
-    SECTOR_LABEL_MAP = {
-        "E-commerce":"ecommerce","Healthtech":"healthtech",
-        "Edtech":"edtech","SaaS":"saas","Logistics":"logistics",
-        "Agritech":"agritech","Other":"other","Fintech":"fintech"
-    }
     # Agent A1 parses text; dropdowns are fallback when keywords not found
     if idea and len(idea.strip()) > 5:
         parsed_sec, parsed_ctry, sec_found, ctry_found = agent_a1_parse(idea)
