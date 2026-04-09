@@ -187,38 +187,56 @@ COUNTRY_KEYWORDS = {
     'GB': ['uk','britain','london','england','بريطانيا'],
 }
 
-def agent_a1_parse(idea_text: str) -> tuple[str, str]:
-    """Extract sector + country from idea text."""
+def agent_a1_parse(idea_text: str) -> tuple[str, str, bool, bool]:
+    """Extract sector + country from idea text. Returns detection flags."""
     t = idea_text.lower()
-    sector = 'fintech'
+    sector, sector_found = None, False
     for sec, kws in SECTOR_KEYWORDS.items():
         if any(k in t for k in kws):
-            sector = sec
+            sector, sector_found = sec, True
             break
-    country = 'EG'
+    if not sector_found:
+        sector = 'fintech'  # placeholder — will be overridden by dropdown
+    country, country_found = None, False
     for code, kws in COUNTRY_KEYWORDS.items():
         if any(k in t for k in kws):
-            country = code
+            country, country_found = code, True
             break
-    return sector, country
+    if not country_found:
+        country = 'EG'  # placeholder — will be overridden by dropdown
+    return sector, country, sector_found, country_found
 
 # ── ENHANCED REGIME — post-process SVM with domain rules ─────
-def enhanced_regime(svm_regime: str, inflation: float, gdp_growth: float,
-                    macro_friction: float, velocity_yoy: float,
-                    conf: float) -> tuple[str, float]:
+def enhanced_regime(svm_regime: str, svm_conf: float, inflation: float,
+                    gdp_growth: float, macro_friction: float,
+                    velocity_yoy: float) -> tuple[str, float]:
     """
-    Layer 2: rule-based override on top of SVM.
-    Ensemble approach — more academically defensible than SVM alone.
+    Layer 2: selective rule-based override on top of SVM.
+    Only fires for GROWTH (not in training) and extreme edge cases.
+    Computes its own confidence based on rule margin.
     """
+    # Rule 1: GROWTH — SVM has no GROWTH class, so rules must add it
     if gdp_growth > 3.5 and inflation < 8 and velocity_yoy > 0.15:
-        return 'GROWTH_MARKET', min(conf * 1.05, 0.99)
-    if gdp_growth < 0 or (inflation > 50 and macro_friction > 50):
-        return 'CONTRACTING_MARKET', conf
-    if inflation < 5 and macro_friction < 8 and gdp_growth > 0:
+        margin = min((gdp_growth-3.5)/4.0, (8-inflation)/8.0, (velocity_yoy-0.15)/0.25)
+        conf = float(np.clip(0.65 + margin * 0.30, 0.60, 0.95))
+        return 'GROWTH_MARKET', conf
+    # Rule 1b: EMERGING — good macro but lower velocity
+    if gdp_growth > 2.0 and inflation < 10 and macro_friction < 10:
+        margin = min((gdp_growth-2.0)/4.0, (10-inflation)/10.0, (10-macro_friction)/15.0)
+        conf = float(np.clip(0.60 + margin * 0.30, 0.55, 0.90))
         return 'EMERGING_MARKET', conf
-    if macro_friction > 20 or inflation > 15:
+    # Rule 2: CONTRACTING — extreme downturn only
+    if gdp_growth < 0 or (inflation > 50 and macro_friction > 50):
+        severity = max(abs(min(gdp_growth, 0)) / 3.0, 0.0)
+        conf = float(np.clip(0.65 + severity * 0.25, 0.60, 0.92))
+        return 'CONTRACTING_MARKET', conf
+    # Rule 3: HIGH_FRICTION — only for severe macro pain
+    if macro_friction > 30 or inflation > 25:
+        pain = max((macro_friction - 30) / 40, (inflation - 25) / 30, 0)
+        conf = float(np.clip(0.60 + pain * 0.30, 0.55, 0.92))
         return 'HIGH_FRICTION_MARKET', conf
-    return svm_regime, conf
+    # Default: trust the SVM
+    return svm_regime, svm_conf
 
 # ── SHAP helper ──────────────────────────────────────────────
 def compute_shap(lgb_model, x_scaled_row):
@@ -271,9 +289,9 @@ def run_inference(sector: str, country: str, logs: list):
     proba     = svm.predict_proba(x_scaled)[0]
     svm_regime= le.inverse_transform([pred_enc])[0]
     svm_conf  = float(proba.max())
-    # Layer 2: domain rule override
-    regime, conf = enhanced_regime(svm_regime, inflation, gdp_growth,
-                                   macro_fric, velocity, svm_conf)
+    # Layer 2: domain rule override (SVM has no GROWTH class)
+    regime, conf = enhanced_regime(svm_regime, svm_conf, inflation,
+                                   gdp_growth, macro_fric, velocity)
     logs.append(f"[STEP3] SVM base: {svm_regime} ({svm_conf:.1%}) → Final: {regime} ({conf:.1%})")
 
     # ── Step 4A: SHAP ─────────────────────────────────────────
@@ -286,12 +304,15 @@ def run_inference(sector: str, country: str, logs: list):
     sarima_trend = 0.50
     drift_flag   = False
     if sec in sarima_results:
-        fc = [max(0, v) for v in sarima_results[sec]['forecast_mean']]
-        sarima_trend = 0.65 if fc[-1] >= fc[0] else 0.35
+        fc_raw = sarima_results[sec]['forecast_mean']
+        fc = [max(0, v) for v in fc_raw]
+        # Use actual forecast magnitude — not binary
+        fc_mean = float(np.mean(fc))
+        sarima_trend = float(np.clip(fc_mean / 50.0, 0.15, 0.90))
         drift_flag   = sarima_results[sec]['drift_flag']
-        logs.append(f"[STEP4B] SARIMA forecast: {[round(x,1) for x in fc]} | drift={drift_flag}")
+        logs.append(f"[STEP4B] SARIMA forecast: {[round(x,1) for x in fc]} mean={fc_mean:.1f} → trend={sarima_trend:.2f} | drift={drift_flag}")
     else:
-        logs.append(f"[STEP4B] No SARIMA model for {sec} — using neutral trend")
+        logs.append(f"[STEP4B] No SARIMA model for {sec} — using neutral trend={sarima_trend}")
 
     if drift_flag:
         logs.append("[STEP4B] ⚠ DRIFT DETECTED — Manual Reclustering Advised")
@@ -359,14 +380,17 @@ with st.sidebar:
 
     # Show what Agent A1 detected in real-time
     if idea and len(idea.strip()) > 5:
-        detected_sec, detected_ctry = agent_a1_parse(idea)
+        detected_sec, detected_ctry, sf, cf = agent_a1_parse(idea)
+        sec_lbl = detected_sec.title() if sf else 'Using dropdown'
+        ctry_lbl = detected_ctry if cf else 'Using dropdown'
+        tag = 'A1 Detected' if (sf or cf) else 'A1 No Match'
         st.markdown(f"""
         <div style="background:rgba(200,255,87,0.07);border:1px solid rgba(200,255,87,0.2);
                     border-radius:6px;padding:10px 14px;margin-top:8px;">
             <p style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;
-                      color:#C8FF57;margin:0 0 4px;">A1 Detected</p>
+                      color:#C8FF57;margin:0 0 4px;">{tag}</p>
             <p style="font-size:13px;color:#EDEAF8;margin:0;font-weight:500;">
-                {detected_sec.title()} &nbsp;·&nbsp; {detected_ctry}
+                {sec_lbl} &nbsp;·&nbsp; {ctry_lbl}
             </p>
         </div>""", unsafe_allow_html=True)
 
@@ -421,11 +445,11 @@ if run and MODELS_LOADED:
         "Edtech":"edtech","SaaS":"saas","Logistics":"logistics",
         "Agritech":"agritech","Other":"other","Fintech":"fintech"
     }
-    # If user typed an idea, Agent A1 parses it and overrides dropdowns
-    # Agent A1 always drives the analysis from the text
-    # Dropdowns are fallback only when no text is provided
+    # Agent A1 parses text; dropdowns are fallback when keywords not found
     if idea and len(idea.strip()) > 5:
-        sector_key, country_code = agent_a1_parse(idea)
+        parsed_sec, parsed_ctry, sec_found, ctry_found = agent_a1_parse(idea)
+        sector_key   = parsed_sec if sec_found else SECTOR_LABEL_MAP.get(sector, sector.lower())
+        country_code = parsed_ctry if ctry_found else country.split(" — ")[0]
     else:
         sector_key   = SECTOR_LABEL_MAP.get(sector, sector.lower())
         country_code = country.split(" — ")[0]
@@ -563,23 +587,37 @@ with col_l:
             Where your idea sits in the competitive field</p>
     </div>""", unsafe_allow_html=True)
 
-    # Generate cluster scatter from PCA transform of real data neighbours
-    np.random.seed(42)
-    n_pts = 280
-    clusters_vis = {
-        'GROWTH_MARKET':        (0.6, 0.5,  80, ACID),
-        'EMERGING_MARKET':      (-0.3, 0.2, 100, '#5B6CF0'),
-        'HIGH_FRICTION_MARKET': (-0.6,-0.5,  70, '#FF6B6B'),
-        'CONTRACTING_MARKET':   (0.2,-0.7,   30, '#F5A623'),
-    }
+    # Generate cluster scatter from SVM decision regions (real model)
+    @st.cache_data
+    def _cluster_scatter():
+        rng = np.random.RandomState(42)
+        n = 500
+        X_s = np.column_stack([
+            rng.normal(scaler.mean_[0], scaler.scale_[0]*0.7, n).clip(0, 60),
+            rng.normal(scaler.mean_[1], scaler.scale_[1]*0.8, n).clip(-4, 10),
+            rng.normal(scaler.mean_[2], scaler.scale_[2]*0.7, n).clip(-15, 60),
+            rng.normal(scaler.mean_[3], scaler.scale_[3]*0.4, n).clip(5000, 3e6),
+            rng.normal(scaler.mean_[4], scaler.scale_[4]*0.8, n).clip(0, 0.5),
+        ])
+        Xs = scaler.transform(X_s)
+        Xp = pca.transform(Xs)
+        preds = svm.predict(Xs); probas = svm.predict_proba(Xs)
+        labels = []
+        for i in range(n):
+            sv_l = le.inverse_transform([preds[i]])[0]
+            sv_c = float(probas[i].max())
+            reg, _ = enhanced_regime(sv_l, sv_c, X_s[i,0], X_s[i,1], X_s[i,2], X_s[i,4])
+            labels.append(reg)
+        return Xp, labels
+    bg_pca, bg_labels = _cluster_scatter()
     fig_c = go.Figure()
-    for name, (cx, cy, n, col) in clusters_vis.items():
-        xs = np.random.normal(cx, 0.28, n)
-        ys = np.random.normal(cy, 0.28, n)
-        fig_c.add_trace(go.Scatter(
-            x=xs, y=ys, mode='markers', name=name,
-            marker=dict(color=col, size=7, opacity=0.55, line=dict(width=0))
-        ))
+    for name, col in REGIME_COLORS.items():
+        mask = [i for i, l in enumerate(bg_labels) if l == name]
+        if mask:
+            fig_c.add_trace(go.Scatter(
+                x=bg_pca[mask, 0], y=bg_pca[mask, 1], mode='markers', name=name,
+                marker=dict(color=col, size=6, opacity=0.45, line=dict(width=0))
+            ))
     # Your idea dot
     px_idea, py_idea = r['x_pca'][0], r['x_pca'][1]
     fig_c.add_trace(go.Scatter(
