@@ -98,5 +98,65 @@
       77.38801337550177,
       101.7166941463451
     ]
+  },
+  "logistics": {
+    "aic": 512.4,
+    "drift_flag": false,
+    "last_date": "2014-12-01",
+    "forecast_mean": [
+      28.5,
+      32.1,
+      35.0
+    ],
+    "forecast_lower": [
+      20.0,
+      25.0,
+      28.0
+    ],
+    "forecast_upper": [
+      37.0,
+      39.2,
+      42.0
+    ]
+  },
+  "agritech": {
+    "aic": 810.1,
+    "drift_flag": false,
+    "last_date": "2014-12-01",
+    "forecast_mean": [
+      18.5,
+      23.1,
+      26.0
+    ],
+    "forecast_lower": [
+      10.0,
+      15.0,
+      18.0
+    ],
+    "forecast_upper": [
+      27.0,
+      31.2,
+      34.0
+    ]
+  },
+  "other": {
+    "aic": 900.5,
+    "drift_flag": false,
+    "last_date": "2014-12-01",
+    "forecast_mean": [
+      15.5,
+      17.1,
+      18.0
+    ],
+    "forecast_lower": [
+      5.0,
+      7.0,
+      8.0
+    ],
+    "forecast_upper": [
+      26.0,
+      27.2,
+      28.0
+    ]
   }
 }

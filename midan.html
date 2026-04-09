@@ -1190,45 +1190,64 @@ document.body.style.overflow='hidden';
 setTimeout(startSeq,500);
 
 /* ANALYZER */
-const data={
-  fintech:{
-    verdict:'READY TO MOVE', temp:'Hot', opp:'81 / 100', comp:'Moderate', out:'Growing',
-    r1:'The Egyptian fintech market is active. Inflation at 29% is creating real demand for faster payment tools — SMEs are desperately looking for solutions. 38 investor deals happened in this sector over the last 24 months.',
-    r2:'There is a clear window right now. The market is hot but not yet saturated in the invoice-financing niche. Investors are still writing cheques. You have roughly a 90-day advantage before this space gets crowded.',
-    r3:'Move now. Apply to Flat6Labs or Cairo Angels this month. Go B2B first — pitch directly to SME finance managers, skip the consumer market. Build your MVP to work offline; most of your customers are outside Cairo.'
-  },
-  ecommerce:{
-    verdict:'THINK CAREFULLY', temp:'Cool', opp:'58 / 100', comp:'Very High', out:'Flat',
-    r1:'Egyptian e-commerce logistics is saturated. There are 62 active funded ventures fighting over the same delivery corridors in Cairo and Alexandria. The easy plays have been made.',
-    r2:'The opportunity score is below the threshold. A general platform will struggle to find air. That said, specific niches — cold chain logistics for food, or last-mile in rural Upper Egypt — still have whitespace.',
-    r3:'Do not build a general delivery platform. Spend 2 weeks mapping the top 3 underserved verticals before writing a single line of code. Consider a partnership with an existing 3PL first to validate demand cheaply.'
-  },
-  health:{
-    verdict:'STRONG SIGNAL', temp:'Warm', opp:'73 / 100', comp:'Low', out:'Growing',
-    r1:'Egyptian healthtech is an emerging market with a strong signal. Only 11 funded ventures are active. The government digital health push is creating real institutional demand that is mostly unmet.',
-    r2:'This is a first-mover opportunity. The market is forming now — the players who enter in the next 6 months will define the category. Government procurement reduces your customer acquisition risk significantly.',
-    r3:'Move fast and go institutional. Secure a pilot agreement with one hospital or clinic this month — even unpaid. Apply to Catalyst Egypt immediately. The government-facing angle will de-risk your fundraise story considerably.'
+async function analyze(){
+  const v = document.getElementById('idea-input').value.toLowerCase();
+  if(!v.trim()) return;
+
+  const btn = document.querySelector('.input-box button') || document.getElementById('search-btn');
+  if(btn) btn.innerHTML = '<span class="spinner" style="font-size:12px">Analyzing...</span>';
+
+  let apiSuccess = false;
+  try {
+    const response = await fetch('http://localhost:8000/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idea: v, sector: "Fintech", country: "EG — Egypt" })
+    });
+    
+    if(response.ok) {
+      const d = await response.json();
+      
+      const regimeLabel = d.regime.replace('_MARKET','').replace('_',' ');
+      
+      document.getElementById('rp-verdict').textContent = d.action_fired ? "READY TO MOVE" : (d.tas_score >= 50 ? "STRONG SIGNAL" : "THINK CAREFULLY");
+      document.getElementById('rp-meta').textContent = `${d.sector.charAt(0).toUpperCase() + d.sector.slice(1)} · ${d.country}`;
+      
+      document.getElementById('sc-temp').textContent = regimeLabel;
+      document.getElementById('sc-opp').textContent = `${d.tas_score} / 100`;
+      document.getElementById('sc-comp').textContent = `${d.confidence}%`;
+      document.getElementById('sc-out').textContent = d.sarima_trend > 0.5 ? "Positive" : "Neutral";
+      
+      document.getElementById('r1').textContent = d.report.finding;
+      document.getElementById('r2').textContent = d.report.implication;
+      document.getElementById('r3').textContent = d.report.action;
+      
+      apiSuccess = true;
+    }
+  } catch (err) {
+    console.error("API Error, falling back to mock:", err);
   }
-};
 
-function qi(t){ document.getElementById('idea-input').value=t; analyze(); }
+  // Graceful fallback to mock data if backend isn't running
+  if (!apiSuccess) {
+    const data = {
+      fintech: { verdict:'READY TO MOVE', temp:'Growth', opp:'81 / 100', comp:'85%', out:'Positive', r1:'The Egyptian fintech market is active. Inflation at 29% is creating real demand for faster payment tools.', r2:'There is a clear window right now. The market is hot but not yet saturated in the invoice-financing niche.', r3:'Move now. Apply to Flat6Labs or Cairo Angels this month.' },
+      ecommerce: { verdict:'THINK CAREFULLY', temp:'Contracting', opp:'44 / 100', comp:'67%', out:'Neutral', r1:'Egyptian e-commerce logistics is saturated. There are 62 active funded ventures fighting.', r2:'The opportunity score is below the threshold. A general platform will struggle to find air.', r3:'Do not build a general delivery platform. Spend 2 weeks mapping the top 3 underserved verticals.' }
+    };
+    const d = (v.includes('ecommerce')||v.includes('delivery')) ? data.ecommerce : data.fintech;
+    
+    document.getElementById('rp-verdict').textContent = d.verdict;
+    document.getElementById('rp-meta').textContent = (v.includes('ecommerce')||v.includes('delivery')) ? 'E-commerce · EG' : 'Fintech · EG';
+    document.getElementById('sc-temp').textContent = d.temp;
+    document.getElementById('sc-opp').textContent = d.opp;
+    document.getElementById('sc-comp').textContent = d.comp;
+    document.getElementById('sc-out').textContent = d.out;
+    document.getElementById('r1').textContent = d.r1;
+    document.getElementById('r2').textContent = d.r2;
+    document.getElementById('r3').textContent = d.r3;
+  }
 
-function analyze(){
-  const v=document.getElementById('idea-input').value.toLowerCase();
-  let d=data.fintech;
-  if(v.includes('ecommerce')||v.includes('delivery')||v.includes('logistics')) d=data.ecommerce;
-  else if(v.includes('health')||v.includes('clinic')||v.includes('medical')) d=data.health;
-
-  document.getElementById('rp-verdict').textContent=d.verdict;
-  document.getElementById('rp-meta').textContent=v.includes('ecommerce')||v.includes('delivery')?'E-commerce · Egypt':v.includes('health')||v.includes('clinic')?'Healthtech · Egypt':'Fintech · Egypt';
-  document.getElementById('sc-temp').textContent=d.temp;
-  document.getElementById('sc-opp').textContent=d.opp;
-  document.getElementById('sc-comp').textContent=d.comp;
-  document.getElementById('sc-out').textContent=d.out;
-  document.getElementById('r1').textContent=d.r1;
-  document.getElementById('r2').textContent=d.r2;
-  document.getElementById('r3').textContent=d.r3;
-
+  if(btn) btn.innerHTML = 'Run Engine';
   const p=document.getElementById('result-panel');
   p.classList.add('show');
   setTimeout(()=>p.scrollIntoView({behavior:'smooth',block:'nearest'}),100);

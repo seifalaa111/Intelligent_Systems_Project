@@ -246,5 +246,61 @@
       "Country": "United States",
       "Industry": "Healthcare & Life Sciences"
     }
+  ],
+  "edtech": [
+    {
+      "Company": "Abwaab",
+      "Valuation ()": ".2",
+      "Country": "Jordan",
+      "Industry": "Edtech"
+    },
+    {
+      "Company": "Almentor",
+      "Valuation ()": ".1",
+      "Country": "UAE",
+      "Industry": "Edtech"
+    }
+  ],
+  "saas": [
+    {
+      "Company": "Foodics",
+      "Valuation ()": ".5",
+      "Country": "KSA",
+      "Industry": "SaaS"
+    },
+    {
+      "Company": "Salla",
+      "Valuation ()": ".8",
+      "Country": "KSA",
+      "Industry": "SaaS"
+    }
+  ],
+  "logistics": [
+    {
+      "Company": "TruKKer",
+      "Valuation ()": ".6",
+      "Country": "UAE",
+      "Industry": "Logistics"
+    },
+    {
+      "Company": "Trella",
+      "Valuation ()": ".3",
+      "Country": "Egypt",
+      "Industry": "Logistics"
+    }
+  ],
+  "agritech": [
+    {
+      "Company": "Mahaseel",
+      "Valuation ()": ".05",
+      "Country": "Egypt",
+      "Industry": "Agritech"
+    },
+    {
+      "Company": "Pure Harvest",
+      "Valuation ()": ".4",
+      "Country": "UAE",
+      "Industry": "Agritech"
+    }
   ]
 }

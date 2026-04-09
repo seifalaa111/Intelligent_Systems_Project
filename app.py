@@ -2,8 +2,17 @@ import streamlit as st
 import plotly.graph_objects as go
 import numpy as np
 import pandas as pd
-import pickle, json, os, time, warnings
-warnings.filterwarnings('ignore')
+import pickle, json, os, time, warnings, requests
+from textwrap import dedent
+from dotenv import load_dotenv
+
+load_dotenv()
+
+try:
+    from groq import Groq
+    GROQ_CLIENT = Groq(api_key=os.environ.get("GROQ_API_KEY", "dummy"))
+except Exception:
+    GROQ_CLIENT = None
 
 # ── PAGE CONFIG ──────────────────────────────────────────────
 st.set_page_config(
@@ -111,10 +120,19 @@ def load_models():
     sarima = json.load(open(f'{path}/sarima_results.json'))
     shap_i = json.load(open(f'{path}/shap_feature_importance.json'))
     clust  = json.load(open(f'{path}/cluster_names.json'))
-    return scaler, pca, svm, le, lgb, sarima, shap_i, clust
+    
+    try: comps = json.load(open(f'{path}/competitors_context.json'))
+    except Exception: comps = {}
+    
+    try: sents = json.load(open(f'{path}/sentiment_context.json'))
+    except Exception: sents = []
+    
+    return scaler, pca, svm, le, lgb, sarima, shap_i, clust, comps, sents
+
+sarima_results, shap_global, cluster_names, comps_data, sents_data = {}, {}, {}, {}, []
 
 try:
-    scaler, pca, svm, le, lgb, sarima_results, shap_global, cluster_names = load_models()
+    scaler, pca, svm, le, lgb, sarima_results, shap_global, cluster_names, comps_data, sents_data = load_models()
     MODELS_LOADED = True
 except Exception as e:
     MODELS_LOADED = False
@@ -321,24 +339,77 @@ def run_inference(sector: str, country: str, logs: list):
     tas = round(conf*0.40 + sarima_trend*0.35 + xai_score*0.25, 3)
     logs.append(f"[STEP5] TAS = {conf:.2f}×0.40 + {sarima_trend:.2f}×0.35 + {xai_score:.2f}×0.25 = {tas}")
 
-    action_fired = tas >= 0.70 and regime in ('GROWTH_MARKET','EMERGING_MARKET')
-    if action_fired:
-        logs.append("[SLACK] TAS >= 0.70 & positive regime → Webhook fired")
-    else:
-        logs.append(f"[SLACK] TAS={tas} — threshold not met, no action")
+    # ── Agent A2: Competitor Context ──────────────────────────
+    # Retrieve top 2 competitors dynamically if they exist via the list structure
+    a2_comps = ["Traditional incumbents", "Local SMEs"]
+    sector_comps_list = comps_data.get(sec, [])
+    if isinstance(sector_comps_list, list) and len(sector_comps_list) > 0:
+        a2_comps = [c.get("Company", "Competitor") for c in sector_comps_list[:2]]
+    
+    # ── Agent A4: Sentiment Context ───────────────────────────
+    a4_sent_ratio = "Neutral"
+    if sents_data:
+        pos = sum(1 for s in sents_data if s.get('sentiment') == 'positive')
+        neg = sum(1 for s in sents_data if s.get('sentiment') == 'negative')
+        if pos > neg * 1.5: a4_sent_ratio = "Positive"
+        elif neg > pos * 1.5: a4_sent_ratio = "Negative"
 
-    # ── Trinity Report ────────────────────────────────────────
+    logs.append(f"[A2/A4] Loaded {len(a2_comps)} competitors | Sentiment: {a4_sent_ratio}")
+
     regime_readable = regime.replace('_', ' ').title()
     top3 = sorted(shap_dict.items(), key=lambda x: x[1], reverse=True)[:3]
     top3_names = [f[0].replace('_',' ') for f in top3]
 
+    # ── Agent A7: LLM Synthesis ───────────────────────────────
+    a7_prompt = dedent(f"""
+        You are MIDAN Agent A7, a Chief Intelligence Officer at a VC firm.
+        Synthesize this startup market intelligence in exactly 3 short sentences.
+        Parameters:
+        - Sector/Country: {sec.title()} in {country}
+        - Regime: {regime_readable} (Confidence: {conf:.0%})
+        - Top Signals: {', '.join(top3_names)}
+        - TAS Score: {tas}/1.0
+        - Known Competitors: {', '.join(a2_comps)}
+        - Sentiment: {a4_sent_ratio}
+        Output exactly 3 sentences: 1) Market reality check. 2) Competitive landscape warning. 3) The smartest next move.
+    """).strip()
+    
+    a7_synthesis = ""
+    try:
+        if GROQ_CLIENT and os.environ.get("GROQ_API_KEY") and os.environ.get("GROQ_API_KEY") != "dummy":
+            resp = GROQ_CLIENT.chat.completions.create(
+                messages=[{"role": "user", "content": a7_prompt}],
+                model="llama3-8b-8192", temperature=0.3, max_tokens=150
+            )
+            a7_synthesis = resp.choices[0].message.content.strip()
+        else:
+            raise ValueError("No Groq client")
+    except Exception as e:
+        comp_str = f"facing off against {', '.join(a2_comps[:2])}" if len(a2_comps)>1 else "in a fragmented landscape"
+        move_str = "Double down on customer acquisition immediately." if tas >= 0.7 else "Run extreme demand validation before writing a single line of code."
+        a7_synthesis = (f"The {sec.title()} space in {country} is currently operating as a {regime_readable}, heavily influenced by {top3_names[0]}. "
+                        f"You will be {comp_str} operating amid a {a4_sent_ratio.lower()} macro sentiment. "
+                        f"{move_str}")
+
     finding     = (f"Market classified as {regime_readable} with {conf:.0%} confidence. "
                    f"Top signals driving this: {', '.join(top3_names)}.")
-    implication = (f"{'Strong conditions for entry.' if tas>=0.70 else 'Proceed with caution.'} "
-                   f"SARIMA 90-day outlook: {'positive' if sarima_trend>0.5 else 'neutral or declining'}."
-                   f"{' Drift detected — market is shifting.' if drift_flag else ''}")
+    implication = a7_synthesis
     action      = (f"{'Move within the next 90 days. Apply to Flat6Labs or Cairo Angels.' if tas>=0.70 else 'Validate demand before building. Run 20 direct customer interviews.'} "
                    f"Key signal to monitor: {top3_names[0]}.")
+
+    # ── Slack Webhook Execution ───────────────────────────────
+    action_fired = tas >= 0.70 and regime in ('GROWTH_MARKET','EMERGING_MARKET')
+    if action_fired:
+        webhook_url = os.environ.get("SLACK_WEBHOOK_URL")
+        if webhook_url and webhook_url.startswith("http"):
+            msg = {"text": f"🚀 *MIDAN INTELLIGENCE:* High-Conviction Market Detected!\n*Sector:* {sec.title()} ({country})\n*TAS Score:* {tas}\n*Regime:* {regime_readable}\n*A7 Summary:* {a7_synthesis}"}
+            try: requests.post(webhook_url, json=msg, timeout=2)
+            except Exception: pass
+            logs.append("[SLACK] Webhook HTTP POST Executed")
+        else:
+            logs.append("[SLACK] TAS matched, but Slack URL not configured")
+    else:
+        logs.append(f"[SLACK] TAS={tas} — threshold not met, no action")
 
     logs.append("[A6] Trinity Report generated")
 
