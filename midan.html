@@ -216,6 +216,7 @@ nav.show { transform: translateY(0); }
   background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
   background-size: 72px 72px;
   mask-image: radial-gradient(ellipse 65% 65% at 50% 50%, black 10%, transparent 100%);
+  pointer-events: none;
 }
 
 .h-glow {
@@ -260,6 +261,8 @@ nav.show { transform: translateY(0); }
 
 /* INPUT WIZARD */
 .input-card {
+  position: relative;
+  z-index: 10;
   width: 100%; max-width: 680px;
   background: var(--card);
   border: 1px solid rgba(255,255,255,0.08);
@@ -390,25 +393,18 @@ nav.show { transform: translateY(0); }
 .v-amber { color: #F5A623; }
 .v-white { color: var(--text); font-size: 14px !important; font-weight: 600 !important; letter-spacing: 0 !important; margin-top: 4px; }
 
-.rp-report { padding: 0; }
-
-.rep-row {
-  display: flex; gap: 0;
-  padding: 18px 24px;
-  border-bottom: 1px solid var(--border);
-  align-items: flex-start;
-}
-.rep-row:last-child { border-bottom: none; }
-
-.rep-key {
-  font-size: 10px; font-weight: 800;
-  letter-spacing: 0.12em; text-transform: uppercase;
-  color: var(--acid);
-  width: 110px; flex-shrink: 0;
-  padding-top: 2px;
-}
-
-.rep-val { font-size: 14px; color: var(--sub); line-height: 1.72; font-weight: 300; }
+/* CHAT INTERFACE */
+.rp-chat-window { padding: 0; display: flex; flex-direction: column; background: var(--bg); border-top: 1px solid var(--border); }
+.chat-history { padding: 20px 24px; max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+.chat-msg { font-size: 13px; line-height: 1.6; padding: 12px 18px; border-radius: 8px; width: fit-content; max-width: 85%; }
+.msg-midan { background: rgba(200,255,87,0.06); border: 1px solid rgba(200,255,87,0.15); color: var(--sub); align-self: flex-start; border-bottom-left-radius: 2px; }
+.msg-user { background: rgba(255,255,255,0.04); border: 1px solid var(--border); color: var(--text); align-self: flex-end; border-bottom-right-radius: 2px; text-align: right; }
+.chat-input-area { display: flex; border-top: 1px solid var(--border); }
+.chat-input { flex: 1; background: transparent; border: none; padding: 14px 20px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 13px; outline: none; }
+.chat-input::placeholder { color: var(--muted); }
+.chat-send { background: var(--acid); color: #000; border: none; padding: 0 24px; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 12px; letter-spacing: 0.05em; cursor: pointer; transition: opacity 0.2s; }
+.chat-send:hover { opacity: 0.85; }
+.chat-send:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
 
 /* MARQUEE */
 .mq-wrap { overflow:hidden; border-top:1px solid var(--border); border-bottom:1px solid var(--border); padding:12px 0; }
@@ -853,10 +849,12 @@ footer {
           <div class="score-cell"><div class="sc-label">Competition</div><div class="sc-val v-white" id="sc-comp">Moderate</div></div>
           <div class="score-cell"><div class="sc-label">Next 90 Days</div><div class="sc-val v-amber" id="sc-out">Growing</div></div>
         </div>
-        <div class="rp-report">
-          <div class="rep-row"><div class="rep-key">What we found</div><div class="rep-val" id="r1">The Egyptian fintech market is active — inflation is creating real demand for payment tools. 38 deals happened in the last two years, and the money is still flowing in.</div></div>
-          <div class="rep-row"><div class="rep-key">What it means</div><div class="rep-val" id="r2">There's a clear window right now. SMEs are actively looking for faster payment solutions. The competition exists but hasn't saturated this niche yet.</div></div>
-          <div class="rep-row"><div class="rep-key">What to do next</div><div class="rep-val" id="r3">Move in the next 90 days. Apply to Flat6Labs or Cairo Angels. Go B2B first — pitch directly to SME finance managers, not consumers. Build for offline use outside Cairo.</div></div>
+        <div class="rp-chat-window" id="rp-chat-window">
+          <div class="chat-history" id="chat-history"></div>
+          <div class="chat-input-area">
+            <input type="text" id="chat-input" class="chat-input" placeholder="Ask MIDAN about pivot strategies or risks..." onkeydown="if(event.key==='Enter') sendChat()">
+            <button class="chat-send" id="chat-send-btn" onclick="sendChat()">Send</button>
+          </div>
         </div>
       </div>
     </div>
@@ -1189,13 +1187,68 @@ document.getElementById('skip').addEventListener('click',enterLanding);
 document.body.style.overflow='hidden';
 setTimeout(startSeq,500);
 
-/* ANALYZER */
+let chatHistoryState = [];
+let internalContext = {};
+
+function addChatMessage(role, text) {
+  const box = document.getElementById('chat-history');
+  const d = document.createElement('div');
+  d.className = `chat-msg msg-${role}`;
+  d.textContent = text;
+  box.appendChild(d);
+  box.scrollTop = box.scrollHeight;
+}
+
+async function sendChat() {
+  const inp = document.getElementById('chat-input');
+  const btn = document.getElementById('chat-send-btn');
+  const txt = inp.value.trim();
+  if(!txt) return;
+  
+  inp.value = '';
+  inp.disabled = true;
+  btn.disabled = true;
+  btn.textContent = '...';
+  
+  addChatMessage('user', txt);
+  chatHistoryState.push({role: 'user', content: txt});
+  
+  const API_BASE = window.MIDAN_API_URL || 'http://localhost:8000';
+  try {
+    const response = await fetch(API_BASE + '/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ context: internalContext, messages: chatHistoryState })
+    });
+    
+    if(response.ok) {
+      const respData = await response.json();
+      const reply = respData.reply;
+      addChatMessage('midan', reply);
+      chatHistoryState.push({role: 'assistant', content: reply});
+    } else {
+      addChatMessage('midan', "[Error: Unable to connect to MIDAN Advisor]");
+    }
+  } catch(e) {
+    addChatMessage('midan', "[Error: Unable to connect to MIDAN Advisor]");
+  }
+  
+  inp.disabled = false;
+  btn.disabled = false;
+  btn.textContent = 'Send';
+  inp.focus();
+}
+
 async function analyze(){
   const v = document.getElementById('idea-input').value.toLowerCase();
   if(!v.trim()) return;
 
-  const btn = document.querySelector('.input-box button') || document.getElementById('search-btn');
+  const btn = document.querySelector('.input-box button') || document.querySelector('.analyze-btn');
   if(btn) btn.innerHTML = '<span class="spinner" style="font-size:12px">Analyzing...</span>';
+
+  // Reset chat
+  document.getElementById('chat-history').innerHTML = '';
+  chatHistoryState = [];
 
   const API_BASE = window.MIDAN_API_URL || 'http://localhost:8000';
   let apiSuccess = false;
@@ -1219,9 +1272,14 @@ async function analyze(){
       document.getElementById('sc-comp').textContent = `${d.confidence}%`;
       document.getElementById('sc-out').textContent = d.sarima_trend > 0.5 ? "Positive" : "Neutral";
       
-      document.getElementById('r1').textContent = d.report.finding;
-      document.getElementById('r2').textContent = d.report.implication;
-      document.getElementById('r3').textContent = d.report.action;
+      const firstMsg = `I've analyzed your idea. ${d.report.finding} ${d.report.implication} ${d.report.action}`;
+      addChatMessage('midan', firstMsg);
+      chatHistoryState.push({role: 'assistant', content: firstMsg});
+      internalContext = {
+        sector: d.sector, country: d.country,
+        regime: d.regime, tas_score: d.tas_score,
+        implication: d.report.implication, idea: v
+      };
       
       apiSuccess = true;
     }
@@ -1229,7 +1287,7 @@ async function analyze(){
     console.error("API Error, falling back to mock:", err);
   }
 
-  // Graceful fallback to mock data if backend isn't running
+  // Graceful fallback to mock data
   if (!apiSuccess) {
     const data = {
       fintech: { verdict:'READY TO MOVE', temp:'Growth', opp:'81 / 100', comp:'85%', out:'Positive', r1:'The Egyptian fintech market is active. Inflation at 29% is creating real demand for faster payment tools.', r2:'There is a clear window right now. The market is hot but not yet saturated in the invoice-financing niche.', r3:'Move now. Apply to Flat6Labs or Cairo Angels this month.' },
@@ -1243,15 +1301,17 @@ async function analyze(){
     document.getElementById('sc-opp').textContent = d.opp;
     document.getElementById('sc-comp').textContent = d.comp;
     document.getElementById('sc-out').textContent = d.out;
-    document.getElementById('r1').textContent = d.r1;
-    document.getElementById('r2').textContent = d.r2;
-    document.getElementById('r3').textContent = d.r3;
+    
+    const firstMsg = `[MOCK MODE] I've analyzed your idea. ${d.r1} ${d.r2} ${d.r3}`;
+    addChatMessage('midan', firstMsg);
+    chatHistoryState.push({role: 'assistant', content: firstMsg});
+    internalContext = { sector: "Unknown", country: "Unknown", regime: d.temp, tas_score: parseInt(d.opp), implication: d.r2 };
   }
 
-  if(btn) btn.innerHTML = 'Run Engine';
+  if(btn) btn.innerHTML = 'Get My Answer';
   const p=document.getElementById('result-panel');
   p.classList.add('show');
-  setTimeout(()=>p.scrollIntoView({behavior:'smooth',block:'nearest'}),100);
+  setTimeout(()=>p.scrollIntoView({behavior:'smooth',block:'nearest'}), 100);
 }
 
 document.getElementById('idea-input').addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();analyze();} });

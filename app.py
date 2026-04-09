@@ -387,7 +387,7 @@ def run_inference(sector: str, country: str, logs: list):
         if GROQ_CLIENT and os.environ.get("GROQ_API_KEY") and os.environ.get("GROQ_API_KEY") != "dummy":
             resp = GROQ_CLIENT.chat.completions.create(
                 messages=[{"role": "user", "content": a7_prompt}],
-                model="llama3-8b-8192", temperature=0.3, max_tokens=150
+                model="llama-3.1-8b-instant", temperature=0.3, max_tokens=150
             )
             a7_synthesis = resp.choices[0].message.content.strip()
         else:
@@ -516,6 +516,8 @@ if "result" not in st.session_state:
     st.session_state.logs    = []
     st.session_state.sector  = "Fintech"
     st.session_state.country = "EG"
+    st.session_state.chat_history = []
+    st.session_state.chat_context = {}
 
 # ── RUN ──────────────────────────────────────────────────────
 SECTOR_LABEL_MAP = {
@@ -567,6 +569,12 @@ if run and MODELS_LOADED:
         st.session_state.logs    = logs
         st.session_state.sector  = sector_key
         st.session_state.country = country_code
+        st.session_state.chat_context = {
+            "sector": sector_key, "country": country_code,
+            "regime": result['regime'], "tas": result['tas'],
+            "implication": result['implication'], "idea": idea
+        }
+        st.session_state.chat_history = [{"role": "assistant", "content": result['implication']}]
     except Exception as e:
         st.session_state.result = None
         st.error(f"Pipeline error: {e}")
@@ -894,3 +902,46 @@ with st.expander("View full pipeline trace", expanded=False):
                 padding:20px 24px;max-height:320px;overflow-y:auto;">
         {lines_html}
     </div>""", unsafe_allow_html=True)
+
+# ── CONVERSATIONAL ADVISOR ──────────────────────────────────
+st.markdown("<div style='height:40px'></div>", unsafe_allow_html=True)
+st.markdown(f"""<div style="margin-bottom:20px;padding-top:20px;border-top:1px solid {BORDER};">
+    <p style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:{ACID};margin:0 0 6px;">
+        Agent A7 Interactive</p>
+    <p style="font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:{TEXT};margin:0;letter-spacing:-0.5px;">
+        MIDAN Advisory Partner</p>
+</div>""", unsafe_allow_html=True)
+
+for msg in st.session_state.chat_history:
+    with st.chat_message(msg["role"]):
+        st.write(msg["content"])
+
+if prompt := st.chat_input("Ask MIDAN about pivot strategies, risks, or validation...", key="chat"):
+    st.session_state.chat_history.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.write(prompt)
+        
+    ctx = st.session_state.chat_context
+    sys_prompt = dedent(f"""
+        You are the MIDAN AI Startup Advisor, an honest and extremely helpful VC partner.
+        Context: Sector {ctx.get('sector')} in {ctx.get('country')}. Regime: {ctx.get('regime')} (Score: {ctx.get('tas')}).
+        Original Read: {ctx.get('implication')}
+        Keep your advice highly specific, brutal but actionable. Keep responses under 4 sentences. Ask the founder targeted questions.
+    """).strip()
+    
+    groq_msgs = [{"role": "system", "content": sys_prompt}]
+    for m in st.session_state.chat_history:
+        groq_msgs.append({"role": m["role"], "content": m["content"]})
+        
+    try:
+        if GROQ_CLIENT is None: raise ValueError("Groq API not configured.")
+        resp = GROQ_CLIENT.chat.completions.create(
+            messages=groq_msgs, model="llama-3.1-8b-instant", temperature=0.5, max_tokens=250
+        )
+        reply = resp.choices[0].message.content.strip()
+        st.session_state.chat_history.append({"role": "assistant", "content": reply})
+        with st.chat_message("assistant"):
+            st.write(reply)
+    except Exception as e:
+        with st.chat_message("assistant"):
+            st.error(f"Advisor unavailable: {str(e)}")

@@ -5,6 +5,7 @@ Standalone API that loads models directly (no Streamlit dependency).
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from typing import List, Dict, Any
 import numpy as np
 import pickle, json, os, warnings, requests
 from textwrap import dedent
@@ -210,7 +211,7 @@ def run_inference(sector, country):
         if GROQ_CLIENT and os.environ.get("GROQ_API_KEY") and os.environ.get("GROQ_API_KEY") != "dummy":
             resp = GROQ_CLIENT.chat.completions.create(
                 messages=[{"role": "user", "content": a7_prompt}],
-                model="llama3-8b-8192", temperature=0.3, max_tokens=150
+                model="llama-3.1-8b-instant", temperature=0.3, max_tokens=150
             )
             a7_synthesis = resp.choices[0].message.content.strip()
         else:
@@ -258,6 +259,14 @@ class IdeaRequest(BaseModel):
     sector: str = "Fintech"
     country: str = "EG — Egypt"
 
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+class ChatRequest(BaseModel):
+    context: Dict[str, Any]
+    messages: List[ChatMessage]
+
 @api.post("/analyze")
 async def analyze_idea(req: IdeaRequest):
     if not MODELS_LOADED:
@@ -291,6 +300,39 @@ async def analyze_idea(req: IdeaRequest):
             "shap_weights": {k: float(v) for k, v in report["shap_dict"].items()},
             "pca_coords": report["x_pca"].tolist()
         }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api.post("/chat")
+async def chat_interaction(req: ChatRequest):
+    if not GROQ_CLIENT:
+        raise HTTPException(status_code=501, detail="Groq API key not configured")
+        
+    system_prompt = dedent(f"""
+        You are the MIDAN AI Startup Advisor, a brutally honest but extremely helpful VC partner.
+        You are currently advising a founder based on the following computed market context:
+        - Sector: {req.context.get("sector", "Unknown")}
+        - Country: {req.context.get("country", "Unknown")}
+        - Regime: {req.context.get("regime", "Unknown")} (Score: {req.context.get("tas_score", 0)}/100)
+        - AI Original Read: {req.context.get("implication", "")}
+        
+        Keep your responses concise, sharp, and consultative. Speak directly to the founder. Ask probing questions if needed. Under 4 sentences.
+    """).strip()
+    
+    # Construct message array
+    groq_msgs = [{"role": "system", "content": system_prompt}]
+    for m in req.messages:
+        groq_msgs.append({"role": m.role, "content": m.content})
+        
+    try:
+        resp = GROQ_CLIENT.chat.completions.create(
+            messages=groq_msgs,
+            model="llama-3.1-8b-instant", 
+            temperature=0.5, 
+            max_tokens=250
+        )
+        reply = resp.choices[0].message.content.strip()
+        return {"success": True, "reply": reply}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
