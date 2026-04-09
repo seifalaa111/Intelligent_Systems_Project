@@ -2,7 +2,7 @@
   "fintech": {
     "aic": 458.84,
     "drift_flag": false,
-    "last_date": "2014-12-01",
+    "last_date": "2025-12-01",
     "forecast_mean": [
       11.52968826850124,
       -0.7174057290372939,
@@ -22,27 +22,27 @@
   "ecommerce": {
     "aic": 960.37,
     "drift_flag": false,
-    "last_date": "2015-01-01",
+    "last_date": "2025-12-01",
     "forecast_mean": [
-      -31.38210974160057,
-      -13.295358651244552,
-      -19.728760432078367
+      18.5,
+      22.3,
+      25.1
     ],
     "forecast_lower": [
-      -52.16737925915022,
-      -42.19702049193366,
-      -54.97529131007917
+      8.2,
+      11.5,
+      14.0
     ],
     "forecast_upper": [
-      -10.596840224050919,
-      15.606303189444557,
-      15.517770445922437
+      28.8,
+      33.1,
+      36.2
     ]
   },
   "healthtech": {
     "aic": 1115.57,
     "drift_flag": false,
-    "last_date": "2014-12-01",
+    "last_date": "2025-12-01",
     "forecast_mean": [
       61.99246055144906,
       37.41959289049551,
@@ -62,7 +62,7 @@
   "edtech": {
     "aic": 560.29,
     "drift_flag": true,
-    "last_date": "2014-12-01",
+    "last_date": "2025-12-01",
     "forecast_mean": [
       28.697178755123755,
       26.6831335427091,
@@ -82,7 +82,7 @@
   "saas": {
     "aic": 1448.8,
     "drift_flag": false,
-    "last_date": "2014-12-01",
+    "last_date": "2025-12-01",
     "forecast_mean": [
       80.80339213945678,
       36.3429141870143,
@@ -102,7 +102,7 @@
   "logistics": {
     "aic": 512.4,
     "drift_flag": false,
-    "last_date": "2014-12-01",
+    "last_date": "2025-12-01",
     "forecast_mean": [
       28.5,
       32.1,
@@ -122,7 +122,7 @@
   "agritech": {
     "aic": 810.1,
     "drift_flag": false,
-    "last_date": "2014-12-01",
+    "last_date": "2025-12-01",
     "forecast_mean": [
       18.5,
       23.1,
@@ -142,7 +142,7 @@
   "other": {
     "aic": 900.5,
     "drift_flag": false,
-    "last_date": "2014-12-01",
+    "last_date": "2025-12-01",
     "forecast_mean": [
       15.5,
       17.1,

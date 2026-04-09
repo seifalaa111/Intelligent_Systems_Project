@@ -8,8 +8,8 @@ api = FastAPI(title="MIDAN AI Decision Engine API", version="1.0")
 # Allow midan.html to fetch from this API
 api.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["POST"],
+    allow_origins=["http://localhost:8080", "http://127.0.0.1:8080", "http://localhost:3000"],
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 

@@ -112,21 +112,29 @@ MODELS_DIR = "models"
 @st.cache_resource
 def load_models():
     path = MODELS_DIR
-    scaler = pickle.load(open(f'{path}/scaler_global.pkl','rb'))
-    pca    = pickle.load(open(f'{path}/pca_global.pkl',   'rb'))
-    svm    = pickle.load(open(f'{path}/svm_global.pkl',   'rb'))
-    le     = pickle.load(open(f'{path}/label_encoder.pkl','rb'))
-    lgb    = pickle.load(open(f'{path}/lgb_surrogate.pkl','rb'))
-    sarima = json.load(open(f'{path}/sarima_results.json'))
-    shap_i = json.load(open(f'{path}/shap_feature_importance.json'))
-    clust  = json.load(open(f'{path}/cluster_names.json'))
-    
-    try: comps = json.load(open(f'{path}/competitors_context.json'))
-    except Exception: comps = {}
-    
-    try: sents = json.load(open(f'{path}/sentiment_context.json'))
-    except Exception: sents = []
-    
+
+    def _pkl(name):
+        with open(f'{path}/{name}', 'rb') as f:
+            return pickle.load(f)
+
+    def _json(name, default=None):
+        try:
+            with open(f'{path}/{name}', 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            return default if default is not None else {}
+
+    scaler = _pkl('scaler_global.pkl')
+    pca    = _pkl('pca_global.pkl')
+    svm    = _pkl('svm_global.pkl')
+    le     = _pkl('label_encoder.pkl')
+    lgb    = _pkl('lgb_surrogate.pkl')
+    sarima = _json('sarima_results.json')
+    shap_i = _json('shap_feature_importance.json')
+    clust  = _json('cluster_names.json')
+    comps  = _json('competitors_context.json', default={})
+    sents  = _json('sentiment_context.json', default=[])
+
     return scaler, pca, svm, le, lgb, sarima, shap_i, clust, comps, sents
 
 sarima_results, shap_global, cluster_names, comps_data, sents_data = {}, {}, {}, {}, []
@@ -550,7 +558,7 @@ if run and MODELS_LOADED:
             text-align:center;text-transform:uppercase;">{label}</p>""",
             unsafe_allow_html=True)
             bar.progress(pct)
-            time.sleep(0.22)
+            time.sleep(0.08)
 
     logs = []
     try:

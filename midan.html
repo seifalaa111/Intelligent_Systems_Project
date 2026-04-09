@@ -1197,9 +1197,10 @@ async function analyze(){
   const btn = document.querySelector('.input-box button') || document.getElementById('search-btn');
   if(btn) btn.innerHTML = '<span class="spinner" style="font-size:12px">Analyzing...</span>';
 
+  const API_BASE = window.MIDAN_API_URL || 'http://localhost:8000';
   let apiSuccess = false;
   try {
-    const response = await fetch('http://localhost:8000/analyze', {
+    const response = await fetch(API_BASE + '/analyze', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ idea: v, sector: "Fintech", country: "EG — Egypt" })

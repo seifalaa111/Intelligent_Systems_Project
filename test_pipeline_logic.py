@@ -1,27 +1,39 @@
 """
-MIDAN POST-FIX VERIFICATION — Tests the fixed pipeline logic
+MIDAN Pipeline Tests — real pytest assertions for all pipeline components.
 """
 import warnings
 warnings.filterwarnings('ignore')
 import numpy as np
-import pickle, json, os, sys
-
-sys.stdout.reconfigure(encoding='utf-8')
-sys.stderr.reconfigure(encoding='utf-8')
+import pickle, json, os, pytest
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-os.chdir(SCRIPT_DIR)
 MODELS_DIR = os.path.join(SCRIPT_DIR, "models")
-path = MODELS_DIR
 
-scaler = pickle.load(open(f'{path}/scaler_global.pkl','rb'))
-pca    = pickle.load(open(f'{path}/pca_global.pkl','rb'))
-svm    = pickle.load(open(f'{path}/svm_global.pkl','rb'))
-le     = pickle.load(open(f'{path}/label_encoder.pkl','rb'))
-lgb    = pickle.load(open(f'{path}/lgb_surrogate.pkl','rb'))
-sarima_results = json.load(open(f'{path}/sarima_results.json'))
 
-FEATURES = ['inflation','gdp_growth','macro_friction','capital_concentration','velocity_yoy']
+@pytest.fixture(scope="module")
+def models():
+    path = MODELS_DIR
+
+    def _pkl(name):
+        with open(os.path.join(path, name), 'rb') as f:
+            return pickle.load(f)
+
+    def _json(name):
+        with open(os.path.join(path, name), 'r', encoding='utf-8') as f:
+            return json.load(f)
+
+    scaler = _pkl('scaler_global.pkl')
+    pca    = _pkl('pca_global.pkl')
+    svm    = _pkl('svm_global.pkl')
+    le     = _pkl('label_encoder.pkl')
+    lgb    = _pkl('lgb_surrogate.pkl')
+    sarima = _json('sarima_results.json')
+    return scaler, pca, svm, le, lgb, sarima
+
+
+FEATURES = ['inflation', 'gdp_growth', 'macro_friction',
+            'capital_concentration', 'velocity_yoy']
+
 SECTOR_MEDIANS = {
     'fintech': 175000.0, 'ecommerce': 120000.0, 'healthtech': 200000.0,
     'edtech': 80000.0, 'saas': 250000.0, 'logistics': 90000.0,
@@ -41,32 +53,40 @@ COUNTRY_MACRO_DEFAULTS = {
     'GB': {'inflation':  4.0, 'gdp_growth': 0.1, 'unemployment': 4.2},
     'NG': {'inflation': 28.9, 'gdp_growth': 3.3, 'unemployment': 4.1},
     'KE': {'inflation':  6.3, 'gdp_growth': 5.6, 'unemployment': 5.7},
-    'MA': {'inflation':  6.1, 'gdp_growth': 3.1, 'unemployment':11.5},
+    'MA': {'inflation':  6.1, 'gdp_growth': 3.1, 'unemployment': 11.5},
 }
 SECTOR_KEYWORDS = {
-    'fintech':    ['finance','payment','fintech','bank','loan','lending',
-                   'invoice','insurance','wallet','money'],
-    'ecommerce':  ['ecommerce','e-commerce','shop','store','retail',
-                   'marketplace','delivery','commerce'],
-    'healthtech': ['health','medical','doctor','clinic','hospital',
-                   'pharma','biotech','mental'],
-    'edtech':     ['education','learning','school','university','course',
-                   'tutor','edtech','training'],
-    'saas':       ['saas','software','platform','dashboard','tool',
-                   'api','enterprise','cloud','b2b','crm'],
-    'logistics':  ['logistics','shipping','supply chain','warehouse',
-                   'transport','fleet','trucking'],
-    'agritech':   ['agri','farm','crop','harvest','food',
-                   'agriculture','irrigation'],
+    'fintech':    ['finance', 'payment', 'fintech', 'bank', 'loan', 'lending',
+                   'invoice', 'insurance', 'wallet', 'money'],
+    'ecommerce':  ['ecommerce', 'e-commerce', 'shop', 'store', 'retail',
+                   'marketplace', 'delivery', 'commerce'],
+    'healthtech': ['health', 'medical', 'doctor', 'clinic', 'hospital',
+                   'pharma', 'biotech', 'mental'],
+    'edtech':     ['education', 'learning', 'school', 'university', 'course',
+                   'tutor', 'edtech', 'training'],
+    'saas':       ['saas', 'software', 'platform', 'dashboard', 'tool',
+                   'api', 'enterprise', 'cloud', 'b2b', 'crm'],
+    'logistics':  ['logistics', 'shipping', 'supply chain', 'warehouse',
+                   'transport', 'fleet', 'trucking'],
+    'agritech':   ['agri', 'farm', 'crop', 'harvest', 'food',
+                   'agriculture', 'irrigation'],
 }
 COUNTRY_KEYWORDS = {
-    'EG': ['egypt','cairo','egyptian'], 'SA': ['saudi','ksa','riyadh','jeddah'],
-    'AE': ['uae','dubai','abu dhabi','emirates'], 'MA': ['morocco','moroccan','casablanca'],
-    'NG': ['nigeria','nigerian','lagos'], 'KE': ['kenya','kenyan','nairobi'],
-    'US': ['usa','united states','america'], 'GB': ['uk','britain','london','england'],
+    'EG': ['egypt', 'cairo', 'egyptian'],
+    'SA': ['saudi', 'ksa', 'riyadh', 'jeddah'],
+    'AE': ['uae', 'dubai', 'abu dhabi', 'emirates'],
+    'MA': ['morocco', 'moroccan', 'casablanca'],
+    'NG': ['nigeria', 'nigerian', 'lagos'],
+    'KE': ['kenya', 'kenyan', 'nairobi'],
+    'US': ['usa', 'united states', 'america'],
+    'GB': ['uk', 'britain', 'london', 'england'],
+}
+VALID_REGIMES = {
+    'GROWTH_MARKET', 'EMERGING_MARKET',
+    'HIGH_FRICTION_MARKET', 'CONTRACTING_MARKET',
 }
 
-# FIXED agent_a1_parse
+
 def agent_a1_parse(idea_text):
     t = idea_text.lower()
     sector, sector_found = None, False
@@ -85,14 +105,19 @@ def agent_a1_parse(idea_text):
         country = 'EG'
     return sector, country, sector_found, country_found
 
-# FIXED enhanced_regime
-def enhanced_regime(svm_regime, svm_conf, inflation, gdp_growth, macro_friction, velocity_yoy):
+
+def enhanced_regime(svm_regime, svm_conf, inflation, gdp_growth,
+                    macro_friction, velocity_yoy):
     if gdp_growth > 3.5 and inflation < 8 and velocity_yoy > 0.15:
-        margin = min((gdp_growth-3.5)/4.0, (8-inflation)/8.0, (velocity_yoy-0.15)/0.25)
+        margin = min((gdp_growth - 3.5) / 4.0,
+                     (8 - inflation) / 8.0,
+                     (velocity_yoy - 0.15) / 0.25)
         conf = float(np.clip(0.65 + margin * 0.30, 0.60, 0.95))
         return 'GROWTH_MARKET', conf
     if gdp_growth > 2.0 and inflation < 10 and macro_friction < 10:
-        margin = min((gdp_growth-2.0)/4.0, (10-inflation)/10.0, (10-macro_friction)/15.0)
+        margin = min((gdp_growth - 2.0) / 4.0,
+                     (10 - inflation) / 10.0,
+                     (10 - macro_friction) / 15.0)
         conf = float(np.clip(0.60 + margin * 0.30, 0.55, 0.90))
         return 'EMERGING_MARKET', conf
     if gdp_growth < 0 or (inflation > 50 and macro_friction > 50):
@@ -105,140 +130,263 @@ def enhanced_regime(svm_regime, svm_conf, inflation, gdp_growth, macro_friction,
         return 'HIGH_FRICTION_MARKET', conf
     return svm_regime, svm_conf
 
-print("=" * 90)
-print("MIDAN POST-FIX VERIFICATION")
-print("=" * 90)
 
-# TEST 1: Agent A1 dropdown fallback
-print("\n--- TEST 1: AGENT A1 DROPDOWN FALLBACK ---")
-tests = [
-    ("I want to build something amazing", "Healthtech", "AE"),
-    ("Invoice financing app for Egyptian SMEs", "Other", "SA"),
-    ("A cool startup idea", "Edtech", "SA"),
-    ("Health clinic booking in Dubai", "Fintech", "EG"),
-]
-SECTOR_MAP = {"Healthtech":"healthtech","Edtech":"edtech","Fintech":"fintech","Other":"other"}
+# ── TEST 1: Agent A1 Parsing ────────────────────────────────
 
-print(f"{'Input':<42} {'Dropdown':<20} {'Result':<20} {'Source'}")
-print("-" * 100)
-for text, dd_sec, dd_ctry in tests:
-    ps, pc, sf, cf = agent_a1_parse(text)
-    final_sec = ps if sf else SECTOR_MAP.get(dd_sec, dd_sec.lower())
-    final_ctry = pc if cf else dd_ctry
-    src_s = "A1 text" if sf else "DROPDOWN"
-    src_c = "A1 text" if cf else "DROPDOWN"
-    print(f"{text:<42} {dd_sec+'/'+dd_ctry:<20} {final_sec+'/'+final_ctry:<20} sec={src_s}, ctry={src_c}")
+class TestAgentA1:
+    def test_detects_fintech_from_keywords(self):
+        sec, ctry, sf, cf = agent_a1_parse(
+            "Invoice financing app for Egyptian SMEs")
+        assert sec == 'fintech'
+        assert sf is True
 
-# TEST 2: Regime distribution
-print("\n--- TEST 2: REGIME RESULTS FOR ALL SECTOR x COUNTRY ---")
-sectors = list(SECTOR_EFF_MACRO.keys())
-countries = list(COUNTRY_MACRO_DEFAULTS.keys())
+    def test_detects_healthtech(self):
+        sec, ctry, sf, cf = agent_a1_parse(
+            "Health clinic booking in Dubai")
+        assert sec == 'healthtech'
+        assert sf is True
 
-regime_counts = {}
-results_table = []
+    def test_detects_country_egypt(self):
+        sec, ctry, sf, cf = agent_a1_parse(
+            "Invoice financing app for Egyptian SMEs")
+        assert ctry == 'EG'
+        assert cf is True
 
-for sec in sectors:
-    for ctry in countries:
-        macro = COUNTRY_MACRO_DEFAULTS[ctry]
-        eff_inf, gdp_boost, velocity = SECTOR_EFF_MACRO[sec]
-        scale = macro['inflation'] / 33.9
-        inflation = float(np.clip(eff_inf * scale, 1.0, 100.0))
-        gdp_growth = float(macro['gdp_growth'] + gdp_boost)
-        macro_fric = float(np.clip(inflation + macro['unemployment'] - gdp_growth, -50, 100))
-        cap_conc = SECTOR_MEDIANS.get(sec, SECTOR_MEDIANS['other'])
+    def test_detects_country_uae(self):
+        sec, ctry, sf, cf = agent_a1_parse(
+            "Health clinic booking in Dubai")
+        assert ctry == 'AE'
+        assert cf is True
 
-        x_raw = np.array([[inflation, gdp_growth, macro_fric, float(cap_conc), velocity]])
+    def test_no_keyword_falls_back(self):
+        sec, ctry, sf, cf = agent_a1_parse(
+            "I want to build something amazing")
+        assert sf is False
+        assert cf is False
+        assert sec == 'fintech'
+        assert ctry == 'EG'
+
+    def test_dropdown_fallback_overrides_default(self):
+        sec, ctry, sf, cf = agent_a1_parse("A cool startup idea")
+        assert sf is False
+        SECTOR_MAP = {"Healthtech": "healthtech", "Edtech": "edtech"}
+        final_sec = sec if sf else SECTOR_MAP.get(
+            "Healthtech", "healthtech")
+        assert final_sec == 'healthtech'
+
+
+# ── TEST 2: Enhanced Regime Rules ────────────────────────────
+
+class TestEnhancedRegime:
+    def test_growth_market_fires(self):
+        regime, conf = enhanced_regime(
+            'EMERGING_MARKET', 0.7, 5.0, 5.0, 5.0, 0.28)
+        assert regime == 'GROWTH_MARKET'
+        assert 0.60 <= conf <= 0.95
+
+    def test_emerging_market_fires(self):
+        regime, conf = enhanced_regime(
+            'HIGH_FRICTION_MARKET', 0.5, 6.0, 3.0, 5.0, 0.10)
+        assert regime == 'EMERGING_MARKET'
+        assert 0.55 <= conf <= 0.90
+
+    def test_contracting_market_negative_gdp(self):
+        regime, conf = enhanced_regime(
+            'EMERGING_MARKET', 0.5, 10.0, -2.0, 20.0, 0.1)
+        assert regime == 'CONTRACTING_MARKET'
+        assert 0.60 <= conf <= 0.92
+
+    def test_high_friction_market(self):
+        regime, conf = enhanced_regime(
+            'EMERGING_MARKET', 0.5, 40.0, 1.0, 45.0, 0.05)
+        assert regime == 'HIGH_FRICTION_MARKET'
+        assert 0.55 <= conf <= 0.92
+
+    def test_svm_passthrough_when_no_rule_fires(self):
+        regime, conf = enhanced_regime(
+            'EMERGING_MARKET', 0.72, 12.0, 2.5, 15.0, 0.10)
+        assert regime == 'EMERGING_MARKET'
+        assert conf == 0.72
+
+    def test_confidence_always_in_range(self):
+        for inf in [1, 10, 30, 60]:
+            for gdp in [-3, 0, 2, 5, 8]:
+                for fric in [-10, 0, 20, 50]:
+                    for vel in [0.0, 0.1, 0.3, 0.5]:
+                        _, conf = enhanced_regime(
+                            'EMERGING_MARKET', 0.5,
+                            inf, gdp, fric, vel)
+                        assert 0.0 <= conf <= 1.0, \
+                            f"conf={conf} out of range"
+
+
+# ── TEST 3: SVM Pipeline (requires .pkl models) ─────────────
+
+class TestSVMPipeline:
+    def test_svm_produces_valid_regime(self, models):
+        scaler, pca, svm, le, lgb, _ = models
+        x_raw = np.array([[7.5, 5.3, 9.3, 175000.0, 0.28]])
         x_scaled = scaler.transform(x_raw)
-        pred_enc = svm.predict(x_scaled)[0]
+        pred = svm.predict(x_scaled)[0]
+        regime = le.inverse_transform([pred])[0]
+        assert regime in VALID_REGIMES
+
+    def test_svm_probabilities_sum_to_one(self, models):
+        scaler, pca, svm, le, lgb, _ = models
+        x_raw = np.array([[33.9, 3.8, 37.2, 175000.0, 0.28]])
+        x_scaled = scaler.transform(x_raw)
         proba = svm.predict_proba(x_scaled)[0]
-        svm_regime = le.inverse_transform([pred_enc])[0]
-        svm_conf = float(proba.max())
-        regime, conf = enhanced_regime(svm_regime, svm_conf, inflation, gdp_growth, macro_fric, velocity)
+        assert abs(sum(proba) - 1.0) < 0.01
 
-        # SARIMA
-        sarima_trend = 0.50
-        if sec in sarima_results:
-            fc = [max(0, v) for v in sarima_results[sec]['forecast_mean']]
-            fc_mean = float(np.mean(fc))
-            sarima_trend = float(np.clip(fc_mean / 50.0, 0.15, 0.90))
+    def test_pca_reduces_to_2d(self, models):
+        scaler, pca, svm, le, lgb, _ = models
+        x_raw = np.array([[10.0, 3.0, 14.0, 100000.0, 0.15]])
+        x_scaled = scaler.transform(x_raw)
+        x_pca = pca.transform(x_scaled)
+        assert x_pca.shape == (1, 2)
 
-        xai_score = conf * 0.5  # approx
-        tas = round(conf * 0.40 + sarima_trend * 0.35 + xai_score * 0.25, 3)
-        action = tas >= 0.70 and regime in ('GROWTH_MARKET', 'EMERGING_MARKET')
+    def test_all_sector_country_combos_valid(self, models):
+        scaler, pca, svm, le, lgb, sarima_results = models
+        regime_counts = {}
+        for sec in SECTOR_EFF_MACRO:
+            for ctry in COUNTRY_MACRO_DEFAULTS:
+                macro = COUNTRY_MACRO_DEFAULTS[ctry]
+                eff_inf, gdp_boost, velocity = SECTOR_EFF_MACRO[sec]
+                scale = macro['inflation'] / 33.9
+                inflation = float(np.clip(eff_inf * scale, 1.0, 100.0))
+                gdp_growth = float(macro['gdp_growth'] + gdp_boost)
+                macro_fric = float(np.clip(
+                    inflation + macro['unemployment'] - gdp_growth,
+                    -50, 100))
+                cap_conc = SECTOR_MEDIANS.get(
+                    sec, SECTOR_MEDIANS['other'])
+                x_raw = np.array([[
+                    inflation, gdp_growth, macro_fric,
+                    float(cap_conc), velocity]])
+                x_scaled = scaler.transform(x_raw)
+                pred_enc = svm.predict(x_scaled)[0]
+                proba = svm.predict_proba(x_scaled)[0]
+                svm_regime = le.inverse_transform([pred_enc])[0]
+                svm_conf = float(proba.max())
+                regime, conf = enhanced_regime(
+                    svm_regime, svm_conf, inflation,
+                    gdp_growth, macro_fric, velocity)
+                assert regime in VALID_REGIMES, \
+                    f"{sec}/{ctry} invalid regime: {regime}"
+                assert 0.0 < conf <= 1.0, \
+                    f"{sec}/{ctry} invalid conf: {conf}"
+                regime_counts[regime] = \
+                    regime_counts.get(regime, 0) + 1
+        assert len(regime_counts) >= 2, \
+            f"Only {len(regime_counts)} regime(s) — lacks diversity"
 
-        regime_counts[regime] = regime_counts.get(regime, 0) + 1
-        results_table.append((sec, ctry, regime, conf, sarima_trend, tas, action))
 
-# Print Egypt results
-print(f"\n{'Sector':<12} {'Ctry':<5} {'Regime':<22} {'Conf':>6} {'SARIMA':>7} {'TAS':>6} {'Action'}")
-print("-" * 75)
-for sec, ctry, regime, conf, sarima, tas, action in results_table:
-    if ctry in ('EG', 'AE', 'SA', 'GB'):
-        mark = ">> FIRE" if action else ""
-        print(f"{sec:<12} {ctry:<5} {regime:<22} {conf:>5.0%} {sarima:>7.2f} {tas:>6.3f} {mark}")
+# ── TEST 4: SARIMA Data Integrity ────────────────────────────
 
-# TEST 3: Regime distribution
-print(f"\n--- TEST 3: REGIME DISTRIBUTION (64 combos) ---")
-for regime, count in sorted(regime_counts.items(), key=lambda x: -x[1]):
-    print(f"   {regime:<25} {count:>3} ({count/64:.0%})")
+class TestSARIMA:
+    def test_all_expected_sectors_present(self, models):
+        *_, sarima_results = models
+        for sec in ['fintech', 'ecommerce', 'healthtech',
+                    'edtech', 'saas']:
+            assert sec in sarima_results, \
+                f"Missing SARIMA model for {sec}"
 
-# TEST 4: TAS spread
-all_tas = [t[5] for t in results_table]
-print(f"\n--- TEST 4: TAS SCORE SPREAD ---")
-print(f"   Min TAS:  {min(all_tas):.3f}")
-print(f"   Max TAS:  {max(all_tas):.3f}")
-print(f"   Spread:   {max(all_tas)-min(all_tas):.3f}")
-print(f"   Mean:     {np.mean(all_tas):.3f}")
-print(f"   Actions fired: {sum(1 for t in results_table if t[6])}")
+    def test_forecast_has_three_periods(self, models):
+        *_, sarima_results = models
+        for sec, data in sarima_results.items():
+            assert len(data['forecast_mean']) == 3
+            assert len(data['forecast_lower']) == 3
+            assert len(data['forecast_upper']) == 3
 
-# TEST 5: SARIMA diversity
-print(f"\n--- TEST 5: SARIMA TREND VALUES (should NOT be binary) ---")
-for sec in ['fintech','ecommerce','healthtech','edtech','saas','logistics','agritech','other']:
-    if sec in sarima_results:
-        fc = [max(0, v) for v in sarima_results[sec]['forecast_mean']]
-        fc_mean = float(np.mean(fc))
-        trend = float(np.clip(fc_mean / 50.0, 0.15, 0.90))
-        print(f"   {sec:<12} mean={fc_mean:>6.1f} -> trend={trend:.2f}")
-    else:
-        print(f"   {sec:<12} NO MODEL -> trend=0.50")
+    def test_upper_bound_gte_lower_bound(self, models):
+        *_, sarima_results = models
+        for sec, data in sarima_results.items():
+            for i in range(3):
+                assert (data['forecast_upper'][i]
+                        >= data['forecast_lower'][i]), \
+                    f"{sec} period {i}: upper < lower"
 
-# TEST 6: Key demo scenarios
-print(f"\n--- TEST 6: DEMO SCENARIOS ---")
-demos = [
-    ("Invoice financing for Egyptian SMEs", "fintech", "EG"),
-    ("Online tutoring platform in Cairo", "edtech", "EG"),
-    ("Health clinic booking in Dubai", "healthtech", "AE"),
-    ("SaaS CRM platform for UAE businesses", "saas", "AE"),
-    ("E-commerce delivery in London", "ecommerce", "GB"),
-    ("Logistics fleet management in Saudi", "logistics", "SA"),
-]
-print(f"{'Idea':<45} {'Sector':<12} {'Ctry':<5} {'Regime':<22} {'TAS':>6} {'Verdict'}")
-print("-" * 100)
-for idea, exp_sec, exp_ctry in demos:
-    ps, pc, sf, cf = agent_a1_parse(idea)
-    sec = ps if sf else exp_sec
-    ctry = pc if cf else exp_ctry
-    macro = COUNTRY_MACRO_DEFAULTS[ctry]
-    eff_inf, gdp_boost, velocity = SECTOR_EFF_MACRO[sec]
-    scale = macro['inflation'] / 33.9
-    inflation = float(np.clip(eff_inf * scale, 1.0, 100.0))
-    gdp = float(macro['gdp_growth'] + gdp_boost)
-    fric = float(np.clip(inflation + macro['unemployment'] - gdp, -50, 100))
-    cap = SECTOR_MEDIANS.get(sec, 100000)
-    x = scaler.transform(np.array([[inflation, gdp, fric, float(cap), velocity]]))
-    pred = svm.predict(x)[0]; prob = svm.predict_proba(x)[0]
-    svm_r = le.inverse_transform([pred])[0]; svm_c = float(prob.max())
-    regime, conf = enhanced_regime(svm_r, svm_c, inflation, gdp, fric, velocity)
-    st = 0.50
-    if sec in sarima_results:
-        fc = [max(0,v) for v in sarima_results[sec]['forecast_mean']]
-        st = float(np.clip(np.mean(fc)/50.0, 0.15, 0.90))
-    xai = conf * 0.5
-    tas = round(conf*0.40 + st*0.35 + xai*0.25, 3)
-    fired = tas >= 0.70 and regime in ('GROWTH_MARKET','EMERGING_MARKET')
-    verdict = "GO - WEBHOOK FIRED" if fired else ("CAUTION" if tas >= 0.50 else "STOP")
-    print(f"{idea:<45} {sec:<12} {ctry:<5} {regime:<22} {tas:>6.3f} {verdict}")
+    def test_sarima_trend_in_range(self, models):
+        *_, sarima_results = models
+        for sec, data in sarima_results.items():
+            fc = [max(0, v) for v in data['forecast_mean']]
+            trend = float(np.clip(
+                np.mean(fc) / 50.0, 0.15, 0.90))
+            assert 0.15 <= trend <= 0.90, \
+                f"{sec} trend={trend} out of range"
 
-print("\n" + "=" * 90)
-print("VERIFICATION COMPLETE")
-print("=" * 90)
+    def test_no_all_negative_forecasts(self, models):
+        *_, sarima_results = models
+        for sec, data in sarima_results.items():
+            assert not all(
+                v < 0 for v in data['forecast_mean']), \
+                f"{sec} has all-negative forecast"
+
+
+# ── TEST 5: TAS Score ────────────────────────────────────────
+
+class TestTAS:
+    def test_tas_spread_across_sectors(self, models):
+        scaler, pca, svm, le, lgb, sarima_results = models
+        tas_values = []
+        for sec in SECTOR_EFF_MACRO:
+            macro = COUNTRY_MACRO_DEFAULTS['EG']
+            eff_inf, gdp_boost, velocity = SECTOR_EFF_MACRO[sec]
+            scale = macro['inflation'] / 33.9
+            inflation = float(np.clip(
+                eff_inf * scale, 1.0, 100.0))
+            gdp = float(macro['gdp_growth'] + gdp_boost)
+            fric = float(np.clip(
+                inflation + macro['unemployment'] - gdp,
+                -50, 100))
+            cap = SECTOR_MEDIANS.get(sec, 100000)
+            x = scaler.transform(np.array(
+                [[inflation, gdp, fric, float(cap), velocity]]))
+            pred = svm.predict(x)[0]
+            prob = svm.predict_proba(x)[0]
+            svm_r = le.inverse_transform([pred])[0]
+            svm_c = float(prob.max())
+            regime, conf = enhanced_regime(
+                svm_r, svm_c, inflation, gdp, fric, velocity)
+            st = 0.50
+            if sec in sarima_results:
+                fc = [max(0, v)
+                      for v in sarima_results[sec]['forecast_mean']]
+                st = float(np.clip(
+                    np.mean(fc) / 50.0, 0.15, 0.90))
+            xai = conf * 0.5
+            tas = round(
+                conf * 0.40 + st * 0.35 + xai * 0.25, 3)
+            tas_values.append(tas)
+        spread = max(tas_values) - min(tas_values)
+        assert spread > 0.05, \
+            f"TAS spread only {spread:.3f} — not differentiated"
+
+
+# ── TEST 6: Demo Scenarios ───────────────────────────────────
+
+class TestDemoScenarios:
+    @pytest.mark.parametrize(
+        "idea,expected_sec,expected_ctry",
+        [
+            ("Invoice financing for Egyptian SMEs",
+             "fintech", "EG"),
+            ("Online tutoring platform in Cairo",
+             "edtech", "EG"),
+            ("Health clinic booking in Dubai",
+             "healthtech", "AE"),
+            ("SaaS CRM platform for UAE businesses",
+             "saas", "AE"),
+            ("E-commerce delivery in London",
+             "ecommerce", "GB"),
+        ],
+    )
+    def test_a1_parses_demo_correctly(
+            self, idea, expected_sec, expected_ctry):
+        sec, ctry, sf, cf = agent_a1_parse(idea)
+        assert sec == expected_sec, \
+            f"Expected sector {expected_sec}, got {sec}"
+        assert ctry == expected_ctry, \
+            f"Expected country {expected_ctry}, got {ctry}"
+        assert sf is True
+        assert cf is True

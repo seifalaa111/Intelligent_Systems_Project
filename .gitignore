@@ -11,3 +11,12 @@ venv/
 .streamlit/
 .DS_Store
 Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Debug output
+diagnostic_output.txt
+verify_output.txt
