@@ -1,0 +1,85 @@
+﻿==========================================================================================
+MIDAN POST-FIX VERIFICATION
+==========================================================================================
+
+--- TEST 1: AGENT A1 DROPDOWN FALLBACK ---
+Input                                      Dropdown             Result               Source
+----------------------------------------------------------------------------------------------------
+I want to build something amazing          Healthtech/AE        healthtech/AE        sec=DROPDOWN, ctry=DROPDOWN
+Invoice financing app for Egyptian SMEs    Other/SA             fintech/EG           sec=A1 text, ctry=A1 text
+A cool startup idea                        Edtech/SA            edtech/SA            sec=DROPDOWN, ctry=DROPDOWN
+Health clinic booking in Dubai             Fintech/EG           healthtech/AE        sec=A1 text, ctry=A1 text
+
+--- TEST 2: REGIME RESULTS FOR ALL SECTOR x COUNTRY ---
+
+Sector       Ctry  Regime                   Conf  SARIMA    TAS Action
+---------------------------------------------------------------------------
+fintech      EG    GROWTH_MARKET            67%    0.15  0.404 
+fintech      SA    EMERGING_MARKET          70%    0.15  0.423 
+fintech      AE    GROWTH_MARKET            81%    0.15  0.476 
+fintech      GB    EMERGING_MARKET          98%    0.15  0.568 
+healthtech   EG    GROWTH_MARKET            69%    0.90  0.676 
+healthtech   SA    GROWTH_MARKET            68%    0.90  0.672 
+healthtech   AE    GROWTH_MARKET            73%    0.90  0.700 >> FIRE
+healthtech   GB    EMERGING_MARKET          61%    0.90  0.634 
+saas         EG    EMERGING_MARKET          70%    0.90  0.681 
+saas         SA    EMERGING_MARKET          74%    0.90  0.704 >> FIRE
+saas         AE    EMERGING_MARKET          85%    0.90  0.759 >> FIRE
+saas         GB    EMERGING_MARKET          62%    0.90  0.642 
+agritech     EG    EMERGING_MARKET          66%    0.50  0.520 
+agritech     SA    EMERGING_MARKET          64%    0.50  0.514 
+agritech     AE    EMERGING_MARKET          82%    0.50  0.603 
+agritech     GB    HIGH_FRICTION_MARKET     98%    0.50  0.691 
+edtech       EG    HIGH_FRICTION_MARKET     75%    0.50  0.567 
+edtech       SA    HIGH_FRICTION_MARKET    100%    0.50  0.696 
+edtech       AE    EMERGING_MARKET          69%    0.50  0.536 
+edtech       GB    CONTRACTING_MARKET       72%    0.50  0.554 
+logistics    EG    HIGH_FRICTION_MARKET     77%    0.50  0.579 
+logistics    SA    HIGH_FRICTION_MARKET     99%    0.50  0.697 
+logistics    AE    EMERGING_MARKET          63%    0.50  0.506 
+logistics    GB    CONTRACTING_MARKET       79%    0.50  0.591 
+ecommerce    EG    HIGH_FRICTION_MARKET     71%    0.15  0.425 
+ecommerce    SA    HIGH_FRICTION_MARKET     98%    0.15  0.567 
+ecommerce    AE    EMERGING_MARKET          67%    0.15  0.403 
+ecommerce    GB    CONTRACTING_MARKET       75%    0.15  0.446 
+other        EG    HIGH_FRICTION_MARKET     69%    0.50  0.537 
+other        SA    HIGH_FRICTION_MARKET     99%    0.50  0.697 
+other        AE    EMERGING_MARKET          76%    0.50  0.577 
+other        GB    HIGH_FRICTION_MARKET     99%    0.50  0.696 
+
+--- TEST 3: REGIME DISTRIBUTION (64 combos) ---
+   EMERGING_MARKET            27 (42%)
+   HIGH_FRICTION_MARKET       21 (33%)
+   GROWTH_MARKET              13 (20%)
+   CONTRACTING_MARKET          3 (5%)
+
+--- TEST 4: TAS SCORE SPREAD ---
+   Min TAS:  0.388
+   Max TAS:  0.759
+   Spread:   0.371
+   Mean:     0.584
+   Actions fired: 8
+
+--- TEST 5: SARIMA TREND VALUES (should NOT be binary) ---
+   fintech      mean=   4.4 -> trend=0.15
+   ecommerce    mean=   0.0 -> trend=0.15
+   healthtech   mean=  48.5 -> trend=0.90
+   edtech       mean=  24.8 -> trend=0.50
+   saas         mean=  56.7 -> trend=0.90
+   logistics    NO MODEL -> trend=0.50
+   agritech     NO MODEL -> trend=0.50
+   other        NO MODEL -> trend=0.50
+
+--- TEST 6: DEMO SCENARIOS ---
+Idea                                          Sector       Ctry  Regime                    TAS Verdict
+----------------------------------------------------------------------------------------------------
+Invoice financing for Egyptian SMEs           fintech      EG    GROWTH_MARKET           0.404 STOP
+Online tutoring platform in Cairo             edtech       EG    HIGH_FRICTION_MARKET    0.567 CAUTION
+Health clinic booking in Dubai                healthtech   AE    GROWTH_MARKET           0.700 GO - WEBHOOK FIRED
+SaaS CRM platform for UAE businesses          saas         AE    EMERGING_MARKET         0.759 GO - WEBHOOK FIRED
+E-commerce delivery in London                 ecommerce    GB    CONTRACTING_MARKET      0.446 STOP
+Logistics fleet management in Saudi           logistics    SA    HIGH_FRICTION_MARKET    0.697 CAUTION
+
+==========================================================================================
+VERIFICATION COMPLETE
+==========================================================================================
