@@ -1,7 +1,6 @@
 import streamlit as st
 import plotly.graph_objects as go
 import numpy as np
-import pandas as pd
 import pickle, json, os, time, warnings, requests
 from textwrap import dedent
 from dotenv import load_dotenv
@@ -107,7 +106,7 @@ CHART_BASE = dict(
 )
 
 # ── LOAD MODELS ──────────────────────────────────────────────
-MODELS_DIR = "models"
+MODELS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models")
 
 @st.cache_resource
 def load_models():
@@ -263,6 +262,99 @@ def enhanced_regime(svm_regime: str, svm_conf: float, inflation: float,
         return 'HIGH_FRICTION_MARKET', conf
     # Default: trust the SVM
     return svm_regime, svm_conf
+
+# ── AGENT A0 — Idea Evaluation ──────────────────────────────────
+IDEA_DIMENSIONS = ['problem_clarity', 'solution_fit', 'differentiation', 'business_model', 'scalability']
+IDEA_DIM_LABELS = {
+    'problem_clarity': 'Problem Clarity',
+    'solution_fit': 'Solution Fit',
+    'differentiation': 'Differentiation',
+    'business_model': 'Business Model',
+    'scalability': 'Scalability',
+}
+
+def agent_a0_evaluate_idea(idea_text, sector, country):
+    """
+    Agent A0: Evaluates the startup idea itself using LLM or keyword heuristics.
+    Returns dict with 5 dimension scores (0-10), reasons, and overall idea_score (0-100).
+    """
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    if GROQ_CLIENT and groq_key and groq_key != "dummy":
+        try:
+            prompt = dedent(f"""
+                You are a VC analyst evaluating a startup idea. Score each dimension 0-10.
+
+                Idea: "{idea_text}"
+                Sector: {sector} | Country: {country}
+
+                Score these 5 dimensions and provide a one-sentence justification for each:
+                1. problem_clarity — Is there a clear, specific problem being solved?
+                2. solution_fit — Does the proposed solution address the problem?
+                3. differentiation — Is it meaningfully different from existing solutions?
+                4. business_model — Is there an obvious way to make money?
+                5. scalability — Can it grow beyond the initial market?
+
+                Respond in EXACTLY this JSON format, no other text:
+                {{"problem_clarity": {{"score": 7, "reason": "..."}}, "solution_fit": {{"score": 6, "reason": "..."}}, "differentiation": {{"score": 5, "reason": "..."}}, "business_model": {{"score": 8, "reason": "..."}}, "scalability": {{"score": 6, "reason": "..."}}}}
+            """).strip()
+            resp = GROQ_CLIENT.chat.completions.create(
+                messages=[{"role": "user", "content": prompt}],
+                model="llama-3.1-8b-instant", temperature=0.2, max_tokens=400
+            )
+            raw = resp.choices[0].message.content.strip()
+            if '```' in raw:
+                raw = raw.split('```')[1]
+                if raw.startswith('json'):
+                    raw = raw[4:]
+            scores_data = json.loads(raw)
+            scores = {}
+            reasons = {}
+            for dim in IDEA_DIMENSIONS:
+                entry = scores_data.get(dim, {})
+                scores[dim] = max(0, min(10, int(entry.get('score', 5))))
+                reasons[dim] = entry.get('reason', '')
+            idea_score = int(sum(scores.values()) / len(scores) * 10)
+            return {'scores': scores, 'reasons': reasons, 'idea_score': idea_score}
+        except Exception:
+            pass
+
+    # Fallback: keyword heuristic scoring
+    t = idea_text.lower()
+    scores = {}
+    reasons = {}
+
+    problem_words = ['problem', 'issue', 'challenge', 'pain', 'struggle', 'need', 'lack', 'gap', 'inefficient', 'expensive', 'slow', 'difficult']
+    problem_hits = sum(1 for w in problem_words if w in t)
+    scores['problem_clarity'] = min(10, 3 + problem_hits * 2)
+    reasons['problem_clarity'] = 'Clear problem statement detected' if problem_hits >= 2 else 'Problem could be more specific'
+
+    solution_words = ['app', 'platform', 'tool', 'system', 'service', 'automate', 'connect', 'provide', 'enable', 'simplify', 'streamline', 'reduce']
+    sol_hits = sum(1 for w in solution_words if w in t)
+    scores['solution_fit'] = min(10, 3 + sol_hits * 2)
+    reasons['solution_fit'] = 'Solution approach is clear' if sol_hits >= 2 else 'Describe how your solution works'
+
+    diff_words = ['first', 'only', 'unique', 'unlike', 'better', 'faster', 'cheaper', 'new', 'innovative', 'ai', 'machine learning', 'blockchain']
+    diff_hits = sum(1 for w in diff_words if w in t)
+    scores['differentiation'] = min(10, 2 + diff_hits * 2)
+    reasons['differentiation'] = 'Unique angle detected' if diff_hits >= 2 else 'What makes this different from existing solutions?'
+
+    biz_words = ['subscription', 'saas', 'commission', 'fee', 'pricing', 'revenue', 'monetize', 'b2b', 'b2c', 'freemium', 'marketplace', 'premium']
+    biz_hits = sum(1 for w in biz_words if w in t)
+    scores['business_model'] = min(10, 3 + biz_hits * 2)
+    reasons['business_model'] = 'Revenue model indicated' if biz_hits >= 1 else 'How will this make money?'
+
+    scale_words = ['scale', 'global', 'expand', 'growth', 'million', 'region', 'international', 'multiple', 'market', 'nationwide']
+    scale_hits = sum(1 for w in scale_words if w in t)
+    scores['scalability'] = min(10, 3 + scale_hits * 2)
+    reasons['scalability'] = 'Growth potential indicated' if scale_hits >= 1 else 'How will this scale beyond initial market?'
+
+    word_count = len(t.split())
+    if word_count > 30:
+        for dim in scores:
+            scores[dim] = min(10, scores[dim] + 1)
+
+    idea_score = int(sum(scores.values()) / len(scores) * 10)
+    return {'scores': scores, 'reasons': reasons, 'idea_score': idea_score}
 
 # ── SHAP helper ──────────────────────────────────────────────
 def compute_shap(lgb_model, x_scaled_row):
@@ -518,6 +610,8 @@ if "result" not in st.session_state:
     st.session_state.country = "EG"
     st.session_state.chat_history = []
     st.session_state.chat_context = {}
+    st.session_state.idea_eval = None
+    st.session_state.svs = 0
 
 # ── RUN ──────────────────────────────────────────────────────
 SECTOR_LABEL_MAP = {
@@ -537,13 +631,14 @@ if run and MODELS_LOADED:
 
     ph = st.empty()
     steps = [
-        ("01 — Parsing idea & extracting context",     0.18),
-        ("02 — Fetching live macro signals",            0.36),
-        ("03 — Building inference context vector",      0.50),
-        ("04 — SVM RBF classification",                 0.66),
-        ("05 — SHAP explainability (LightGBM surrogate)",0.80),
-        ("06 — SARIMA 90-day forecast",                 0.90),
-        ("07 — Calculating TAS & Trinity Report",       1.00),
+        ("01 — Parsing idea & extracting context",     0.14),
+        ("02 — Evaluating idea strength (Agent A0)",    0.28),
+        ("03 — Fetching live macro signals",            0.42),
+        ("04 — Building inference context vector",      0.54),
+        ("05 — SVM RBF classification",                 0.66),
+        ("06 — SHAP explainability (LightGBM surrogate)",0.80),
+        ("07 — SARIMA 90-day forecast",                 0.90),
+        ("08 — Calculating TAS, SVS & Trinity Report",  1.00),
     ]
     with ph.container():
         st.markdown(f"""
@@ -566,6 +661,13 @@ if run and MODELS_LOADED:
     try:
         result = run_inference(sector_key, country_code, logs)
         st.session_state.result  = result
+        # Agent A0: Idea Evaluation
+        idea_eval = agent_a0_evaluate_idea(idea or "", sector_key, country_code)
+        st.session_state.idea_eval = idea_eval
+        # SVS: Startup Viability Score
+        tas_norm = result['tas']
+        idea_norm = idea_eval['idea_score'] / 100.0
+        st.session_state.svs = int((tas_norm * 0.50 + idea_norm * 0.50) * 100)
         st.session_state.logs    = logs
         st.session_state.sector  = sector_key
         st.session_state.country = country_code
@@ -884,6 +986,82 @@ for col, key, label, num in [
             </p>
         </div>""", unsafe_allow_html=True)
 
+# ── IDEA EVALUATION — Agent A0 ───────────────────────────────
+if st.session_state.idea_eval is not None:
+    ie = st.session_state.idea_eval
+    svs = st.session_state.svs
+
+    st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
+    st.markdown(f"""<div style="margin-bottom:14px;">
+        <p style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:{ACID};margin:0 0 6px;">
+            Agent A0 — Idea Evaluation</p>
+        <p style="font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:{TEXT};margin:0;letter-spacing:-0.5px;">
+            How strong is the idea itself?</p>
+    </div>""", unsafe_allow_html=True)
+
+    # SVS + Quadrant verdict
+    high_market = r['tas'] >= 0.60
+    high_idea = ie['idea_score'] >= 60
+    if high_market and high_idea:
+        quadrant = "GO — Launch"
+        q_color = ACID
+    elif high_market and not high_idea:
+        quadrant = "Wrong Idea — Right Market"
+        q_color = '#F5A623'
+    elif not high_market and high_idea:
+        quadrant = "Wait or Pivot Market"
+        q_color = '#5B6CF0'
+    else:
+        quadrant = "STOP — Rethink Everything"
+        q_color = '#FF6B6B'
+
+    svs_col, quad_col = st.columns([4, 7], gap="medium")
+    with svs_col:
+        svs_color = ACID if svs >= 70 else '#F5A623' if svs >= 50 else '#FF6B6B'
+        st.markdown(f"""
+        <div style="background:{CARD};border:1px solid {BORDER};border-radius:10px;padding:28px;text-align:center;">
+            <p style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:{MUTED};
+                      font-weight:600;margin-bottom:12px;">Startup Viability Score</p>
+            <p style="font-family:'Syne',sans-serif;font-size:42px;font-weight:800;
+                      color:{svs_color};letter-spacing:-1px;margin:0;">{svs}</p>
+            <p style="font-size:12px;color:{SUB};margin:6px 0 0;">SVS = Market (50%) + Idea (50%)</p>
+            <div style="margin-top:16px;padding-top:16px;border-top:1px solid {BORDER};">
+                <p style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;
+                          color:{q_color};letter-spacing:0.05em;margin:0;">{quadrant}</p>
+            </div>
+        </div>""", unsafe_allow_html=True)
+
+    with quad_col:
+        # 5 dimension bar chart
+        dim_labels = [IDEA_DIM_LABELS.get(d, d) for d in IDEA_DIMENSIONS]
+        dim_vals = [ie['scores'].get(d, 5) for d in IDEA_DIMENSIONS]
+        dim_colors = [ACID if v >= 7 else '#5B6CF0' if v >= 5 else '#FF6B6B' for v in dim_vals]
+
+        fig_idea = go.Figure(go.Bar(
+            x=dim_vals, y=dim_labels, orientation='h',
+            marker=dict(color=dim_colors, cornerradius=3),
+            text=[f'{v}/10' for v in dim_vals], textposition='outside',
+            textfont=dict(color=SUB, size=11),
+        ))
+        fig_idea.update_layout(**CHART_BASE, height=280, bargap=0.30,
+            xaxis=dict(range=[0, 12]))
+        fig_idea.update_xaxes(color=MUTED, gridcolor='rgba(255,255,255,0.04)',
+                              zerolinecolor='rgba(255,255,255,0.04)', tickfont=dict(size=11))
+        fig_idea.update_yaxes(gridcolor='rgba(0,0,0,0)', color=TEXT,
+                              tickfont=dict(size=12, family='DM Sans'))
+        st.plotly_chart(fig_idea, use_container_width=True, config={'displayModeBar': False})
+
+    # Dimension reasons
+    st.markdown(f"""<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:10px;">""" +
+        "".join([f"""
+        <div style="background:{CARD};border:1px solid {BORDER};border-radius:8px;padding:14px;">
+            <p style="font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;
+                      color:{ACID};margin:0 0 6px;">{IDEA_DIM_LABELS.get(d, d)}</p>
+            <p style="font-size:12px;color:{SUB};line-height:1.5;margin:0;font-weight:300;">
+                {ie['reasons'].get(d, '')}</p>
+        </div>""" for d in IDEA_DIMENSIONS]) +
+    "</div>", unsafe_allow_html=True)
+
 # Pipeline Trace
 st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 with st.expander("View full pipeline trace", expanded=False):
@@ -934,7 +1112,9 @@ if prompt := st.chat_input("Ask MIDAN about pivot strategies, risks, or validati
         groq_msgs.append({"role": m["role"], "content": m["content"]})
         
     try:
-        if GROQ_CLIENT is None: raise ValueError("Groq API not configured.")
+        _groq_key = os.environ.get("GROQ_API_KEY", "")
+        if not GROQ_CLIENT or not _groq_key or _groq_key == "dummy":
+            raise ValueError("Groq API not configured.")
         resp = GROQ_CLIENT.chat.completions.create(
             messages=groq_msgs, model="llama-3.1-8b-instant", temperature=0.5, max_tokens=250
         )

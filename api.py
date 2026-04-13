@@ -21,7 +21,7 @@ except Exception:
     GROQ_CLIENT = None
 
 # ── LOAD MODELS ──────────────────────────────────────────────
-MODELS_DIR = "models"
+MODELS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models")
 
 def _pkl(name):
     with open(f'{MODELS_DIR}/{name}', 'rb') as f:
@@ -81,19 +81,30 @@ COUNTRY_MACRO_DEFAULTS = {
 }
 
 SECTOR_KEYWORDS = {
-    'fintech': ['finance','payment','fintech','bank','loan','lending','invoice','insurance','wallet','money'],
-    'ecommerce': ['ecommerce','e-commerce','shop','store','retail','marketplace','delivery','commerce'],
-    'healthtech': ['health','medical','doctor','clinic','hospital','pharma','biotech','mental'],
-    'edtech': ['education','learning','school','university','course','tutor','edtech','training'],
-    'saas': ['saas','software','platform','dashboard','tool','api','enterprise','cloud','b2b','crm'],
-    'logistics': ['logistics','shipping','supply chain','warehouse','transport','fleet','trucking'],
-    'agritech': ['agri','farm','crop','harvest','food','agriculture','irrigation'],
+    'fintech':    ['finance','payment','fintech','bank','loan','lending',
+                   'invoice','insurance','wallet','money','تمويل','دفع'],
+    'ecommerce':  ['ecommerce','e-commerce','shop','store','retail',
+                   'marketplace','delivery','commerce','تجارة','توصيل'],
+    'healthtech': ['health','medical','doctor','clinic','hospital',
+                   'pharma','biotech','mental','صحة','طبي'],
+    'edtech':     ['education','learning','school','university','course',
+                   'tutor','edtech','training','تعليم','دراسة'],
+    'saas':       ['saas','software','platform','dashboard','tool',
+                   'api','enterprise','cloud','b2b','crm','برنامج'],
+    'logistics':  ['logistics','shipping','supply chain','warehouse',
+                   'transport','fleet','trucking','شحن','لوجستيك'],
+    'agritech':   ['agri','farm','crop','harvest','food',
+                   'agriculture','irrigation','زراعة'],
 }
 COUNTRY_KEYWORDS = {
-    'EG': ['egypt','cairo','egyptian'], 'SA': ['saudi','ksa','riyadh','jeddah'],
-    'AE': ['uae','dubai','abu dhabi','emirates'], 'MA': ['morocco','moroccan','casablanca'],
-    'NG': ['nigeria','nigerian','lagos'], 'KE': ['kenya','kenyan','nairobi'],
-    'US': ['usa','united states','america'], 'GB': ['uk','britain','london','england'],
+    'EG': ['egypt','cairo','egyptian','مصر','القاهرة','giza','assiut'],
+    'SA': ['saudi','ksa','riyadh','jeddah','السعودية','مكة'],
+    'AE': ['uae','dubai','abu dhabi','emirates','الإمارات','دبي'],
+    'MA': ['morocco','moroccan','casablanca','المغرب','rabat','marrakech'],
+    'NG': ['nigeria','nigerian','lagos','abuja','نيجيريا'],
+    'KE': ['kenya','kenyan','nairobi','كينيا'],
+    'US': ['usa','united states','america','أمريكا','silicon valley'],
+    'GB': ['uk','britain','london','england','بريطانيا'],
 }
 
 def agent_a1_parse(idea_text):
@@ -126,6 +137,100 @@ def enhanced_regime(svm_regime, svm_conf, inflation, gdp_growth, macro_friction,
         pain = max((macro_friction - 30) / 40, (inflation - 25) / 30, 0)
         return 'HIGH_FRICTION_MARKET', float(np.clip(0.60 + pain * 0.30, 0.55, 0.92))
     return svm_regime, svm_conf
+
+# ── AGENT A0 — Idea Evaluation ──────────────────────────────
+IDEA_DIMENSIONS = ['problem_clarity', 'solution_fit', 'differentiation', 'business_model', 'scalability']
+
+def agent_a0_evaluate_idea(idea_text, sector, country):
+    """
+    Agent A0: Evaluates the startup idea itself (not just market conditions).
+    Uses LLM when available, falls back to keyword heuristics.
+    Returns dict with 5 dimension scores (0-10) and overall idea_score (0-100).
+    """
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    if GROQ_CLIENT and groq_key and groq_key != "dummy":
+        try:
+            prompt = dedent(f"""
+                You are a VC analyst evaluating a startup idea. Score each dimension 0-10.
+
+                Idea: "{idea_text}"
+                Sector: {sector} | Country: {country}
+
+                Score these 5 dimensions and provide a one-sentence justification for each:
+                1. problem_clarity — Is there a clear, specific problem being solved?
+                2. solution_fit — Does the proposed solution address the problem?
+                3. differentiation — Is it meaningfully different from existing solutions?
+                4. business_model — Is there an obvious way to make money?
+                5. scalability — Can it grow beyond the initial market?
+
+                Respond in EXACTLY this JSON format, no other text:
+                {{"problem_clarity": {{"score": 7, "reason": "..."}}, "solution_fit": {{"score": 6, "reason": "..."}}, "differentiation": {{"score": 5, "reason": "..."}}, "business_model": {{"score": 8, "reason": "..."}}, "scalability": {{"score": 6, "reason": "..."}}}}
+            """).strip()
+            resp = GROQ_CLIENT.chat.completions.create(
+                messages=[{"role": "user", "content": prompt}],
+                model="llama-3.1-8b-instant", temperature=0.2, max_tokens=400
+            )
+            raw = resp.choices[0].message.content.strip()
+            # Extract JSON from response (handle markdown code blocks)
+            if '```' in raw:
+                raw = raw.split('```')[1]
+                if raw.startswith('json'):
+                    raw = raw[4:]
+            scores_data = json.loads(raw)
+            scores = {}
+            reasons = {}
+            for dim in IDEA_DIMENSIONS:
+                entry = scores_data.get(dim, {})
+                scores[dim] = max(0, min(10, int(entry.get('score', 5))))
+                reasons[dim] = entry.get('reason', '')
+            idea_score = int(sum(scores.values()) / len(scores) * 10)
+            return {'scores': scores, 'reasons': reasons, 'idea_score': idea_score}
+        except Exception:
+            pass
+
+    # Fallback: keyword-based heuristic scoring
+    t = idea_text.lower()
+    scores = {}
+    reasons = {}
+
+    # Problem clarity: does the text describe a problem?
+    problem_words = ['problem', 'issue', 'challenge', 'pain', 'struggle', 'need', 'lack', 'gap', 'inefficient', 'expensive', 'slow', 'difficult']
+    problem_hits = sum(1 for w in problem_words if w in t)
+    scores['problem_clarity'] = min(10, 3 + problem_hits * 2)
+    reasons['problem_clarity'] = f"{'Clear problem statement detected' if problem_hits >= 2 else 'Problem could be more specific'}"
+
+    # Solution fit: does it describe a solution approach?
+    solution_words = ['app', 'platform', 'tool', 'system', 'service', 'automate', 'connect', 'provide', 'enable', 'simplify', 'streamline', 'reduce']
+    sol_hits = sum(1 for w in solution_words if w in t)
+    scores['solution_fit'] = min(10, 3 + sol_hits * 2)
+    reasons['solution_fit'] = f"{'Solution approach is clear' if sol_hits >= 2 else 'Describe how your solution works'}"
+
+    # Differentiation: unique angle?
+    diff_words = ['first', 'only', 'unique', 'unlike', 'better', 'faster', 'cheaper', 'new', 'innovative', 'ai', 'machine learning', 'blockchain']
+    diff_hits = sum(1 for w in diff_words if w in t)
+    scores['differentiation'] = min(10, 2 + diff_hits * 2)
+    reasons['differentiation'] = f"{'Unique angle detected' if diff_hits >= 2 else 'What makes this different from existing solutions?'}"
+
+    # Business model: revenue signals?
+    biz_words = ['subscription', 'saas', 'commission', 'fee', 'pricing', 'revenue', 'monetize', 'b2b', 'b2c', 'freemium', 'marketplace', 'premium']
+    biz_hits = sum(1 for w in biz_words if w in t)
+    scores['business_model'] = min(10, 3 + biz_hits * 2)
+    reasons['business_model'] = f"{'Revenue model indicated' if biz_hits >= 1 else 'How will this make money?'}"
+
+    # Scalability: growth potential?
+    scale_words = ['scale', 'global', 'expand', 'growth', 'million', 'region', 'international', 'multiple', 'market', 'nationwide']
+    scale_hits = sum(1 for w in scale_words if w in t)
+    scores['scalability'] = min(10, 3 + scale_hits * 2)
+    reasons['scalability'] = f"{'Growth potential indicated' if scale_hits >= 1 else 'How will this scale beyond initial market?'}"
+
+    # Bonus for longer, more detailed descriptions
+    word_count = len(t.split())
+    if word_count > 30:
+        for dim in scores:
+            scores[dim] = min(10, scores[dim] + 1)
+
+    idea_score = int(sum(scores.values()) / len(scores) * 10)
+    return {'scores': scores, 'reasons': reasons, 'idea_score': idea_score}
 
 def compute_shap(lgb_model, x_scaled_row):
     import shap as shap_lib
@@ -282,6 +387,27 @@ async def analyze_idea(req: IdeaRequest):
 
     try:
         report = run_inference(sector_key, country_code)
+
+        # Agent A0: Idea Evaluation
+        idea_eval = agent_a0_evaluate_idea(req.idea, sector_key, country_code)
+
+        # SVS: Startup Viability Score (market + idea combined)
+        tas_normalized = report["tas"]  # already 0-1
+        idea_normalized = idea_eval["idea_score"] / 100.0
+        svs = int((tas_normalized * 0.50 + idea_normalized * 0.50) * 100)
+
+        # Quadrant verdict
+        high_market = report["tas"] >= 0.60
+        high_idea = idea_eval["idea_score"] >= 60
+        if high_market and high_idea:
+            quadrant = "GO — Launch"
+        elif high_market and not high_idea:
+            quadrant = "Wrong Idea — Right Market"
+        elif not high_market and high_idea:
+            quadrant = "Wait or Pivot Market"
+        else:
+            quadrant = "STOP — Rethink Everything"
+
         return {
             "success": True,
             "sector": sector_key,
@@ -298,14 +424,20 @@ async def analyze_idea(req: IdeaRequest):
                 "action": report["action"],
             },
             "shap_weights": {k: float(v) for k, v in report["shap_dict"].items()},
-            "pca_coords": report["x_pca"].tolist()
+            "pca_coords": report["x_pca"].tolist(),
+            "idea_score": idea_eval["idea_score"],
+            "idea_dimensions": idea_eval["scores"],
+            "idea_reasons": idea_eval["reasons"],
+            "svs": svs,
+            "quadrant": quadrant,
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @api.post("/chat")
 async def chat_interaction(req: ChatRequest):
-    if not GROQ_CLIENT:
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    if not GROQ_CLIENT or not groq_key or groq_key == "dummy":
         raise HTTPException(status_code=501, detail="Groq API key not configured")
         
     system_prompt = dedent(f"""

@@ -390,3 +390,126 @@ class TestDemoScenarios:
             f"Expected country {expected_ctry}, got {ctry}"
         assert sf is True
         assert cf is True
+
+
+# ── TEST 7: Agent A0 Idea Evaluation (keyword fallback) ────
+
+IDEA_DIMENSIONS = [
+    'problem_clarity', 'market_fit', 'feasibility',
+    'scalability', 'revenue_model',
+]
+
+IDEA_DIM_LABELS = {
+    'problem_clarity': 'Problem Clarity',
+    'market_fit':      'Market Fit',
+    'feasibility':     'Feasibility',
+    'scalability':     'Scalability',
+    'revenue_model':   'Revenue Model',
+}
+
+_IDEA_KEYWORDS = {
+    'problem_clarity': ['solve', 'problem', 'pain', 'need', 'gap',
+                        'challenge', 'issue', 'struggle', 'inefficien'],
+    'market_fit':      ['market', 'demand', 'customer', 'user', 'audience',
+                        'segment', 'target', 'b2b', 'b2c', 'consumer'],
+    'feasibility':     ['mvp', 'prototype', 'tech', 'stack', 'build',
+                        'develop', 'engineer', 'team', 'resource'],
+    'scalability':     ['scale', 'grow', 'expand', 'region', 'global',
+                        'automat', 'network', 'viral', 'repeat'],
+    'revenue_model':   ['revenue', 'monetiz', 'subscription', 'fee',
+                        'commission', 'pricing', 'margin', 'profit',
+                        'freemium', 'ads'],
+}
+
+
+def keyword_idea_score(idea_text):
+    t = idea_text.lower()
+    scores = {}
+    reasons = {}
+    for dim in IDEA_DIMENSIONS:
+        kws = _IDEA_KEYWORDS[dim]
+        hits = [k for k in kws if k in t]
+        raw = min(len(hits) / 3.0, 1.0)
+        score = int(30 + raw * 60)
+        scores[dim] = score
+        if hits:
+            reasons[dim] = f"Detected keywords: {', '.join(hits[:3])}"
+        else:
+            reasons[dim] = "No strong signals detected"
+    overall = sum(scores.values()) / (len(scores) * 100)
+    return overall, scores, reasons
+
+
+class TestAgentA0:
+    def test_keyword_score_returns_all_dimensions(self):
+        overall, scores, reasons = keyword_idea_score(
+            "We solve payment problems for underserved customers")
+        assert set(scores.keys()) == set(IDEA_DIMENSIONS)
+        assert set(reasons.keys()) == set(IDEA_DIMENSIONS)
+
+    def test_keyword_score_range(self):
+        overall, scores, reasons = keyword_idea_score(
+            "A SaaS subscription platform to scale globally")
+        assert 0.0 <= overall <= 1.0
+        for dim, s in scores.items():
+            assert 30 <= s <= 90, f"{dim} score {s} out of range"
+
+    def test_rich_idea_scores_higher_than_empty(self):
+        rich_overall, _, _ = keyword_idea_score(
+            "We solve a big problem in the market by building an MVP "
+            "tech prototype that can scale globally with subscription "
+            "revenue and freemium pricing for b2b customers")
+        empty_overall, _, _ = keyword_idea_score(
+            "I want to do something cool")
+        assert rich_overall > empty_overall
+
+    def test_no_keywords_gives_baseline(self):
+        overall, scores, reasons = keyword_idea_score("xyz abc 123")
+        for dim in IDEA_DIMENSIONS:
+            assert scores[dim] == 30
+            assert "No strong signals" in reasons[dim]
+        assert abs(overall - 0.30) < 0.01
+
+    def test_reasons_contain_detected_keywords(self):
+        _, _, reasons = keyword_idea_score(
+            "We solve a pain point with subscription revenue")
+        assert "solve" in reasons['problem_clarity'] or \
+               "pain" in reasons['problem_clarity']
+        assert "subscription" in reasons['revenue_model'] or \
+               "revenue" in reasons['revenue_model']
+
+
+# ── TEST 8: SVS and Quadrant ───────────────────────────────
+
+class TestSVSQuadrant:
+    def _quadrant(self, tas, idea_score):
+        svs = tas * 0.50 + idea_score * 0.50
+        if svs >= 0.60 and idea_score >= 0.50:
+            return svs, "GO"
+        elif tas >= 0.55 and idea_score < 0.50:
+            return svs, "Wrong Idea"
+        elif tas < 0.55 and idea_score >= 0.50:
+            return svs, "Wait"
+        else:
+            return svs, "STOP"
+
+    def test_go_quadrant(self):
+        svs, q = self._quadrant(0.80, 0.70)
+        assert q == "GO"
+        assert svs >= 0.60
+
+    def test_wrong_idea_quadrant(self):
+        svs, q = self._quadrant(0.70, 0.30)
+        assert q == "Wrong Idea"
+
+    def test_wait_quadrant(self):
+        svs, q = self._quadrant(0.40, 0.70)
+        assert q == "Wait"
+
+    def test_stop_quadrant(self):
+        svs, q = self._quadrant(0.30, 0.30)
+        assert q == "STOP"
+
+    def test_svs_formula(self):
+        svs, _ = self._quadrant(0.60, 0.80)
+        assert abs(svs - 0.70) < 0.01

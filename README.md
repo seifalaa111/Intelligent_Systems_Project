@@ -5,7 +5,9 @@ Multi-agent AI pipeline for startup market intelligence. Classifies market regim
 ## Pipeline Architecture
 
 ```
-Founder Input → Agent A1 (NLP Parser)
+Founder Input → Agent A0 (Idea Evaluation)
+                    ↓
+              Agent A1 (NLP Parser)
                     ↓
               Macro Vector Construction (country + sector adjustments)
                     ↓
@@ -15,7 +17,11 @@ Founder Input → Agent A1 (NLP Parser)
     SHAP (LightGBM)     SARIMA Forecast
          └─────────┬─────────┘
                     ↓
-              TAS Score (Opportunity)
+              TAS Score (Market Opportunity)
+                    ↓
+              SVS = TAS × 0.50 + Idea Score × 0.50
+                    ↓
+         Quadrant Verdict (GO / Wrong Idea / Wait / STOP)
                     ↓
          Trinity Report (Finding → Implication → Action)
                     ↓
@@ -23,6 +29,7 @@ Founder Input → Agent A1 (NLP Parser)
 ```
 
 **Agents:**
+- **A0** — Idea Evaluation (LLM-based + keyword heuristic fallback, scores 5 dimensions)
 - **A1** — Keyword-based NLP parser (sector + country extraction)
 - **A2** — Competitor context loader
 - **A4** — Sentiment context aggregator
@@ -38,6 +45,17 @@ Founder Input → Agent A1 (NLP Parser)
 
 **Market Regimes:** GROWTH_MARKET, EMERGING_MARKET, HIGH_FRICTION_MARKET, CONTRACTING_MARKET
 
+**Idea Evaluation (Agent A0):**
+- Scores startup ideas across 5 dimensions: Problem Clarity, Market Fit, Feasibility, Scalability, Revenue Model
+- Each dimension scored 0–100 with reasoning
+- Combined into an Idea Score (0–1)
+- **SVS (Startup Viability Score)** = TAS × 0.50 + Idea Score × 0.50
+- **Quadrant Verdict:**
+  - **GO** — SVS ≥ 0.60 and Idea ≥ 0.50 (strong market + strong idea)
+  - **Wrong Idea** — TAS ≥ 0.55 but Idea < 0.50 (good market, weak idea)
+  - **Wait** — TAS < 0.55 but Idea ≥ 0.50 (weak market, strong idea)
+  - **STOP** — both below thresholds
+
 ## Setup
 
 ```bash
@@ -49,8 +67,7 @@ pip install -r requirements.txt
 #    and run all cells — this creates the .pkl files in models/
 
 # 3. (Optional) Set environment variables
-cp .env.example .env
-# Add your GROQ_API_KEY and SLACK_WEBHOOK_URL
+#    Create a .env file with your GROQ_API_KEY and SLACK_WEBHOOK_URL
 ```
 
 ## Running
@@ -77,7 +94,7 @@ pytest test_pipeline_logic.py -v
 ├── app.py                    # Streamlit dashboard (full pipeline + UI)
 ├── api.py                    # FastAPI endpoint for midan.html
 ├── midan.html                # Static HTML frontend
-├── test_pipeline_logic.py    # Pytest suite (A1, regime rules, SVM, SARIMA, TAS)
+├── test_pipeline_logic.py    # Pytest suite (A0, A1, regime rules, SVM, SARIMA, TAS, SVS)
 ├── MIDAN_Pipeline.ipynb      # Training notebook (Colab) — generates all models
 ├── requirements.txt          # Pinned Python dependencies
 ├── models/

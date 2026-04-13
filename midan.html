@@ -743,6 +743,12 @@ footer {
   .rp-top { flex-direction:column; gap:10px; align-items:flex-start; }
   .input-footer { flex-direction:column; gap:12px; align-items:flex-start; }
 }
+
+.idea-dim-bar { display:flex; align-items:center; gap:10px; }
+.idea-dim-name { font-size:11px; color:var(--sub); width:120px; flex-shrink:0; }
+.idea-bar-track { flex:1; height:8px; background:rgba(255,255,255,0.05); border-radius:4px; overflow:hidden; }
+.idea-bar-fill { height:100%; background:var(--acid); border-radius:4px; transition:width 0.6s ease; }
+.idea-dim-val { font-size:11px; font-weight:700; color:var(--text); width:40px; text-align:right; }
 </style>
 </head>
 <body>
@@ -846,9 +852,37 @@ footer {
         <div class="rp-scores">
           <div class="score-cell"><div class="sc-label">Market Temperature</div><div class="sc-val v-green" id="sc-temp">Hot</div></div>
           <div class="score-cell"><div class="sc-label">Opportunity Score</div><div class="sc-val v-green" id="sc-opp">81 / 100</div></div>
-          <div class="score-cell"><div class="sc-label">Competition</div><div class="sc-val v-white" id="sc-comp">Moderate</div></div>
+          <div class="score-cell"><div class="sc-label">Confidence</div><div class="sc-val v-white" id="sc-comp">Moderate</div></div>
           <div class="score-cell"><div class="sc-label">Next 90 Days</div><div class="sc-val v-amber" id="sc-out">Growing</div></div>
         </div>
+        <!-- Idea Evaluation — Agent A0 -->
+        <div id="idea-eval-section" style="display:none; margin-top:24px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+            <span style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--acid);">Agent A0 — Idea Evaluation</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 2fr;gap:20px;">
+            <!-- SVS Score -->
+            <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:24px;text-align:center;">
+              <p style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin:0 0 10px;">Startup Viability Score</p>
+              <p id="svs-score" style="font-family:'Syne',sans-serif;font-size:40px;font-weight:800;color:var(--acid);margin:0;">—</p>
+              <p style="font-size:11px;color:var(--sub);margin:6px 0 0;">SVS = Market + Idea</p>
+              <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
+                <p id="svs-quadrant" style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--acid);margin:0;">—</p>
+              </div>
+            </div>
+            <!-- Dimension Bars -->
+            <div style="display:flex;flex-direction:column;gap:10px;justify-content:center;">
+              <div class="idea-dim-bar"><span class="idea-dim-name" id="idim-name-0">Problem Clarity</span><div class="idea-bar-track"><div class="idea-bar-fill" id="idim-bar-0" style="width:50%"></div></div><span class="idea-dim-val" id="idim-val-0">5/10</span></div>
+              <div class="idea-dim-bar"><span class="idea-dim-name" id="idim-name-1">Solution Fit</span><div class="idea-bar-track"><div class="idea-bar-fill" id="idim-bar-1" style="width:50%"></div></div><span class="idea-dim-val" id="idim-val-1">5/10</span></div>
+              <div class="idea-dim-bar"><span class="idea-dim-name" id="idim-name-2">Differentiation</span><div class="idea-bar-track"><div class="idea-bar-fill" id="idim-bar-2" style="width:50%"></div></div><span class="idea-dim-val" id="idim-val-2">5/10</span></div>
+              <div class="idea-dim-bar"><span class="idea-dim-name" id="idim-name-3">Business Model</span><div class="idea-bar-track"><div class="idea-bar-fill" id="idim-bar-3" style="width:50%"></div></div><span class="idea-dim-val" id="idim-val-3">5/10</span></div>
+              <div class="idea-dim-bar"><span class="idea-dim-name" id="idim-name-4">Scalability</span><div class="idea-bar-track"><div class="idea-bar-fill" id="idim-bar-4" style="width:50%"></div></div><span class="idea-dim-val" id="idim-val-4">5/10</span></div>
+            </div>
+          </div>
+          <!-- Dimension Reasons -->
+          <div id="idea-reasons" style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:16px;"></div>
+        </div>
+
         <div class="rp-chat-window" id="rp-chat-window">
           <div class="chat-history" id="chat-history"></div>
           <div class="chat-input-area">
@@ -974,11 +1008,11 @@ footer {
           <h3>What's actually driving your market verdict</h3>
           <p>Every answer is explained. MIDAN shows you which signals had the most influence on your result — so you trust the verdict, not just accept it.</p>
           <div class="sig-bars">
-            <div class="sig-row"><div class="sig-l">Inflation rate</div><div class="sig-t"><div class="sig-f" style="width:82%"></div></div><div class="sig-v">82%</div></div>
-            <div class="sig-row"><div class="sig-l">Deal activity</div><div class="sig-t"><div class="sig-f" style="width:71%;opacity:.6"></div></div><div class="sig-v">71%</div></div>
-            <div class="sig-row"><div class="sig-l">Avg investment</div><div class="sig-t"><div class="sig-f" style="width:58%;opacity:.5"></div></div><div class="sig-v">58%</div></div>
-            <div class="sig-row"><div class="sig-l">GDP growth</div><div class="sig-t"><div class="sig-f" style="width:44%;opacity:.4"></div></div><div class="sig-v">44%</div></div>
-            <div class="sig-row"><div class="sig-l">Internet reach</div><div class="sig-t"><div class="sig-f" style="width:35%;opacity:.3"></div></div><div class="sig-v">35%</div></div>
+            <div class="sig-row"><div class="sig-l" id="bar-name-1">Inflation rate</div><div class="sig-t"><div class="sig-f" id="bar-1" style="width:82%"></div></div><div class="sig-v" id="bar-label-1">82%</div></div>
+            <div class="sig-row"><div class="sig-l" id="bar-name-2">Deal activity</div><div class="sig-t"><div class="sig-f" id="bar-2" style="width:71%;opacity:.6"></div></div><div class="sig-v" id="bar-label-2">71%</div></div>
+            <div class="sig-row"><div class="sig-l" id="bar-name-3">Avg investment</div><div class="sig-t"><div class="sig-f" id="bar-3" style="width:58%;opacity:.5"></div></div><div class="sig-v" id="bar-label-3">58%</div></div>
+            <div class="sig-row"><div class="sig-l" id="bar-name-4">GDP growth</div><div class="sig-t"><div class="sig-f" id="bar-4" style="width:44%;opacity:.4"></div></div><div class="sig-v" id="bar-label-4">44%</div></div>
+            <div class="sig-row"><div class="sig-l" id="bar-name-5">Internet reach</div><div class="sig-t"><div class="sig-f" id="bar-5" style="width:35%;opacity:.3"></div></div><div class="sig-v" id="bar-label-5">35%</div></div>
           </div>
         </div>
 
@@ -1067,7 +1101,7 @@ footer {
       <li><a href="#how">How it works</a></li>
       <li><a href="#">GitHub</a></li>
     </ul>
-    <div class="f-copy">2025 MIDAN — Built for MENA Founders</div>
+    <div class="f-copy">2026 MIDAN — Built for MENA Founders</div>
   </footer>
 
 </div>
@@ -1239,6 +1273,14 @@ async function sendChat() {
   inp.focus();
 }
 
+function qi(text) {
+  const input = document.getElementById('idea-input');
+  if (input) {
+    input.value = text;
+    input.dispatchEvent(new Event('input'));
+  }
+}
+
 async function analyze(){
   const v = document.getElementById('idea-input').value.toLowerCase();
   if(!v.trim()) return;
@@ -1281,6 +1323,53 @@ async function analyze(){
         implication: d.report.implication, idea: v
       };
       
+      // Update SHAP signal weight bars
+      if (d.shap_weights) {
+        const features = Object.entries(d.shap_weights);
+        const maxVal = Math.max(...features.map(f => f[1]));
+        features.sort((a, b) => b[1] - a[1]);
+        features.forEach((f, i) => {
+          const barEl = document.getElementById('bar-' + (i+1));
+          const labelEl = document.getElementById('bar-label-' + (i+1));
+          const nameEl = document.getElementById('bar-name-' + (i+1));
+          if (barEl) barEl.style.width = Math.round(f[1] / maxVal * 100) + '%';
+          if (labelEl) labelEl.textContent = Math.round(f[1] / maxVal * 100) + '%';
+          if (nameEl) nameEl.textContent = f[0].replace(/_/g, ' ');
+        });
+      }
+
+      // Idea evaluation
+      if (d.idea_score !== undefined) {
+        document.getElementById('idea-eval-section').style.display = 'block';
+        const svsEl = document.getElementById('svs-score');
+        const quadEl = document.getElementById('svs-quadrant');
+        svsEl.textContent = d.svs;
+        svsEl.style.color = d.svs >= 70 ? 'var(--acid)' : d.svs >= 50 ? '#F5A623' : '#FF6B6B';
+        quadEl.textContent = d.quadrant;
+        quadEl.style.color = svsEl.style.color;
+
+        const dims = ['problem_clarity', 'solution_fit', 'differentiation', 'business_model', 'scalability'];
+        const dimNames = ['Problem Clarity', 'Solution Fit', 'Differentiation', 'Business Model', 'Scalability'];
+        dims.forEach((dim, i) => {
+          const val = d.idea_dimensions[dim] || 5;
+          const el = document.getElementById('idim-bar-' + i);
+          const valEl = document.getElementById('idim-val-' + i);
+          if (el) el.style.width = (val * 10) + '%';
+          if (el) el.style.background = val >= 7 ? 'var(--acid)' : val >= 5 ? '#5B6CF0' : '#FF6B6B';
+          if (valEl) valEl.textContent = val + '/10';
+        });
+
+        // Reasons
+        const reasonsEl = document.getElementById('idea-reasons');
+        if (reasonsEl && d.idea_reasons) {
+          reasonsEl.innerHTML = dims.map((dim, i) =>
+            '<div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;">' +
+            '<p style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--acid);margin:0 0 4px;">' + dimNames[i] + '</p>' +
+            '<p style="font-size:11px;color:var(--sub);line-height:1.4;margin:0;">' + (d.idea_reasons[dim] || '') + '</p></div>'
+          ).join('');
+        }
+      }
+
       apiSuccess = true;
     }
   } catch (err) {
@@ -1306,6 +1395,17 @@ async function analyze(){
     addChatMessage('midan', firstMsg);
     chatHistoryState.push({role: 'assistant', content: firstMsg});
     internalContext = { sector: "Unknown", country: "Unknown", regime: d.temp, tas_score: parseInt(d.opp), implication: d.r2 };
+
+    // Mock idea data
+    document.getElementById('idea-eval-section').style.display = 'block';
+    document.getElementById('svs-score').textContent = '52';
+    document.getElementById('svs-quadrant').textContent = 'Wait or Pivot Market';
+    [50, 60, 40, 50, 70].forEach((v, i) => {
+      const el = document.getElementById('idim-bar-' + i);
+      const valEl = document.getElementById('idim-val-' + i);
+      if (el) el.style.width = (v) + '%';
+      if (valEl) valEl.textContent = (v/10) + '/10';
+    });
   }
 
   if(btn) btn.innerHTML = 'Get My Answer';
