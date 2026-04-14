@@ -1164,6 +1164,59 @@ function buildAnalysisCard(d) {
     </div>`;
 }
 
+/* ============ OFFLINE HELPERS ============ */
+const _IDEA_SIGNALS = [
+  'app','platform','startup','business','product','service','tool','marketplace',
+  'saas','software','solution','system','company','build','create','launch',
+  'develop','connect','automate','help','enable','solve','simplify','replace',
+  'fintech','healthtech','edtech','ecommerce','logistics','agritech','payment',
+  'delivery','booking','learning','insurance','clinic','invoice','subscription',
+  'b2b','b2c','egypt','cairo','dubai','saudi','nigeria','kenya','mena',
+  'problem','pain','issue','gap','need','market','customer','user',
+];
+const _CONV_OPENERS = [
+  'hi','hello','hey','yo','thanks','thank you','ok','okay','sure','got it',
+  'cool','great','can you','could you','tell me','explain','help me understand',
+  'i have an idea','i want to','i would like','i am thinking',
+  'what do you think','is it good','any thoughts','give me feedback',
+];
+
+function looksLikeIdea(text) {
+  const t = text.toLowerCase().trim();
+  const words = t.split(/\s+/);
+  if (words.length < 8) return false;
+  if (_CONV_OPENERS.some(o => t.startsWith(o))) return false;
+  const hits = _IDEA_SIGNALS.filter(s => t.includes(s)).length;
+  return hits >= 2;
+}
+
+function offlineChatReply(text, ctx) {
+  const t = text.toLowerCase();
+  const sector = ctx.sector || 'your sector';
+  const country = ctx.country || 'your market';
+  const tas = ctx.tas_score || 0;
+  if (!ctx.sector) {
+    return "I'm MIDAN — tell me your startup idea and I'll analyze the market, score your concept, and tell you exactly what to do next.";
+  }
+  if (/pivot|change|switch|alternative/.test(t))
+    return `Pivoting within ${sector} makes sense if you can find an underserved niche. Run 10 focused customer interviews before committing to any new direction — validate the pain, not just the idea.`;
+  if (/compet|rival|who else|crowded/.test(t))
+    return `The ${sector} space in ${country} has both local and international players. Your edge needs to be specific — either go faster, go deeper into a niche, or solve a pain point global competitors can't reach. What's your unfair advantage?`;
+  if (/fund|invest|raise|capital|angel|vc/.test(t))
+    return tas >= 70
+      ? `With a ${tas}/100 opportunity score, you're in a solid position to approach regional accelerators (Flat6Labs, 500 MENA) or angels. Build 3 months of traction data first — it changes every conversation.`
+      : `At ${tas}/100, fundraising is harder right now. Focus on a revenue-first model and get 10 paying customers. That proof is worth more than any pitch deck to MENA investors.`;
+  if (/risk|fail|threat|worry|concern/.test(t))
+    return `Key risks in ${sector}/${country}: regulatory shifts can happen overnight, customer acquisition cost is high in this regime, and currency volatility can compress margins. Keep burn lean and validate before scaling.`;
+  if (/next|start|begin|first step|what should/.test(t))
+    return tas >= 70
+      ? `Strong signals. Next: 1) Build an MVP in 4–6 weeks. 2) Put it in front of 20 target users. 3) Apply to a MENA accelerator this cycle. Speed beats perfection at this stage.`
+      : `Market isn't ideal yet. Next: 1) Run 20 customer discovery interviews. 2) Build a landing page and measure intent. 3) Don't write code until people are willing to pay.`;
+  if (/go.to.market|gtm|launch|marketing|acquire|growth/.test(t))
+    return `For ${sector} in ${country}, start hyper-local. One neighborhood, one persona, one use case. Dominate that before expanding. WhatsApp and referrals outperform paid ads in MENA every time.`;
+  return `I'm operating offline. Your ${sector} idea in ${country} scored ${tas}/100. Ask me about pivot strategies, competitive risks, fundraising, go-to-market, or next steps.`;
+}
+
 /* ============ MOCK ANALYSIS ============ */
 function getMockAnalysis(idea) {
   const v = idea.toLowerCase();
@@ -1251,13 +1304,27 @@ async function handleSend() {
       chatHistory.push({ role: 'assistant', content: `[ANALYSIS CARDS TRIGGERED]\n\n${respData.reply}` });
       analysisComplete = true;
     } else {
-      replyHtml = `<p>${(respData.reply || '').replace(/\\*\\*(.+?)\\*\\*/g, '<strong>$1</strong>').replace(/\\n/g, '<br>')}</p>`;
+      replyHtml = `<p>${(respData.reply || '').replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>`;
       chatHistory.push({ role: 'assistant', content: respData.reply || '' });
     }
   } catch (err) {
-    console.warn('API error:', err);
-    replyHtml = "<p>Connection error. Please ensure the MIDAN local server is running.</p>";
-    chatHistory.push({ role: 'assistant', content: "Connection error." });
+    console.warn('API error, using local fallback:', err);
+    // Only show a mock analysis card if this looks like a real startup idea
+    if (looksLikeIdea(text) && !analysisComplete) {
+      const mockData = getMockAnalysis(text);
+      internalContext = {
+        sector: mockData.sector, country: mockData.country,
+        regime: mockData.regime, tas_score: mockData.tas_score,
+        implication: mockData.report.implication, idea: text
+      };
+      replyHtml = `<p>I've analyzed your startup idea (offline mode — connect the API for live data).</p>` + buildAnalysisCard(mockData);
+      chatHistory.push({ role: 'assistant', content: `[Offline analysis] ${mockData.report.implication}` });
+      analysisComplete = true;
+    } else {
+      const fallback = offlineChatReply(text, internalContext);
+      replyHtml = `<p>${fallback}</p>`;
+      chatHistory.push({ role: 'assistant', content: fallback });
+    }
   }
 
   removeTypingIndicator();

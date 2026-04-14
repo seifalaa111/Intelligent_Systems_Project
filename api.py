@@ -531,6 +531,47 @@ class InteractRequest(BaseModel):
     context: Dict[str, Any]
     messages: List[ChatMessage]
 
+_IDEA_SIGNALS = [
+    # business nouns
+    'app', 'platform', 'startup', 'business', 'product', 'service', 'tool',
+    'marketplace', 'saas', 'software', 'solution', 'system', 'company',
+    # action verbs indicating a concept
+    'build', 'create', 'launch', 'develop', 'connect', 'automate', 'help',
+    'enable', 'solve', 'simplify', 'replace', 'disrupt', 'scale',
+    # market/sector words
+    'fintech', 'healthtech', 'edtech', 'ecommerce', 'logistics', 'agritech',
+    'payment', 'delivery', 'booking', 'learning', 'insurance', 'clinic',
+    'invoice', 'subscription', 'marketplace', 'b2b', 'b2c', 'freelance',
+    # location signals (means they are contextualising an idea)
+    'egypt', 'cairo', 'dubai', 'saudi', 'nigeria', 'kenya', 'mena',
+    # problem framing
+    'problem', 'pain', 'issue', 'gap', 'need', 'market', 'customer', 'user',
+]
+
+_CONVERSATIONAL_OPENERS = [
+    'hi', 'hello', 'hey', 'yo', 'what', 'how', 'who', 'why', 'when', 'where',
+    'thanks', 'thank you', 'ok', 'okay', 'sure', 'got it', 'cool', 'great',
+    'can you', 'could you', 'tell me', 'explain', 'help me understand',
+    'i have an idea', 'i want to', 'i would like', 'i am thinking',
+    'what do you think', 'is it good', 'any thoughts', 'give me feedback',
+]
+
+def _keyword_is_idea(text: str) -> bool:
+    """Heuristic: returns True only when the message looks like an actual startup idea."""
+    t = text.lower().strip()
+    word_count = len(t.split())
+
+    # Short messages or pure conversational openers → never an idea
+    if word_count < 8:
+        return False
+    if any(t.startswith(opener) for opener in _CONVERSATIONAL_OPENERS):
+        return False
+
+    # Must contain at least 2 business/sector/problem signals
+    hits = sum(1 for sig in _IDEA_SIGNALS if sig in t)
+    return hits >= 2
+
+
 @api.post("/interact")
 async def interact_route(req: InteractRequest):
     last_user_msg = next((m.content for m in reversed(req.messages) if m.role == "user"), "")
@@ -538,30 +579,46 @@ async def interact_route(req: InteractRequest):
     use_llm = GROQ_CLIENT and groq_key and groq_key != "dummy"
 
     already_analyzed = req.context.get("tas_score") is not None and req.context.get("tas_score") != 0
+
+    # Step 1: keyword gate — fast hard filter (runs regardless of LLM availability)
+    keyword_says_idea = _keyword_is_idea(last_user_msg)
     is_idea = False
 
-    if not already_analyzed and use_llm:
-        route_prompt = dedent(f"""
-            Determine if the following message from a founder is proposing a specific startup business idea, or if it is just casual chatter/greeting/general question.
-            Message: "{last_user_msg}"
-            Respond strictly in valid JSON format: {{"is_idea": true, "reason": "..."}} or {{"is_idea": false, "reason": "..."}}
-        """).strip()
-        try:
-            resp = GROQ_CLIENT.chat.completions.create(
-                messages=[{"role": "user", "content": route_prompt}],
-                model="llama-3.1-8b-instant", temperature=0.0, max_tokens=30
-            )
-            raw = resp.choices[0].message.content.strip()
-            import re
-            m = re.search(r'\{.*\}', raw, re.DOTALL)
-            if m:
-                 js = json.loads(m.group(0))
-                 is_idea = js.get("is_idea", False)
-            elif "true" in raw.lower(): is_idea = True
-        except Exception:
-            is_idea = len(last_user_msg.split()) > 7
-    elif not already_analyzed and not use_llm:
-         is_idea = len(last_user_msg.split()) > 7
+    if not already_analyzed:
+        if not keyword_says_idea:
+            # Short-circuit: conversational message, no need to ask LLM
+            is_idea = False
+        elif use_llm:
+            # Step 2: LLM confirmation only when keywords suggest it might be an idea
+            route_prompt = dedent(f"""
+                A founder sent this message to a startup market analysis tool.
+                Does this message describe a specific startup business idea (with product, market, or sector details)?
+                Or is it a meta-request, greeting, or vague statement about wanting to share an idea later?
+
+                Message: "{last_user_msg}"
+
+                EXAMPLES of NOT an idea: "i have an idea", "i want to share something", "can you help me", "hello"
+                EXAMPLES of IS an idea: "an app for Egyptian SMEs to get invoices paid faster", "a SaaS platform for logistics companies in Dubai"
+
+                Respond ONLY with valid JSON: {{"is_idea": true}} or {{"is_idea": false}}
+            """).strip()
+            try:
+                resp = GROQ_CLIENT.chat.completions.create(
+                    messages=[{"role": "user", "content": route_prompt}],
+                    model="llama-3.1-8b-instant", temperature=0.0, max_tokens=20
+                )
+                raw = resp.choices[0].message.content.strip()
+                import re as _re
+                m = _re.search(r'\{[^}]+\}', raw)
+                if m:
+                    is_idea = json.loads(m.group(0)).get("is_idea", False)
+                else:
+                    is_idea = "true" in raw.lower()
+            except Exception:
+                is_idea = True  # keywords already said yes, trust that on LLM failure
+        else:
+            # No LLM, keywords said yes → treat as idea
+            is_idea = True
 
     if is_idea and not already_analyzed:
         try:
