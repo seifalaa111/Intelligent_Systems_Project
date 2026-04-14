@@ -156,6 +156,8 @@ def agent_a0_evaluate_idea(idea_text, sector, country):
                 Idea: "{idea_text}"
                 Sector: {sector} | Country: {country}
 
+                CRITICAL INSTRUCTION: If the idea text is just a simple greeting (e.g. 'hello'), conversational chatter, unstructured gibberish, or fundamentally NOT a startup business idea, you MUST score every dimension exactly 0 and provide the reason 'Not a valid startup idea.' Do not hallucinate scores for non-ideas.
+
                 Score these 5 dimensions and provide a one-sentence justification for each:
                 1. problem_clarity — Is there a clear, specific problem being solved?
                 2. solution_fit — Does the proposed solution address the problem?
@@ -372,74 +374,131 @@ class ChatRequest(BaseModel):
     context: Dict[str, Any]
     messages: List[ChatMessage]
 
+def process_idea(idea_text: str, default_sector: str = "fintech", default_country: str = "EG"):
+    parsed_sec, parsed_ctry, sec_found, ctry_found = agent_a1_parse(idea_text)
+    sector_key = parsed_sec if sec_found else default_sector
+    country_code = parsed_ctry if ctry_found else default_country
+
+    report = run_inference(sector_key, country_code)
+    idea_eval = agent_a0_evaluate_idea(idea_text, sector_key, country_code)
+
+    tas_normalized = report["tas"]
+    idea_normalized = idea_eval["idea_score"] / 100.0
+    svs = int((tas_normalized * 0.50 + idea_normalized * 0.50) * 100)
+
+    # Adjusted Thresholds
+    high_market = report["tas"] >= 0.68
+    high_idea = idea_eval["idea_score"] >= 70
+
+    if high_market and high_idea:
+        quadrant = "GO — Launch"
+    elif high_market and not high_idea:
+        quadrant = "Wrong Idea — Right Market"
+    elif not high_market and high_idea:
+        quadrant = "Wait or Pivot Market"
+    else:
+        quadrant = "STOP — Rethink Everything"
+
+    return {
+        "success": True, "sector": sector_key, "country": country_code,
+        "regime": report["regime"], "tas_score": int(report["tas"] * 100),
+        "confidence": int(report["confidence"] * 100), "sarima_trend": report["sarima_trend"],
+        "drift_flag": report["drift_flag"], "action_fired": report["action_fired"],
+        "report": report, # keeping raw text in 'report.finding' etc.
+        "shap_weights": {k: float(v) for k, v in report["shap_dict"].items()},
+        "pca_coords": report["x_pca"].tolist(),
+        "idea_score": idea_eval["idea_score"], "idea_dimensions": idea_eval["scores"],
+        "idea_reasons": idea_eval["reasons"], "svs": svs, "quadrant": quadrant,
+    }
+
 @api.post("/analyze")
 async def analyze_idea(req: IdeaRequest):
     if not MODELS_LOADED:
         raise HTTPException(status_code=500, detail="Models failed to load.")
-
-    if req.idea and len(req.idea.strip()) > 5:
-        parsed_sec, parsed_ctry, sec_found, ctry_found = agent_a1_parse(req.idea)
-        sector_key = parsed_sec if sec_found else SECTOR_LABEL_MAP.get(req.sector, "fintech")
-        country_code = parsed_ctry if ctry_found else req.country.split(" — ")[0]
-    else:
-        sector_key = SECTOR_LABEL_MAP.get(req.sector, "fintech")
-        country_code = req.country.split(" — ")[0]
-
+    sector_key = SECTOR_LABEL_MAP.get(req.sector, "fintech")
+    country_code = req.country.split(" — ")[0]
+    
     try:
-        report = run_inference(sector_key, country_code)
-
-        # Agent A0: Idea Evaluation
-        idea_eval = agent_a0_evaluate_idea(req.idea, sector_key, country_code)
-
-        # SVS: Startup Viability Score (market + idea combined)
-        tas_normalized = report["tas"]  # already 0-1
-        idea_normalized = idea_eval["idea_score"] / 100.0
-        svs = int((tas_normalized * 0.50 + idea_normalized * 0.50) * 100)
-
-        # Quadrant verdict
-        high_market = report["tas"] >= 0.60
-        high_idea = idea_eval["idea_score"] >= 60
-        if high_market and high_idea:
-            quadrant = "GO — Launch"
-        elif high_market and not high_idea:
-            quadrant = "Wrong Idea — Right Market"
-        elif not high_market and high_idea:
-            quadrant = "Wait or Pivot Market"
+        if req.idea and len(req.idea.strip()) > 5:
+            res = process_idea(req.idea, sector_key, country_code)
+            res["report"] = { "finding": res["report"]["finding"], "implication": res["report"]["implication"], "action": res["report"]["action"]}
+            return res
         else:
-            quadrant = "STOP — Rethink Everything"
-
-        return {
-            "success": True,
-            "sector": sector_key,
-            "country": country_code,
-            "regime": report["regime"],
-            "tas_score": int(report["tas"] * 100),
-            "confidence": int(report["confidence"] * 100),
-            "sarima_trend": report["sarima_trend"],
-            "drift_flag": report["drift_flag"],
-            "action_fired": report["action_fired"],
-            "report": {
-                "finding": report["finding"],
-                "implication": report["implication"],
-                "action": report["action"],
-            },
-            "shap_weights": {k: float(v) for k, v in report["shap_dict"].items()},
-            "pca_coords": report["x_pca"].tolist(),
-            "idea_score": idea_eval["idea_score"],
-            "idea_dimensions": idea_eval["scores"],
-            "idea_reasons": idea_eval["reasons"],
-            "svs": svs,
-            "quadrant": quadrant,
-        }
+            raise HTTPException(status_code=400, detail="Idea too short")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+def _chat_fallback(req: ChatRequest):
+    """Generate a context-aware fallback reply when no LLM is available."""
+    sector = req.context.get("sector", "your sector")
+    country = req.context.get("country", "your market")
+    regime = req.context.get("regime", "UNKNOWN").replace("_", " ").title()
+    tas = req.context.get("tas_score", 0)
+    idea = req.context.get("idea", "")
+
+    last_msg = ""
+    for m in reversed(req.messages):
+        if m.role == "user":
+            last_msg = m.content.lower()
+            break
+
+    # Pattern-matched responses based on common follow-up questions
+    if any(w in last_msg for w in ["pivot", "change", "switch", "different idea", "alternative"]):
+        return (f"Given the {regime} conditions in {country}, pivoting within {sector} could work if you target "
+                f"an underserved niche. Before pivoting, validate that the new direction solves a problem "
+                f"people are already paying to fix. Run 10 customer interviews in the new vertical first.")
+
+    if any(w in last_msg for w in ["compet", "rival", "player", "who else", "crowded"]):
+        return (f"The {sector} space in {country} has both local startups and international players. "
+                f"Your differentiation needs to be crystal clear — either move faster, go deeper into a niche, "
+                f"or solve a local pain point that global competitors can't touch. What's your unfair advantage?")
+
+    if any(w in last_msg for w in ["fund", "invest", "money", "raise", "capital", "angel", "vc"]):
+        if tas >= 70:
+            return (f"With a TAS of {tas}/100 in a {regime}, you're in a strong position to raise. "
+                    f"Target regional accelerators (Flat6Labs, 500 Global MENA) or angel networks first. "
+                    f"Build a 3-month runway plan and show traction before approaching VCs.")
+        else:
+            return (f"With a TAS of {tas}/100, fundraising will be harder right now. Focus on bootstrapping "
+                    f"or revenue-first models. Build a working prototype and get 10 paying customers — "
+                    f"that's more convincing to MENA investors than any pitch deck.")
+
+    if any(w in last_msg for w in ["risk", "danger", "threat", "fail", "worry", "concern"]):
+        return (f"Key risks in {sector}/{country}: 1) Regulatory shifts can change overnight in this region. "
+                f"2) Customer acquisition cost in {regime} conditions tends to be high. "
+                f"3) Currency volatility can eat margins. Mitigate by keeping burn low and validating demand before scaling.")
+
+    if any(w in last_msg for w in ["next", "start", "begin", "first step", "how do i", "what should"]):
+        if tas >= 70:
+            return (f"Your market signals are strong. Next steps: 1) Build an MVP in 4-6 weeks — not a full product. "
+                    f"2) Get 20 target users to test it. 3) Apply to a MENA accelerator this cycle. "
+                    f"Speed matters more than perfection in a {regime}.")
+        else:
+            return (f"The market conditions aren't ideal yet. Next steps: 1) Run 20 customer discovery interviews "
+                    f"to validate real demand. 2) Build a landing page and measure interest. "
+                    f"3) Don't write code until you have evidence people will pay.")
+
+    if any(w in last_msg for w in ["go-to-market", "gtm", "launch", "marketing", "customer", "acquire", "growth"]):
+        return (f"For {sector} in {country}, start hyper-local. Pick one neighborhood, one vertical, one persona. "
+                f"Dominate that before expanding. Word-of-mouth and WhatsApp groups beat paid ads in MENA every time. "
+                f"What specific customer segment are you targeting first?")
+
+    # Default conversational response
+    return (f"I'm MIDAN's offline advisor. Your idea is in the {sector} space targeting {country}, "
+            f"currently a {regime} with {tas}/100 opportunity score. "
+            f"Ask me about competitive risks, fundraising strategy, go-to-market, pivot options, "
+            f"or next steps — I can help with all of these based on your market data.")
+
 
 @api.post("/chat")
 async def chat_interaction(req: ChatRequest):
     groq_key = os.environ.get("GROQ_API_KEY", "")
-    if not GROQ_CLIENT or not groq_key or groq_key == "dummy":
-        raise HTTPException(status_code=501, detail="Groq API key not configured")
-        
+    use_llm = GROQ_CLIENT and groq_key and groq_key != "dummy"
+
+    if not use_llm:
+        reply = _chat_fallback(req)
+        return {"success": True, "reply": reply}
+
     system_prompt = dedent(f"""
         You are the MIDAN AI Startup Advisor, a brutally honest but extremely helpful VC partner.
         You are currently advising a founder based on the following computed market context:
@@ -447,26 +506,76 @@ async def chat_interaction(req: ChatRequest):
         - Country: {req.context.get("country", "Unknown")}
         - Regime: {req.context.get("regime", "Unknown")} (Score: {req.context.get("tas_score", 0)}/100)
         - AI Original Read: {req.context.get("implication", "")}
-        
+
         Keep your responses concise, sharp, and consultative. Speak directly to the founder. Ask probing questions if needed. Under 4 sentences.
     """).strip()
-    
-    # Construct message array
+
     groq_msgs = [{"role": "system", "content": system_prompt}]
     for m in req.messages:
         groq_msgs.append({"role": m.role, "content": m.content})
-        
+
     try:
         resp = GROQ_CLIENT.chat.completions.create(
             messages=groq_msgs,
-            model="llama-3.1-8b-instant", 
-            temperature=0.5, 
+            model="llama-3.1-8b-instant",
+            temperature=0.5,
             max_tokens=250
         )
         reply = resp.choices[0].message.content.strip()
         return {"success": True, "reply": reply}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        reply = _chat_fallback(req)
+        return {"success": True, "reply": reply}
+
+class InteractRequest(BaseModel):
+    context: Dict[str, Any]
+    messages: List[ChatMessage]
+
+@api.post("/interact")
+async def interact_route(req: InteractRequest):
+    last_user_msg = next((m.content for m in reversed(req.messages) if m.role == "user"), "")
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    use_llm = GROQ_CLIENT and groq_key and groq_key != "dummy"
+
+    already_analyzed = req.context.get("tas_score") is not None and req.context.get("tas_score") != 0
+    is_idea = False
+
+    if not already_analyzed and use_llm:
+        route_prompt = dedent(f"""
+            Determine if the following message from a founder is proposing a specific startup business idea, or if it is just casual chatter/greeting/general question.
+            Message: "{last_user_msg}"
+            Respond strictly in valid JSON format: {{"is_idea": true, "reason": "..."}} or {{"is_idea": false, "reason": "..."}}
+        """).strip()
+        try:
+            resp = GROQ_CLIENT.chat.completions.create(
+                messages=[{"role": "user", "content": route_prompt}],
+                model="llama-3.1-8b-instant", temperature=0.0, max_tokens=30
+            )
+            raw = resp.choices[0].message.content.strip()
+            import re
+            m = re.search(r'\{.*\}', raw, re.DOTALL)
+            if m:
+                 js = json.loads(m.group(0))
+                 is_idea = js.get("is_idea", False)
+            elif "true" in raw.lower(): is_idea = True
+        except Exception:
+            is_idea = len(last_user_msg.split()) > 7
+    elif not already_analyzed and not use_llm:
+         is_idea = len(last_user_msg.split()) > 7
+
+    if is_idea and not already_analyzed:
+        try:
+            analysis_data = process_idea(last_user_msg)
+            analysis_data["report"] = { "finding": analysis_data["report"]["finding"], "implication": analysis_data["report"]["implication"], "action": analysis_data["report"]["action"]}
+            ai_reply = f"I've analyzed your startup idea against live market data for **{analysis_data['sector'].title()}** in **{analysis_data['country']}**. Here is what the numbers say. Read through the analysis card below, and let me know if you have any follow-up questions."
+            return {"success": True, "type": "analysis", "reply": ai_reply, "data": analysis_data}
+        except Exception as e:
+            return {"success": False, "type": "chat", "reply": f"Sorry, there was an error processing your idea: {str(e)}"}
+    else:
+        # Standard chat using Groq (or fallback) based on context
+        chat_req = ChatRequest(context=req.context, messages=req.messages)
+        chat_res = await chat_interaction(chat_req)
+        return {"success": True, "type": "chat", "reply": chat_res.get("reply", ""), "data": None}
 
 @api.get("/health")
 async def health():

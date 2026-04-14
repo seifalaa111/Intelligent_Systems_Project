@@ -121,6 +121,25 @@ body {
 #app { display: none; height: 100vh; }
 #app.show { display: flex; }
 
+#app.landing-mode .topbar {
+  opacity: 0; pointer-events: none;
+}
+#app.landing-mode .messages {
+  min-height: 80vh; 
+  justify-content: center;
+}
+#app.landing-mode .input-area {
+  max-width: 600px;
+  position: absolute;
+  bottom: 30vh;
+  left: 50%;
+  transform: translateX(-50%);
+}
+#app:not(.landing-mode) .welcome {
+  display: none;
+}
+
+
 /* ── SIDEBAR ── */
 .sidebar {
   width: var(--sidebar-w); height: 100vh;
@@ -523,6 +542,8 @@ body {
 .input-area {
   padding: 0 24px 24px;
   max-width: 780px; margin: 0 auto; width: 100%;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 10;
 }
 .input-container {
   background: var(--surface);
@@ -812,7 +833,9 @@ function enterLanding() {
   setTimeout(() => {
     document.getElementById('intro').style.display = 'none';
     document.getElementById('app').classList.add('show');
+    document.getElementById('app').classList.add('landing-mode');
     document.getElementById('chat-input').focus();
+    newChat(); // Initialize first chat
   }, 800);
 }
 
@@ -821,22 +844,60 @@ document.getElementById('skip').addEventListener('click', enterLanding);
 document.body.style.overflow = 'hidden';
 setTimeout(startSeq, 500);
 
-/* ============ SIDEBAR ============ */
+/* ============ SIDEBAR / STATE INIT ============ */
 function toggleSidebar() {
   document.getElementById('sidebar').classList.toggle('open');
   document.getElementById('sidebar-overlay').classList.toggle('show');
 }
 document.getElementById('sidebar-overlay').addEventListener('click', toggleSidebar);
 
+function saveCurrentConversation() {
+  if (!currentConvId || chatHistory.length === 0) return;
+  const idx = conversations.findIndex(c => c.id === currentConvId);
+  const title = document.getElementById('topbar-title').textContent;
+  const cObj = { 
+    id: currentConvId, title, 
+    history: [...chatHistory], context: {...internalContext}, 
+    dom: document.getElementById('messages').innerHTML,
+    analysisComplete
+  };
+  if (idx >= 0) conversations[idx] = cObj;
+  else conversations.push(cObj);
+}
+
+function switchConversation(id) {
+  if (currentConvId === id) return;
+  saveCurrentConversation();
+  
+  const target = conversations.find(c => c.id === id);
+  if (!target) return;
+  
+  chatHistory = [...target.history];
+  internalContext = {...target.context};
+  currentConvId = target.id;
+  analysisComplete = target.analysisComplete;
+  
+  document.getElementById('topbar-title').textContent = target.title;
+  document.getElementById('messages').innerHTML = target.dom;
+  document.getElementById('app').classList.remove('landing-mode');
+  
+  document.querySelectorAll('.conv-item').forEach(el => el.classList.remove('active'));
+  const el = document.getElementById('conv-' + id);
+  if (el) el.classList.add('active');
+  
+  scrollToBottom();
+  if(window.innerWidth <= 768) toggleSidebar();
+}
+
 function newChat() {
+  saveCurrentConversation();
+  
   chatHistory = [];
   internalContext = {};
   analysisComplete = false;
-  currentConvId++;
+  currentConvId = Date.now();
 
   const msgs = document.getElementById('messages');
-  msgs.innerHTML = '';
-  // Re-add welcome
   msgs.innerHTML = `
     <div class="welcome" id="welcome-state">
       <div class="welcome-icon">
@@ -865,20 +926,25 @@ function newChat() {
     </div>`;
 
   document.getElementById('topbar-title').textContent = 'New Analysis';
-  // Close mobile sidebar
+  document.getElementById('app').classList.add('landing-mode');
+  
+  document.querySelectorAll('.conv-item').forEach(el => el.classList.remove('active'));
+  
   document.getElementById('sidebar').classList.remove('open');
   document.getElementById('sidebar-overlay').classList.remove('show');
   document.getElementById('chat-input').focus();
 }
 
-function addConversationToSidebar(title) {
+function addConversationToSidebar(id, title) {
   const container = document.getElementById('sidebar-conversations');
-  // Deactivate all
-  container.querySelectorAll('.conv-item').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.conv-item').forEach(el => el.classList.remove('active'));
+  
   const item = document.createElement('div');
   item.className = 'conv-item active';
+  item.id = 'conv-' + id;
   item.textContent = title;
-  // Insert after the label
+  item.onclick = () => switchConversation(id);
+  
   const label = container.querySelector('.sidebar-section-label');
   if (label && label.nextSibling) {
     container.insertBefore(item, label.nextSibling);
@@ -886,6 +952,7 @@ function addConversationToSidebar(title) {
     container.appendChild(item);
   }
 }
+
 
 /* ============ CHAT FUNCTIONS ============ */
 function getTimeStr() {
@@ -1144,82 +1211,59 @@ async function handleSend() {
   input.value = '';
   input.style.height = 'auto';
   document.getElementById('send-btn').disabled = true;
+  
+  document.getElementById('app').classList.remove('landing-mode');
 
   addUserMessage(text);
+  chatHistory.push({ role: 'user', content: text });
 
-  if (!analysisComplete) {
-    // First message: run analysis
-    addTypingIndicator();
-    document.getElementById('topbar-title').textContent = text.length > 40 ? text.substring(0, 40) + '...' : text;
-    addConversationToSidebar(text.length > 35 ? text.substring(0, 35) + '...' : text);
-
-    let data = null;
-    try {
-      const response = await fetch(API_BASE + '/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idea: text, sector: 'Fintech', country: 'EG \u2014 Egypt' })
-      });
-      if (response.ok) data = await response.json();
-    } catch (err) {
-      console.warn('API unavailable, using mock:', err);
-    }
-
-    if (!data) data = getMockAnalysis(text);
-
-    removeTypingIndicator();
-
-    // Build analysis response
-    const summaryText = `<p>I've analyzed your startup idea against live market signals. Here's what the data says:</p>`;
-    const cardHtml = buildAnalysisCard(data);
-    const followUp = `<p style="margin-top:16px;color:var(--text-3)">Ask me anything \u2014 pivot strategies, competitive risks, go-to-market, fundraising timing, or refining your idea.</p>`;
-
-    addAIMessage(summaryText + cardHtml + followUp);
-
-    // Save context for follow-up chat
-    internalContext = {
-      sector: data.sector, country: data.country,
-      regime: data.regime, tas_score: data.tas_score,
-      implication: data.report.implication, idea: text
-    };
-    chatHistory.push({ role: 'assistant', content: `Analysis complete for ${data.sector} in ${data.country}. TAS: ${data.tas_score}/100. Regime: ${data.regime}. ${data.report.implication}` });
-    analysisComplete = true;
-
-  } else {
-    // Follow-up: use /chat endpoint
-    chatHistory.push({ role: 'user', content: text });
-    addTypingIndicator();
-
-    let reply = null;
-    try {
-      const response = await fetch(API_BASE + '/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ context: internalContext, messages: chatHistory })
-      });
-      if (response.ok) {
-        const respData = await response.json();
-        reply = respData.reply;
-      }
-    } catch (err) {
-      console.warn('Chat API error:', err);
-    }
-
-    removeTypingIndicator();
-
-    if (!reply) {
-      reply = "I'm currently unable to connect to the AI advisor. Please make sure the API server is running at " + API_BASE + " and try again.";
-    }
-
-    // Simple markdown-like formatting
-    const formatted = reply
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\n\n/g, '</p><p>')
-      .replace(/\n/g, '<br>');
-
-    addAIMessage(`<p>${formatted}</p>`);
-    chatHistory.push({ role: 'assistant', content: reply });
+  if (chatHistory.length === 1) {
+    const title = text.length > 35 ? text.substring(0, 35) + '...' : text;
+    document.getElementById('topbar-title').textContent = title;
+    addConversationToSidebar(currentConvId, title);
   }
+
+  addTypingIndicator();
+
+  let data = null;
+  let replyHtml = '';
+
+  try {
+    const response = await fetch(API_BASE + '/interact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ context: internalContext, messages: chatHistory })
+    });
+    const respData = await response.json();
+    
+    if (respData.type === 'analysis' && respData.data) {
+      data = respData.data;
+      internalContext = {
+        sector: data.sector, country: data.country,
+        regime: data.regime, tas_score: data.tas_score,
+        implication: data.report.implication, idea: text
+      };
+      
+      const summaryText = `<p>${respData.reply}</p>`;
+      const cardHtml = buildAnalysisCard(data);
+      replyHtml = summaryText + cardHtml;
+      
+      chatHistory.push({ role: 'assistant', content: `[ANALYSIS CARDS TRIGGERED]\n\n${respData.reply}` });
+      analysisComplete = true;
+    } else {
+      replyHtml = `<p>${(respData.reply || '').replace(/\\*\\*(.+?)\\*\\*/g, '<strong>$1</strong>').replace(/\\n/g, '<br>')}</p>`;
+      chatHistory.push({ role: 'assistant', content: respData.reply || '' });
+    }
+  } catch (err) {
+    console.warn('API error:', err);
+    replyHtml = "<p>Connection error. Please ensure the MIDAN local server is running.</p>";
+    chatHistory.push({ role: 'assistant', content: "Connection error." });
+  }
+
+  removeTypingIndicator();
+  addAIMessage(replyHtml);
+  
+  saveCurrentConversation();
 
   isProcessing = false;
   document.getElementById('send-btn').disabled = false;
