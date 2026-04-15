@@ -316,6 +316,27 @@ body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:var
 @keyframes pulseRing{0%{box-shadow:0 0 0 0 rgba(200,255,87,.2);}70%{box-shadow:0 0 0 7px rgba(200,255,87,0);}100%{box-shadow:0 0 0 0 rgba(200,255,87,0);}}
 .pr{animation:pulseRing 1.5s ease infinite;}
 
+/* ── CONTEXT GATHER BAR ── */
+#c-gather-bar{height:38px;padding:0 20px;display:none;align-items:center;gap:16px;border-bottom:1px solid var(--br);background:rgba(200,255,87,.018);flex-shrink:0;}
+.cgb-label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--t4);flex-shrink:0;}
+.cgb-steps{display:flex;align-items:center;gap:6px;}
+.cgb-step{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--t4);transition:color .35s;}
+.cgb-step.done{color:var(--ac);}
+.cgb-dot{width:14px;height:14px;border-radius:50%;border:1.5px solid currentColor;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;transition:all .35s;}
+.cgb-step.done .cgb-dot{background:var(--ac);border-color:var(--ac);color:#000;}
+.cgb-step.done .cgb-dot::after{content:'✓';}
+.cgb-sep{width:18px;height:1px;background:var(--br2);}
+.cgb-hint{font-size:11px;color:var(--t4);margin-left:auto;font-style:italic;}
+
+/* ── WELCOME CHECKLIST ── */
+.c-welcome-checklist{margin-top:18px;display:flex;flex-direction:column;gap:9px;text-align:left;max-width:400px;}
+.c-wc-item{display:flex;align-items:flex-start;gap:10px;font-size:13px;color:var(--t3);line-height:1.5;}
+.c-wc-dot{width:7px;height:7px;border-radius:50%;background:var(--ac);flex-shrink:0;margin-top:5px;}
+
+/* ── CLARIFY MESSAGE ── */
+.c-clarify-badge{display:inline-flex;align-items:center;gap:5px;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--t4);margin-bottom:6px;}
+.c-clarify-dot{width:5px;height:5px;border-radius:50%;background:var(--warn);animation:pulse 2s ease infinite;}
+
 /* Responsive */
 @media(max-width:1024px){
   .l-out-grid{grid-template-columns:1fr 1fr;}
@@ -520,6 +541,19 @@ body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:var
       </div>
     </div>
 
+    <!-- Context gathering progress bar — visible only during clarification flow -->
+    <div id="c-gather-bar">
+      <span class="cgb-label">Gathering context</span>
+      <div class="cgb-steps">
+        <div class="cgb-step" id="cgb-problem"><div class="cgb-dot"></div><span>Problem</span></div>
+        <div class="cgb-sep"></div>
+        <div class="cgb-step" id="cgb-market"><div class="cgb-dot"></div><span>Market</span></div>
+        <div class="cgb-sep"></div>
+        <div class="cgb-step" id="cgb-solution"><div class="cgb-dot"></div><span>Solution</span></div>
+      </div>
+      <span class="cgb-hint" id="cgb-hint">Need all three to unlock analysis</span>
+    </div>
+
     <div class="c-msgs-wrap" id="c-msgs-wrap">
       <div class="c-msgs" id="c-msgs"></div>
     </div>
@@ -640,13 +674,26 @@ function initChat(){
 
 function newChat(){
   saveCurrentConversation();
-  chatHistory = []; internalContext = {}; analysisComplete = false;
-  currentConvId = Date.now();
-  document.getElementById('c-msgs').innerHTML = '';
-  document.getElementById('c-topbar-title').textContent = 'New Analysis';
+  chatHistory=[]; internalContext={}; analysisComplete=false;
+  currentConvId=Date.now();
+  document.getElementById('c-msgs').innerHTML='';
+  document.getElementById('c-topbar-title').textContent='New Analysis';
   document.querySelectorAll('.c-conv-item').forEach(e=>e.classList.remove('active'));
-  // Auto-greeting from MIDAN
-  setTimeout(()=>addAIMessage(`<p>Hey — I'm MIDAN, your startup market intelligence advisor.</p><p>Describe your startup idea below — what you want to build and where — and I'll run 8 AI agents on it: market regime classification, 90-day forecast, idea evaluation, and a full action plan.</p><p style="color:var(--t4);font-size:13px">Or pick one of the examples below to see what a full analysis looks like.</p>${buildWelcomeSuggestions()}`, false), 100);
+  clearGatherBar();
+  // Premium welcome — explicitly shows what MIDAN needs
+  setTimeout(()=>addAIMessage(`
+    <div class="c-welcome">
+      <div class="c-welcome-icon"><svg viewBox="0 0 14 14" fill="none"><polygon points="7,1 13,4 13,10 7,13 1,10 1,4" fill="#000"/></svg></div>
+      <h1>MIDAN — Market Intelligence</h1>
+      <p>Describe your startup idea. For a full analysis, include:</p>
+      <div class="c-welcome-checklist">
+        <div class="c-wc-item"><div class="c-wc-dot"></div><span><strong>The problem</strong> — what pain are you solving and for whom?</span></div>
+        <div class="c-wc-item"><div class="c-wc-dot"></div><span><strong>The market</strong> — geography and target customer</span></div>
+        <div class="c-wc-item"><div class="c-wc-dot"></div><span><strong>Your approach</strong> — app, platform, SaaS, service?</span></div>
+      </div>
+    </div>
+    ${buildWelcomeSuggestions()}
+  `,false),100);
   if(window.innerWidth<=768){document.getElementById('c-sidebar').classList.remove('open');document.getElementById('c-overlay').classList.remove('show');}
   document.getElementById('c-input').focus();
 }
@@ -802,31 +849,120 @@ function buildCard(d){
 }
 
 /* ═══════════════════════════════════════
-   OFFLINE HELPERS
+   OFFLINE HELPERS — mirrors backend intent gates exactly
 ═══════════════════════════════════════ */
-const _SIG=['app','platform','startup','business','product','service','tool','marketplace','saas','software','solution','build','create','launch','develop','connect','automate','solve','simplify','fintech','healthtech','edtech','ecommerce','logistics','agritech','payment','delivery','booking','learning','insurance','clinic','invoice','subscription','b2b','b2c','egypt','cairo','dubai','saudi','nigeria','kenya','mena','problem','pain','gap','market','customer'];
-const _OPENERS=['hi','hello','hey','yo','thanks','thank you','ok','okay','sure','got it','cool','what do you','who are','how does','tell me','explain','help me','i have an idea','i want to','i would like','i am thinking','what do you think','give me feedback'];
-function looksLikeIdea(text){const t=text.toLowerCase().trim();if(t.split(/\s+/).length<8)return false;if(_OPENERS.some(o=>t.startsWith(o)))return false;return _SIG.filter(s=>t.includes(s)).length>=2;}
 
-function mockAnalysis(idea){
-  const v=idea.toLowerCase();
+// Identical signal lists to Python backend _extract_components()
+const _PROB_SIG=['problem','pain','issue','struggle','challenge','gap','need','lack',
+  'inefficient','inefficiency','expensive','slow','difficult','hard to','no way to',
+  'broken','frustrat','wast','manual process','time-consuming','complex','unreliable',
+  'inaccessible','underserved','unbanked','overpriced','delayed','stuck'];
+const _SOL_SIG=['app','platform','tool','service','system','software','marketplace',
+  'saas','api','dashboard','website','bot','chatbot','solution','product',
+  'connect','automate','enable','simplify','streamline','digitize',
+  'ai-powered','using ai','mobile app','web app','mobile application'];
+const _GEO_SIG=['egypt','cairo','egyptian','saudi','riyadh','jeddah','ksa',
+  'uae','dubai','abu dhabi','emirates','morocco','casablanca','nigeria','lagos',
+  'kenya','nairobi','usa','america','uk','london','mena','africa','middle east','gulf','global'];
+const _CUST_SIG=['sme','smes','small business','enterprise','b2b','b2c','d2c',
+  'consumer','user','customer','patient','student','farmer','freelancer',
+  'driver','merchant','retailer','hospital','clinic','school','university',
+  'individual','family','company'];
+const _VAGUE_STARTS=['i have an idea','i have a startup','i want to share','i want to tell',
+  'i would like to','i am thinking','i am building','i am working','i am creating',
+  'i am developing','what do you think','give me feedback','give me your thoughts',
+  'can you analyze','i need help with','i have something','i have a concept',
+  'let me tell you','so i was thinking','i was thinking','been working on',
+  'working on something','building something','have an idea','had an idea',
+  'i want to build','i want to create','i want to start'];
+
+function extractComponents(text, prevState){
+  const t=text.toLowerCase();
+  const wc=t.split(/\s+/).length;
+  const prev=prevState||{};
+  const has_problem=prev.has_problem||_PROB_SIG.some(s=>t.includes(s));
+  const has_solution=prev.has_solution||_SOL_SIG.some(s=>t.includes(s));
+  const has_geo=_GEO_SIG.some(g=>t.includes(g));
+  const has_cust=_CUST_SIG.some(c=>t.includes(c));
+  const has_market=prev.has_market||(has_geo||has_cust);
+  const is_substantial=wc>=12;
+  const comps={has_problem,has_solution,has_market,is_substantial,word_count:wc};
+  const missing=['problem','solution','market'].filter(k=>!comps['has_'+k]);
+  return {comps,missing};
+}
+
+function isVagueStarter(text){
+  const t=text.toLowerCase().trim();
+  const wc=t.split(/\s+/).length;
+  return wc<=20&&_VAGUE_STARTS.some(v=>t.startsWith(v)||t===v);
+}
+
+function offlineClarify(missing,count,comps,prevState){
+  const prev=prevState||{};
+  const newly=[];
+  if(comps.has_problem&&!prev.has_problem)newly.push('the problem');
+  if(comps.has_market&&!prev.has_market)newly.push('the market');
+  if(comps.has_solution&&!prev.has_solution)newly.push('the approach');
+  const ack=newly.length?`Got ${newly.join(' and ')}. `:'';
+
+  if(missing.includes('problem')){
+    return count===0
+      ?`${ack}What specific problem are you solving, and for whom? Tell me who suffers from this today and what they currently do instead.`
+      :`${ack}I still need the core pain point — who specifically struggles with this, and what does it cost them?`;
+  }
+  if(missing.includes('market')){
+    return `${ack}Which market are you targeting? Geography (Egypt, UAE, Saudi, etc.) and customer type — consumers, SMEs, hospitals, schools, enterprises?`;
+  }
+  if(missing.includes('solution')){
+    return `${ack}What's your approach? App, platform, marketplace, SaaS, service? Even a rough mechanism helps me calibrate the analysis.`;
+  }
+  if(!comps.is_substantial){
+    return 'I can see the shape of the idea — expand a bit. Describe the problem, who it affects, and how your solution works. Two or three sentences is enough.';
+  }
+  return 'Tell me more — the problem, market, and your approach.';
+}
+
+function mockAnalysis(ideaText){
+  const v=ideaText.toLowerCase();
   const isH=v.includes('health')||v.includes('clinic')||v.includes('doctor')||v.includes('medical');
   const isE=v.includes('edtech')||v.includes('tutor')||v.includes('education')||v.includes('learning')||v.includes('school');
   const isEC=v.includes('ecommerce')||v.includes('delivery')||v.includes('shop')||v.includes('retail');
-  const isSA=v.includes('saas')||v.includes('software')||v.includes('platform')&&!isH&&!isE&&!isEC;
-  let sector='fintech',country='EG',tas=72,conf=81,regime='EMERGING_MARKET',trend=0.62;
-  if(isH){sector='healthtech';country='AE';tas=78;conf=85;regime='GROWTH_MARKET';}
+  const isSA=v.includes('saas')||v.includes('crm')||v.includes('software');
+  const isLog=v.includes('logistics')||v.includes('shipping')||v.includes('fleet');
+
+  // Detect country
+  let country='EG';
+  if(v.includes('dubai')||v.includes('uae')||v.includes('emirates')||v.includes('abu dhabi'))country='AE';
+  else if(v.includes('saudi')||v.includes('riyadh')||v.includes('jeddah'))country='SA';
+  else if(v.includes('nigeria')||v.includes('lagos'))country='NG';
+  else if(v.includes('kenya')||v.includes('nairobi'))country='KE';
+  else if(v.includes('morocco')||v.includes('casablanca'))country='MA';
+  else if(v.includes('uk')||v.includes('london'))country='GB';
+  else if(v.includes('usa')||v.includes('america'))country='US';
+
+  let sector='fintech',tas=72,conf=81,regime='EMERGING_MARKET',trend=0.62;
+  if(isH){sector='healthtech';tas=country==='AE'?78:70;conf=85;regime='GROWTH_MARKET';trend=0.67;}
   else if(isE){sector='edtech';tas=58;conf=72;regime='EMERGING_MARKET';trend=0.45;}
   else if(isEC){sector='ecommerce';tas=44;conf=67;regime='HIGH_FRICTION_MARKET';trend=0.32;}
-  else if(isSA){sector='saas';country='SA';tas=70;conf=78;regime='GROWTH_MARKET';}
-  const svs=Math.round(tas*.5+tas*.78*.5);
-  const q=svs>=65?'GO — Launch':tas>=55?'Wrong Idea — Right Market':'STOP — Rethink Everything';
-  return {sector,country,regime,tas_score:tas,confidence:conf,sarima_trend:trend,drift_flag:false,action_fired:tas>=70,
-    report:{finding:`Market classified as ${regime.replace(/_/g,' ')} with ${conf}% confidence. Key signals: velocity yoy, gdp growth, inflation.`,implication:`[Offline] The ${sector} space in ${country} shows ${tas>=60?'strong':'limited'} opportunity signals.`,action:tas>=70?'Move within the next 90 days. Apply to Flat6Labs or Cairo Angels this cycle.':'Validate demand before building. Run 20 direct customer interviews first.'},
+  else if(isSA){sector='saas';tas=country==='SA'||country==='AE'?70:62;conf=78;regime='GROWTH_MARKET';}
+  else if(isLog){sector='logistics';tas=52;conf=70;regime='HIGH_FRICTION_MARKET';trend=0.38;}
+
+  const idea_score=Math.round(tas*0.78);
+  const svs=Math.round(tas*0.5+idea_score*0.5);
+  const q=svs>=65&&idea_score>=60?'GO — Launch':tas>=68&&idea_score<60?'Wrong Idea — Right Market':tas<68&&idea_score>=60?'Wait or Pivot Market':'STOP — Rethink Everything';
+  return {
+    sector,country,regime,tas_score:tas,confidence:conf,sarima_trend:trend,drift_flag:false,action_fired:tas>=70,
+    report:{
+      finding:`Market classified as ${regime.replace(/_/g,' ')} with ${conf}% confidence. Key signals: velocity yoy, gdp growth, inflation.`,
+      implication:`[Offline mode] The ${sector} space in ${country} shows ${tas>=65?'strong':'cautious'} opportunity signals based on macro data.`,
+      action:tas>=70?'Move within the next 90 days. Apply to Flat6Labs or Cairo Angels this cycle.':'Validate demand before building. Run 20 direct customer interviews first.'
+    },
     shap_weights:{velocity_yoy:.82,gdp_growth:.58,inflation:.41,capital_concentration:.28,macro_friction:.14},
-    idea_score:Math.round(tas*.78),idea_dimensions:{problem_clarity:6,solution_fit:5,differentiation:4,business_model:7,scalability:6},
-    idea_reasons:{problem_clarity:'Problem scope detected in idea description',solution_fit:'Solution approach needs more specificity',differentiation:'Differentiation angle not yet clear',business_model:'Revenue model signals present',scalability:'Growth potential indicated'},
-    svs,quadrant:q};
+    idea_score,
+    idea_dimensions:{problem_clarity:6,solution_fit:5,differentiation:4,business_model:7,scalability:6},
+    idea_reasons:{problem_clarity:'Problem scope detected in idea description',solution_fit:'Solution approach needs more specificity',differentiation:'Differentiation angle needs work',business_model:'Revenue model signals detected',scalability:'Growth potential indicated'},
+    svs,quadrant:q
+  };
 }
 
 function offlineReply(text,ctx){
@@ -834,20 +970,54 @@ function offlineReply(text,ctx){
   const sec=ctx.sector||'',ctry=ctx.country||'',tas=ctx.tas_score||0;
   const regime=(ctx.regime||'').replace(/_/g,' ').replace(/MARKET/,'').trim().toLowerCase();
   if(!sec){
-    if(/hi|hello|hey|yo/.test(t)&&t.split(' ').length<=3)return "Hey — I'm MIDAN. Tell me what you're building and where, and I'll run a full market intelligence analysis on it.";
-    if(/what|who|how|explain/.test(t))return "MIDAN runs 8 AI agents on your startup idea: NLP parsing, SVM market classification, SARIMA forecasting, SHAP explainability, idea evaluation, and LLM synthesis. Share your idea to see it in action.";
-    return "Tell me your startup idea — what you're building and which market you're targeting. I'll handle the rest.";
+    if(/\b(hi|hello|hey|yo|sup)\b/.test(t)&&t.split(/\s+/).length<=4)
+      return "Hey — I'm MIDAN. Tell me what you're building and where. I'll run a full market analysis.";
+    if(/what.*do|who are|how does|explain/.test(t))
+      return "MIDAN runs 8 AI agents on your startup idea — SVM market classification, SARIMA forecasting, SHAP explainability, idea evaluation, and LLM synthesis. Share your idea to see it in action.";
+    return "Tell me your startup idea — what problem you're solving, who you're building for, and how your solution works. I'll handle the rest.";
   }
-  if(/pivot|switch|alternative|different/.test(t))return `Pivoting within ${sec}/${ctry} works only if you're solving a fundamentally different pain point — not just rebranding. The ${regime} market conditions stay regardless. Run 10 targeted customer interviews before committing to any new direction. What angle are you considering?`;
-  if(/compet|rival|exist|already|crowded/.test(t))return `The ${sec} space in ${ctry} has local operators and global entrants — your TAS of ${tas}/100 already prices that in. Your edge has to be local: regulatory navigation, language, trust, or workflow specificity. What's your unfair distribution advantage?`;
-  if(/fund|invest|raise|capital|vc|angel|accelerat/.test(t))return tas>=68?`At ${tas}/100 in a ${regime} market, you're fundable — but only after proof. Target Flat6Labs, 500 MENA, or Algebra Ventures for pre-seed. Come with 3 months of traction data and a clear unit economics story. What's your current MRR?`:`At ${tas}/100, institutional money will be difficult right now. Bootstrap or find a revenue-generating angle first — 10 paying customers will change every investor conversation. What's the fastest path to your first dollar of revenue?`;
-  if(/risk|fail|threat|worry|concern/.test(t))return `Top ${sec} risks in ${ctry}: regulatory timeline friction, high CAC in ${regime} conditions, and currency volatility compressing margins. Mitigate by keeping monthly burn under $5K until product-market fit is confirmed. Which of these is the most urgent threat to your timeline?`;
-  if(/next|first step|what do|how do|plan|roadmap/.test(t))return tas>=68?`Strong signals — now is your window. Three moves: 1) Ship a 4-week MVP solving exactly one workflow. 2) Put it in front of 20 target users this month. 3) Apply to Flat6Labs or 500 MENA before the next deadline. Which of these is your biggest blocker right now?`:`Market isn't ideal at ${tas}/100. Three moves: 1) Run 20 customer discovery interviews this month. 2) Find the highest-willingness-to-pay use case. 3) Build only that — no code before evidence. What's stopping you from making those calls this week?`;
-  if(/gtm|go.to.market|launch|marketing|growth|traction|users|acquire/.test(t))return `GTM for ${sec} in ${ctry}: start with one micro-segment you can dominate in 60 days. WhatsApp outreach and warm referrals beat paid ads in MENA 10-to-1. Set a Week-4 target: X signups, Y paid pilots, Z interviews. What does your Week-4 target look like?`;
-  if(/pric|monetiz|revenue|charge|fee|subscript/.test(t))return `For ${sec} in ${ctry}: avoid freemium unless you have viral mechanics. B2B here responds best to outcome-based pricing — charge a percentage of value created. Start with a high-touch paid pilot at $200-$500/mo and use it to prove ROI before scaling. What's the core value you can guarantee?`;
-  if(/team|hire|co-founder|talent|people/.test(t))return `Team composition matters more than the idea in MENA's early-stage market. For ${sec}, you need the skill set you don't have — technical if you're a BD person, or BD if you're technical. Prove the role with contractors before hiring employees. What's the single biggest skill gap right now?`;
-  if(/thank|great|awesome|helpful|good/.test(t))return `Glad that's useful. Your ${sec} play in ${ctry} has a ${tas}/100 market signal — keep pushing on the angles that matter. What else do you want to stress-test?`;
-  return `Your ${sec.charAt(0).toUpperCase()+sec.slice(1)} idea in ${ctry} sits in a ${regime} market with a ${tas}/100 opportunity score. Push me harder — competitive moat, fundraising strategy, GTM, pricing model, team composition, or risk mitigation. I'll give you a straight data-backed answer.`;
+  if(/pivot|switch|alternative|different/.test(t))return `Pivoting in ${sec}/${ctry} makes sense only if you're solving a different pain — not just rebranding. The ${regime} conditions stay regardless. Run 10 targeted customer interviews before switching direction. What angle are you considering?`;
+  if(/compet|rival|exist|already|crowded/.test(t))return `The ${sec} space in ${ctry} has local operators and global entrants — your TAS of ${tas}/100 already prices that in. Your edge has to be local: regulatory navigation, language, trust, or workflow fit. What's your unfair distribution advantage?`;
+  if(/fund|invest|raise|capital|vc|angel|accelerat/.test(t))return tas>=68?`At ${tas}/100 in a ${regime} market, you're fundable — but only after proof. Target Flat6Labs, 500 MENA, or Algebra Ventures for pre-seed. Come with 3 months of traction and a clear unit economics story. What's your current MRR?`:`At ${tas}/100, institutional money will be hard right now. Bootstrap or find a revenue angle first — 10 paying customers changes every investor conversation. What's the fastest path to first dollar?`;
+  if(/risk|fail|threat|worry|concern/.test(t))return `Top ${sec} risks in ${ctry}: regulatory friction, high CAC in ${regime} conditions, currency volatility. Mitigate by keeping burn under $5K/mo until product-market fit. Which risk worries you most?`;
+  if(/next|first step|how do|plan|roadmap/.test(t))return tas>=68?`Strong signals — your window is open. Three moves: 1) 4-week MVP for one workflow. 2) 20 target users this month. 3) Apply to Flat6Labs or 500 MENA. Which is the biggest blocker right now?`:`Market isn't ideal at ${tas}/100. Three moves: 1) 20 customer discovery calls this month. 2) Find the highest-willingness-to-pay use case. 3) No code before evidence. What's stopping you from making those calls?`;
+  if(/gtm|go.to.market|launch|marketing|growth|traction/.test(t))return `GTM for ${sec} in ${ctry}: start with one micro-segment to dominate in 60 days. WhatsApp outreach + warm referrals beat paid ads in MENA every time. Set a Week-4 target: X signups, Y paid pilots, Z interviews. What's your Week-4 target?`;
+  if(/pric|monetiz|revenue|charge|fee|subscript/.test(t))return `For ${sec} in ${ctry}: avoid freemium unless you have viral mechanics. B2B here responds best to outcome-based pricing — charge a % of value created. Start with a high-touch paid pilot at $200–500/mo to prove ROI. What's the core value you can guarantee?`;
+  if(/team|hire|co-founder|talent|people/.test(t))return `Team matters more than idea in MENA's early-stage market. For ${sec}, you need the skill you don't have — technical if you're BD, BD if you're technical. Prove the role with contractors first. What's the biggest skill gap right now?`;
+  if(/thank|great|awesome|helpful|good/.test(t))return `Glad that's useful. Your ${sec} play in ${ctry} has a ${tas}/100 market signal — keep pressure-testing the assumptions. What else do you want to stress-test?`;
+  return `Your ${sec.charAt(0).toUpperCase()+sec.slice(1)} idea in ${ctry} sits in a ${regime} market with ${tas}/100 opportunity score. Push me — competitive moat, fundraising, GTM, pricing, team, or risk. I'll give you a data-backed answer.`;
+}
+
+/* ═══════════════════════════════════════
+   GATHER BAR HELPERS
+═══════════════════════════════════════ */
+function updateGatherBar(state){
+  const bar=document.getElementById('c-gather-bar');
+  if(!bar)return;
+  bar.style.display='flex';
+  const steps={problem:document.getElementById('cgb-problem'),market:document.getElementById('cgb-market'),solution:document.getElementById('cgb-solution')};
+  if(state.has_problem)steps.problem&&steps.problem.classList.add('done');
+  if(state.has_market)steps.market&&steps.market.classList.add('done');
+  if(state.has_solution)steps.solution&&steps.solution.classList.add('done');
+  const missing=[];
+  if(!state.has_problem)missing.push('problem');
+  if(!state.has_market)missing.push('market');
+  if(!state.has_solution)missing.push('solution');
+  const hint=document.getElementById('cgb-hint');
+  if(hint)hint.textContent=missing.length===0?'Running analysis…':`Still need: ${missing.join(', ')} →`;
+}
+function clearGatherBar(){
+  const bar=document.getElementById('c-gather-bar');
+  if(bar){bar.style.display='none';}
+  ['cgb-problem','cgb-market','cgb-solution'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.classList.remove('done');
+  });
+}
+function fmtReply(raw){
+  return raw
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\n\n/g,'</p><p>')
+    .replace(/\n/g,'<br>');
 }
 
 /* ═══════════════════════════════════════
@@ -862,44 +1032,115 @@ async function handleSend(){
   addUserMessage(text);
   chatHistory.push({role:'user',content:text});
   if(chatHistory.filter(m=>m.role==='user').length===1){
-    const title=text.length>38?text.substring(0,38)+'…':text;
+    const title=text.length>42?text.substring(0,42)+'…':text;
     document.getElementById('c-topbar-title').textContent=title;
     addConvToSidebar(currentConvId,title);
   }
   addTyping();
   let replyHtml='';
+
   try{
-    const resp=await fetch(API_BASE+'/interact',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({context:internalContext,messages:chatHistory})});
+    const resp=await fetch(API_BASE+'/interact',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({context:internalContext,messages:chatHistory})
+    });
     const rd=await resp.json();
     removeTyping();
+
     if(rd.type==='analysis'&&rd.data){
+      // ── Full analysis returned ──────────────────────────────────────────────
       const d=rd.data;
-      internalContext={sector:d.sector,country:d.country,regime:d.regime,tas_score:d.tas_score,implication:d.report.implication,idea:text};
-      const intro=`<p>${rd.reply.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')}</p>`;
-      replyHtml=intro+buildCard(d)+`<p style="margin-top:14px;font-size:13px;color:var(--t4)">Ask me anything — competitive risks, fundraising timing, GTM strategy, pivot options, or pricing.</p>`;
-      chatHistory.push({role:'assistant',content:`[Analysis complete: ${d.sector}/${d.country} TAS:${d.tas_score} Regime:${d.regime}]`});
+      internalContext={
+        sector:d.sector,country:d.country,regime:d.regime,
+        tas_score:d.tas_score,implication:d.report.implication,idea:text
+      };
+      clearGatherBar();
+      const intro=`<p>${fmtReply(rd.reply||'')}</p>`;
+      replyHtml=intro+buildCard(d)+`<p style="margin-top:16px;font-size:13px;color:var(--t4)">Ask me anything — competitive risks, fundraising timing, GTM strategy, pivot options, or pricing.</p>`;
+      chatHistory.push({role:'assistant',content:`[Analysis: ${d.sector}/${d.country} TAS:${d.tas_score} Regime:${d.regime}]`});
       analysisComplete=true;
+
+    } else if(rd.type==='clarifying'){
+      // ── Clarification needed — update gather bar ────────────────────────────
+      if(rd.clarification_state){
+        internalContext.clarification_state=rd.clarification_state;
+        updateGatherBar(rd.clarification_state);
+      }
+      const badge=`<div class="c-clarify-badge"><div class="c-clarify-dot"></div>Needs clarification</div>`;
+      replyHtml=badge+`<p>${fmtReply(rd.reply||'')}</p>`;
+      chatHistory.push({role:'assistant',content:rd.reply||''});
+
     } else {
-      const raw=rd.reply||'';
-      const fmt=raw.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br>');
-      replyHtml=`<p>${fmt}</p>`;
-      chatHistory.push({role:'assistant',content:raw});
+      // ── Regular chat message ────────────────────────────────────────────────
+      replyHtml=`<p>${fmtReply(rd.reply||'')}</p>`;
+      chatHistory.push({role:'assistant',content:rd.reply||''});
     }
+
   } catch(err){
     removeTyping();
-    console.warn('API offline, using local fallback:',err);
-    if(looksLikeIdea(text)&&!analysisComplete){
-      const d=mockAnalysis(text);
-      internalContext={sector:d.sector,country:d.country,regime:d.regime,tas_score:d.tas_score,implication:d.report.implication,idea:text};
-      replyHtml=`<p>Here's the offline analysis for your idea <em>(connect the API server for live data)</em>:</p>`+buildCard(d)+`<p style="margin-top:14px;font-size:13px;color:var(--t4)">Ask me about risks, GTM, fundraising, or next steps.</p>`;
-      chatHistory.push({role:'assistant',content:`[Offline analysis: ${d.sector}/${d.country}]`});
-      analysisComplete=true;
-    } else {
+    console.warn('API offline — using local fallback:',err);
+
+    if(analysisComplete){
+      // Post-analysis advisor mode (offline)
       const r=offlineReply(text,internalContext);
       replyHtml=`<p>${r}</p>`;
       chatHistory.push({role:'assistant',content:r});
+
+    } else {
+      // ── Apply the same intent gates as the backend ──────────────────────────
+      const t=text.toLowerCase().trim();
+      const wc=t.split(/\s+/).length;
+      const cs=internalContext.clarification_state||{};
+
+      // Greeting / meta
+      const GREET=['hi','hello','hey','yo','sup','thanks','thank you'];
+      const META=['what do you do','who are you','how does','what is midan'];
+      if((wc<=5&&GREET.some(g=>t.startsWith(g)))||META.some(m=>t.includes(m))){
+        const r=offlineReply(text,{});
+        replyHtml=`<p>${r}</p>`;
+        chatHistory.push({role:'assistant',content:r});
+
+      } else if(isVagueStarter(text)){
+        // Vague intent — same response as backend Gate 3
+        const msg="Let's get into it. I need three things before I can run the analysis:\n\n**1. The problem** — what pain point exists, and who has it?\n**2. The market** — geography and customer type\n**3. Your approach** — app, marketplace, SaaS, service?\n\nWrite it out in plain language — no structure needed.";
+        const badge=`<div class="c-clarify-badge"><div class="c-clarify-dot"></div>Needs clarification</div>`;
+        replyHtml=badge+`<p>${fmtReply(msg)}</p>`;
+        chatHistory.push({role:'assistant',content:msg});
+
+      } else {
+        // Has content — run component extraction
+        const {comps,missing}=extractComponents(text,cs);
+        const accumulated=((cs.accumulated_text||'')+' '+text).trim();
+        const newState={...comps,accumulated_text:accumulated,count:(cs.count||0)+1};
+        // Same gate as backend: solution + market required (problem optional)
+        const hardMissing=missing.filter(k=>k==='solution'||k==='market');
+
+        if(!hardMissing.length&&comps.is_substantial){
+          // All three present → mock analysis (offline mode)
+          const d=mockAnalysis(accumulated);
+          internalContext={
+            sector:d.sector,country:d.country,regime:d.regime,
+            tas_score:d.tas_score,implication:d.report.implication,idea:text
+          };
+          clearGatherBar();
+          replyHtml=`<p>Here's the offline analysis <em>(connect the API for live data)</em>:</p>`+buildCard(d)+`<p style="margin-top:16px;font-size:13px;color:var(--t4)">Ask me about risks, GTM, fundraising, or next steps.</p>`;
+          chatHistory.push({role:'assistant',content:`[Offline analysis: ${d.sector}/${d.country}]`});
+          analysisComplete=true;
+
+        } else {
+          // Partial — clarify (use hardMissing for question priority)
+          internalContext.clarification_state=newState;
+          updateGatherBar(newState);
+          const r=offlineClarify(hardMissing.length?hardMissing:missing,cs.count||0,comps,cs);
+          const badge=`<div class="c-clarify-badge"><div class="c-clarify-dot"></div>Needs clarification</div>`;
+          replyHtml=badge+`<p>${fmtReply(r)}</p>`;
+          chatHistory.push({role:'assistant',content:r});
+        }
+      }
     }
   }
+
   addAIMessage(replyHtml);
   saveCurrentConversation();
   isProcessing=false;

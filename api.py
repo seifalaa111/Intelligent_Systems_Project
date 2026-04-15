@@ -618,112 +618,268 @@ class InteractRequest(BaseModel):
     context: Dict[str, Any]
     messages: List[ChatMessage]
 
-_IDEA_SIGNALS = [
-    # business nouns
-    'app', 'platform', 'startup', 'business', 'product', 'service', 'tool',
-    'marketplace', 'saas', 'software', 'solution', 'system', 'company',
-    # action verbs indicating a concept
-    'build', 'create', 'launch', 'develop', 'connect', 'automate', 'help',
-    'enable', 'solve', 'simplify', 'replace', 'disrupt', 'scale',
-    # market/sector words
-    'fintech', 'healthtech', 'edtech', 'ecommerce', 'logistics', 'agritech',
-    'payment', 'delivery', 'booking', 'learning', 'insurance', 'clinic',
-    'invoice', 'subscription', 'marketplace', 'b2b', 'b2c', 'freelance',
-    # location signals (means they are contextualising an idea)
-    'egypt', 'cairo', 'dubai', 'saudi', 'nigeria', 'kenya', 'mena',
-    # problem framing
-    'problem', 'pain', 'issue', 'gap', 'need', 'market', 'customer', 'user',
+# ── INTENT CLASSIFICATION SIGNALS ─────────────────────────────────────────────
+
+_GREET_TOKENS = {
+    'hi', 'hello', 'hey', 'yo', 'sup', 'hola', 'marhaba', 'ahlan',
+    'good morning', 'good evening', 'good afternoon', 'howdy', 'greetings',
+}
+_META_PHRASES = [
+    'what do you do', 'who are you', 'how does this work', 'what is midan',
+    'what can you do', 'explain to me', 'help me understand', 'tell me about yourself',
+    'what are you', 'how do i use this', 'getting started', 'what does midan',
+]
+# Vague intent declarations — user signals they HAVE an idea but doesn't describe it
+_VAGUE_STARTERS = [
+    'i have an idea', 'i have a startup idea', 'i want to share', 'i want to tell you',
+    'i would like to share', 'i am thinking of', 'i am thinking about',
+    'what do you think', 'give me feedback', 'give me your thoughts',
+    'can you analyze', 'can you help me with', 'i need help with',
+    'i have something', 'i have a concept', 'let me tell you',
+    'so i was thinking', 'i was thinking about', 'been working on', 'been thinking about',
+    'working on something', 'building something', 'have an idea', 'had an idea',
+    'i have this idea', 'just an idea', 'rough idea', 'early idea',
+    'i want to build', 'i want to create', 'i want to start', 'i am building',
+    'i am working on', 'i am developing', 'i am creating',
 ]
 
-_CONVERSATIONAL_OPENERS = [
-    'hi', 'hello', 'hey', 'yo', 'what', 'how', 'who', 'why', 'when', 'where',
-    'thanks', 'thank you', 'ok', 'okay', 'sure', 'got it', 'cool', 'great',
-    'can you', 'could you', 'tell me', 'explain', 'help me understand',
-    'i have an idea', 'i want to', 'i would like', 'i am thinking',
-    'what do you think', 'is it good', 'any thoughts', 'give me feedback',
+# The three required components for a complete idea description
+_PROBLEM_SIGNALS = [
+    'problem', 'pain', 'issue', 'struggle', 'challenge', 'gap', 'need', 'lack',
+    'inefficient', 'inefficiency', 'expensive', 'slow', 'difficult', 'hard to',
+    'no way to', 'broken', 'frustrat', 'wast', 'manual process',
+    'time-consuming', 'complex', 'unreliable', 'inaccessible',
+    'underserved', 'unbanked', 'overpriced', 'delayed', 'stuck',
+    'can\'t afford', 'cannot afford', 'don\'t have access', 'no access',
+]
+_SOLUTION_SIGNALS = [
+    'app', 'platform', 'tool', 'service', 'system', 'software', 'marketplace',
+    'saas', 'api', 'dashboard', 'website', 'bot', 'chatbot', 'solution', 'product',
+    'connect', 'automate', 'enable', 'simplify', 'streamline', 'digitize',
+    'ai-powered', 'using ai', 'machine learning', 'mobile app', 'web app',
+    'mobile application', 'subscription model', 'subscription service',
+]
+_MARKET_GEO = [
+    'egypt', 'cairo', 'egyptian', 'giza', 'alexandria',
+    'saudi', 'riyadh', 'jeddah', 'ksa', 'saudi arabia',
+    'uae', 'dubai', 'abu dhabi', 'emirates', 'united arab',
+    'morocco', 'casablanca', 'rabat', 'marrakech',
+    'nigeria', 'lagos', 'abuja',
+    'kenya', 'nairobi',
+    'usa', 'america', 'silicon valley', 'new york', 'united states',
+    'uk', 'london', 'britain', 'england',
+    'mena', 'africa', 'middle east', 'gulf', 'gcc',
+    'global', 'worldwide', 'international', 'emerging market',
+]
+_MARKET_CUSTOMER = [
+    'sme', 'smes', 'small business', 'small businesses', 'enterprise', 'enterprises',
+    'b2b', 'b2c', 'd2c', 'startup', 'startups',
+    'consumer', 'consumers', 'user', 'users', 'customer', 'customers', 'client', 'clients',
+    'patient', 'patients', 'student', 'students',
+    'farmer', 'farmers', 'freelancer', 'freelancers',
+    'driver', 'drivers', 'merchant', 'merchants', 'retailer', 'retailers',
+    'hospital', 'hospitals', 'clinic', 'clinics',
+    'school', 'schools', 'university', 'universities',
+    'individual', 'family', 'families', 'company', 'companies',
 ]
 
-def _keyword_is_idea(text: str) -> bool:
-    """Heuristic: returns True only when the message looks like an actual startup idea."""
-    t = text.lower().strip()
-    word_count = len(t.split())
 
-    # Short messages or pure conversational openers → never an idea
-    if word_count < 8:
-        return False
-    if any(t.startswith(opener) for opener in _CONVERSATIONAL_OPENERS):
-        return False
+def _extract_components(text: str) -> dict:
+    """
+    Detect the three required idea components: problem, solution, market.
+    Each must be explicitly present in the text — no assumptions, no defaults.
+    """
+    t = text.lower()
+    wc = len(t.split())
 
-    # Must contain at least 2 business/sector/problem signals
-    hits = sum(1 for sig in _IDEA_SIGNALS if sig in t)
-    return hits >= 2
+    has_problem  = any(sig in t for sig in _PROBLEM_SIGNALS)
+    has_solution = any(sig in t for sig in _SOLUTION_SIGNALS)
+    has_geo      = any(geo in t for geo in _MARKET_GEO)
+    has_customer = any(cus in t for cus in _MARKET_CUSTOMER)
+    has_market   = has_geo or has_customer
+
+    return {
+        'has_problem':    has_problem,
+        'has_solution':   has_solution,
+        'has_market':     has_market,
+        'word_count':     wc,
+        'is_substantial': wc >= 12,   # Minimum for a meaningful description
+    }
+
+
+def _clarify_question(missing: list, count: int) -> str:
+    """Return exactly ONE sharp clarification question based on the first missing component."""
+    if not missing:
+        return ""
+    if 'problem' in missing:
+        if count == 0:
+            return (
+                "What specific problem are you solving, and for whom? "
+                "Tell me who suffers from this today and what they currently do instead."
+            )
+        return (
+            "I still need the core pain point — who specifically struggles with this, "
+            "and what does it cost them in time, money, or friction?"
+        )
+    if 'market' in missing:
+        return (
+            "Which market are you targeting? "
+            "Tell me the geography (Egypt, UAE, Saudi, etc.) and customer type — "
+            "individual consumers, SMEs, hospitals, schools, enterprises?"
+        )
+    if 'solution' in missing:
+        return (
+            "What's your solution approach? "
+            "App, platform, marketplace, SaaS, physical service? "
+            "Even a rough mechanism — how does it actually solve the problem?"
+        )
+    return "Can you tell me a bit more about what you're building?"
 
 
 @api.post("/interact")
 async def interact_route(req: InteractRequest):
-    last_user_msg = next((m.content for m in reversed(req.messages) if m.role == "user"), "")
-    groq_key = os.environ.get("GROQ_API_KEY", "")
-    use_llm = GROQ_CLIENT and groq_key and groq_key != "dummy"
+    last_user_msg = next(
+        (m.content for m in reversed(req.messages) if m.role == "user"), ""
+    )
+    t = last_user_msg.lower().strip()
+    wc = len(t.split())
 
-    already_analyzed = req.context.get("tas_score") is not None and req.context.get("tas_score") != 0
+    already_analyzed = bool(req.context.get("tas_score"))
 
-    # Step 1: keyword gate — fast hard filter (runs regardless of LLM availability)
-    keyword_says_idea = _keyword_is_idea(last_user_msg)
-    is_idea = False
-
-    if not already_analyzed:
-        if not keyword_says_idea:
-            # Short-circuit: conversational message, no need to ask LLM
-            is_idea = False
-        elif use_llm:
-            # Step 2: LLM confirmation only when keywords suggest it might be an idea
-            route_prompt = dedent(f"""
-                A founder sent this message to a startup market analysis tool.
-                Does this message describe a specific startup business idea (with product, market, or sector details)?
-                Or is it a meta-request, greeting, or vague statement about wanting to share an idea later?
-
-                Message: "{last_user_msg}"
-
-                EXAMPLES of NOT an idea: "i have an idea", "i want to share something", "can you help me", "hello"
-                EXAMPLES of IS an idea: "an app for Egyptian SMEs to get invoices paid faster", "a SaaS platform for logistics companies in Dubai"
-
-                Respond ONLY with valid JSON: {{"is_idea": true}} or {{"is_idea": false}}
-            """).strip()
-            try:
-                resp = GROQ_CLIENT.chat.completions.create(
-                    messages=[{"role": "user", "content": route_prompt}],
-                    model="llama-3.1-8b-instant", temperature=0.0, max_tokens=20
-                )
-                raw = resp.choices[0].message.content.strip()
-                import re as _re
-                m = _re.search(r'\{[^}]+\}', raw)
-                if m:
-                    is_idea = json.loads(m.group(0)).get("is_idea", False)
-                else:
-                    is_idea = "true" in raw.lower()
-            except Exception:
-                is_idea = True  # keywords already said yes, trust that on LLM failure
-        else:
-            # No LLM, keywords said yes → treat as idea
-            is_idea = True
-
-    if is_idea and not already_analyzed:
-        try:
-            analysis_data = process_idea(last_user_msg)
-            analysis_data["report"] = { "finding": analysis_data["report"]["finding"], "implication": analysis_data["report"]["implication"], "action": analysis_data["report"]["action"]}
-            ai_reply = f"I've analyzed your startup idea against live market data for **{analysis_data['sector'].title()}** in **{analysis_data['country']}**. Here is what the numbers say. Read through the analysis card below, and let me know if you have any follow-up questions."
-            return {"success": True, "type": "analysis", "reply": ai_reply, "data": analysis_data}
-        except Exception as e:
-            return {"success": False, "type": "chat", "reply": f"Sorry, there was an error processing your idea: {str(e)}"}
-    else:
-        # Standard chat using Groq (or fallback) based on context
+    # ── GATE 1: Post-analysis → pure advisor chat (no re-analysis) ────────────
+    if already_analyzed:
         chat_req = ChatRequest(context=req.context, messages=req.messages)
         chat_res = await chat_interaction(chat_req)
         return {"success": True, "type": "chat", "reply": chat_res.get("reply", ""), "data": None}
 
+    # ── GATE 2: Pure greeting or meta question ─────────────────────────────────
+    is_greeting = wc <= 6 and any(t == g or t.startswith(g) for g in _GREET_TOKENS)
+    is_meta     = any(phrase in t for phrase in _META_PHRASES)
+
+    if is_greeting or is_meta:
+        chat_req = ChatRequest(context={}, messages=req.messages)
+        chat_res = await chat_interaction(chat_req)
+        return {"success": True, "type": "chat", "reply": chat_res.get("reply", ""), "data": None}
+
+    # ── GATE 3: Vague intent declaration — user says they HAVE an idea but gives no details ──
+    # This catches: "i have an idea", "i want to build something", "give me feedback", etc.
+    is_vague = wc <= 20 and any(t.startswith(v) or t == v.strip() for v in _VAGUE_STARTERS)
+
+    if is_vague:
+        return {
+            "success": True,
+            "type": "clarifying",
+            "reply": (
+                "Let's get into it. Before I run the analysis, I need three things:\n\n"
+                "**1. The problem** — what pain point exists, and who has it?\n"
+                "**2. The market** — geography and customer type\n"
+                "**3. Your approach** — app, marketplace, SaaS, service?\n\n"
+                "Write it out in plain language — no structure needed. Even 2–3 sentences is enough."
+            ),
+            "clarification_state": req.context.get("clarification_state", {}),
+            "data": None,
+        }
+
+    # ── GATE 4: Has actual content — extract and check the three components ────
+    clarification_state = req.context.get("clarification_state", {})
+    clarification_count = clarification_state.get("count", 0)
+    accumulated_text    = clarification_state.get("accumulated_text", "")
+
+    components = _extract_components(last_user_msg)
+
+    # Merge with components already gathered from previous turns
+    for key in ("has_problem", "has_solution", "has_market"):
+        if clarification_state.get(key):
+            components[key] = True
+
+    # Accumulate all idea text across turns for a richer final analysis
+    new_accumulated = (accumulated_text + " " + last_user_msg).strip()
+
+    # Minimum required: solution + market (problem can be implied by context).
+    # If only problem is missing but solution + market are clear → allow analysis.
+    # If solution or market is missing → always clarify, no matter what.
+    hard_missing = [
+        k for k in ("solution", "market")
+        if not components.get(f"has_{k}")
+    ]
+    # "missing" drives the clarification question priority (problem first, then market, then solution)
+    missing = [
+        k for k in ("problem", "solution", "market")
+        if not components.get(f"has_{k}")
+    ]
+
+    # ── GATE 5: Solution + market present + substantial text → run full analysis ──
+    if not hard_missing and components["is_substantial"]:
+        analysis_text = new_accumulated if new_accumulated else last_user_msg
+        try:
+            analysis_data = process_idea(analysis_text)
+            analysis_data["report"] = {
+                "finding":     analysis_data["report"]["finding"],
+                "implication": analysis_data["report"]["implication"],
+                "action":      analysis_data["report"]["action"],
+            }
+            ai_reply = (
+                f"I've analyzed your idea against live market data for "
+                f"**{analysis_data['sector'].title()}** in **{analysis_data['country']}**. "
+                f"Here's the full breakdown — read through the report, then ask me anything."
+            )
+            return {
+                "success": True, "type": "analysis",
+                "reply": ai_reply, "data": analysis_data,
+            }
+        except Exception as e:
+            return {
+                "success": False, "type": "chat",
+                "reply": f"Analysis error: {str(e)}", "data": None,
+            }
+
+    # ── GATE 6: Partial info → one targeted clarification question ─────────────
+    new_state = {
+        "has_problem":      components["has_problem"],
+        "has_solution":     components["has_solution"],
+        "has_market":       components["has_market"],
+        "accumulated_text": new_accumulated,
+        "count":            clarification_count + 1,
+    }
+
+    # Acknowledge what was newly detected in this turn
+    newly_found = []
+    for key, label in [
+        ("has_problem", "the problem"),
+        ("has_market",  "the market"),
+        ("has_solution", "the approach"),
+    ]:
+        if components[key] and not clarification_state.get(key):
+            newly_found.append(label)
+
+    # Use hard_missing for the question (only ask about solution/market, not problem)
+    question = _clarify_question(hard_missing if hard_missing else missing, clarification_count)
+
+    if newly_found and (hard_missing or not components["is_substantial"]):
+        ack = f"Got {' and '.join(newly_found)}. "
+        reply = ack + question
+    elif not components["is_substantial"] and not hard_missing:
+        reply = (
+            "I can see the shape of the idea — expand a bit. "
+            "Describe what you're building, who it's for, and what problem it solves. "
+            "Two or three sentences is enough to run the analysis."
+        )
+    else:
+        reply = question or "Tell me more — what you're building, who it's for, and your approach."
+
+    return {
+        "success": True,
+        "type": "clarifying",
+        "reply": reply,
+        "clarification_state": new_state,
+        "data": None,
+    }
+
+
 @api.get("/health")
 async def health():
     return {"status": "ok", "models_loaded": MODELS_LOADED}
+
 
 if __name__ == "__main__":
     import uvicorn
