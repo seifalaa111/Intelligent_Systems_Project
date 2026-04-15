@@ -4,744 +4,535 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MIDAN — Know Before You Build</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300&family=Syne:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-html { scroll-behavior: smooth; }
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
 
-:root {
-  --accent: #C8FF57;
-  --accent-dim: rgba(200,255,87,0.06);
-  --accent-border: rgba(200,255,87,0.18);
-  --accent-glow: rgba(200,255,87,0.12);
-  --bg: #0A0A0B;
-  --bg-chat: #0F0F11;
-  --sidebar: #0D0D0F;
-  --surface: #151518;
-  --surface-2: #1A1A1E;
-  --surface-3: #212126;
-  --border: rgba(255,255,255,0.06);
-  --border-2: rgba(255,255,255,0.10);
-  --text: #F0EEF6;
-  --text-2: #B8B5C6;
-  --text-3: #7B7890;
-  --text-4: #4A4860;
-  --danger: #FF6B6B;
-  --warning: #F5A623;
-  --success: #4ADE80;
-  --info: #60A5FA;
-  --radius: 12px;
-  --radius-sm: 8px;
-  --radius-xs: 6px;
-  --sidebar-w: 280px;
-  --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+:root{
+  --ac:#C8FF57; --ac-dim:rgba(200,255,87,.07); --ac-border:rgba(200,255,87,.18); --ac-glow:rgba(200,255,87,.10);
+  --bg:#0A0A0B; --bg2:#0D0D0F; --bg3:#111113;
+  --s1:#161619; --s2:#1C1C20; --s3:#232328;
+  --br:rgba(255,255,255,.055); --br2:rgba(255,255,255,.09);
+  --t1:#F0EEF8; --t2:#B8B5C8; --t3:#7B7890; --t4:#4A4860;
+  --danger:#FF6B6B; --warn:#F5A623; --ok:#4ADE80; --info:#60A5FA;
+  --r:12px; --rs:8px; --rx:6px;
+  --sw:272px;
+  --ease:cubic-bezier(.4,0,.2,1);
 }
 
-body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  overflow: hidden;
-  height: 100vh;
-}
+body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:var(--t1);overflow-x:hidden;}
+::-webkit-scrollbar{width:4px;} ::-webkit-scrollbar-track{background:transparent;} ::-webkit-scrollbar-thumb{background:var(--t4);border-radius:10px;}
 
-/* ============ SCROLLBAR ============ */
-::-webkit-scrollbar { width: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--text-4); border-radius: 10px; }
-::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
+/* ═══════════════════════════════════════════════
+   INTRO
+═══════════════════════════════════════════════ */
+#intro-screen{position:fixed;inset:0;z-index:1000;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+#three-canvas{position:absolute;inset:0;}
+.i-scene{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;width:min(90vw,760px);opacity:0;transition:opacity .8s ease;pointer-events:none;z-index:2;}
+.i-scene.in{opacity:1;} .i-scene.out{opacity:0;transition:opacity .4s ease;}
+.i-label{font-size:clamp(11px,1.1vw,13px);font-weight:400;color:rgba(255,255,255,.28);letter-spacing:.15em;text-transform:uppercase;margin-bottom:18px;}
+.i-head{font-family:'Syne',sans-serif;font-size:clamp(38px,7vw,86px);font-weight:800;line-height:1;letter-spacing:-3px;color:#fff;}
+.i-head em{font-style:normal;color:var(--ac);} .i-head .dim{color:rgba(255,255,255,.14);}
+#enter-btn{display:none;margin-top:48px;padding:16px 52px;background:var(--ac);color:#000;border:none;border-radius:var(--rx);font-family:'Inter',sans-serif;font-size:14px;font-weight:600;letter-spacing:.04em;cursor:pointer;pointer-events:all;transition:all .2s var(--ease);}
+#enter-btn:hover{transform:translateY(-2px);box-shadow:0 0 40px rgba(200,255,87,.25);}
+#prog-line{position:fixed;bottom:0;left:0;height:2px;background:var(--ac);width:0%;z-index:1002;transition:width .5s ease;}
+#skip-btn{position:fixed;top:24px;right:28px;z-index:1003;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.20);background:none;border:none;cursor:pointer;font-family:'Inter',sans-serif;transition:color .2s;}
+#skip-btn:hover{color:rgba(255,255,255,.50);}
+#intro-screen.exit{animation:exitI .8s ease forwards;}
+@keyframes exitI{0%{opacity:1;filter:blur(0);}100%{opacity:0;filter:blur(8px);pointer-events:none;}}
 
-/* ============ INTRO ============ */
-#intro {
-  position: fixed; inset: 0; z-index: 1000;
-  background: #000;
-  display: flex; align-items: center; justify-content: center;
-  overflow: hidden;
-}
-#three-canvas { position: absolute; inset: 0; z-index: 0; }
+/* ═══════════════════════════════════════════════
+   LANDING
+═══════════════════════════════════════════════ */
+#landing-screen{display:none;min-height:100vh;background:var(--bg);}
+#landing-screen.show{display:block;}
 
-.intro-scene {
-  position: absolute; top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  text-align: center; width: min(90vw, 780px);
-  opacity: 0; transition: opacity 0.8s ease;
-  pointer-events: none; z-index: 2;
-}
-.intro-scene.in { opacity: 1; }
-.intro-scene.out { opacity: 0; transition: opacity 0.4s ease; }
+/* Nav */
+.l-nav{position:fixed;top:0;left:0;right:0;z-index:500;height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 48px;border-bottom:1px solid transparent;transition:all .3s ease;background:transparent;}
+.l-nav.scrolled{background:rgba(10,10,11,.88);backdrop-filter:blur(24px);border-bottom-color:var(--br);}
+.l-nav-logo{display:flex;align-items:center;gap:10px;text-decoration:none;}
+.l-nav-mark{width:26px;height:26px;background:var(--ac);border-radius:6px;display:flex;align-items:center;justify-content:center;}
+.l-nav-mark svg{width:13px;height:13px;}
+.l-nav-name{font-family:'Syne',sans-serif;font-weight:800;font-size:16px;letter-spacing:.06em;color:var(--t1);}
+.l-nav-links{display:flex;gap:32px;list-style:none;}
+.l-nav-links a{font-size:13px;color:var(--t3);text-decoration:none;letter-spacing:.01em;transition:color .2s;}
+.l-nav-links a:hover{color:var(--t1);}
+.l-nav-cta{background:var(--ac);color:#000;border:none;padding:9px 20px;border-radius:var(--rx);font-size:12px;font-weight:700;font-family:'Inter',sans-serif;letter-spacing:.04em;cursor:pointer;transition:all .2s;}
+.l-nav-cta:hover{opacity:.88;transform:translateY(-1px);}
 
-.intro-label {
-  font-size: clamp(12px, 1.2vw, 14px);
-  font-weight: 400; color: rgba(255,255,255,0.30);
-  letter-spacing: 0.14em; text-transform: uppercase;
-  margin-bottom: 20px;
-}
-.intro-headline {
-  font-family: 'Syne', sans-serif;
-  font-size: clamp(40px, 7vw, 88px);
-  font-weight: 800; line-height: 1.0;
-  letter-spacing: -3px; color: #fff;
-}
-.intro-headline em { font-style: normal; color: var(--accent); }
-.intro-headline .dim { color: rgba(255,255,255,0.15); }
+/* Container */
+.lc{max-width:1140px;margin:0 auto;padding:0 48px;}
 
-#enter-btn {
-  display: none; margin-top: 48px;
-  padding: 16px 52px; background: var(--accent);
-  color: #000; border: none; border-radius: var(--radius-xs);
-  font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600;
-  letter-spacing: 0.04em; cursor: pointer;
-  pointer-events: all; transition: all var(--transition);
-  box-shadow: 0 0 0 rgba(200,255,87,0);
-}
-#enter-btn:hover { transform: translateY(-1px); box-shadow: 0 0 32px rgba(200,255,87,0.2); }
+/* ── HERO ── */
+.l-hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:120px 24px 80px;position:relative;overflow:hidden;}
+.l-hero-grid{position:absolute;inset:0;background-image:linear-gradient(var(--br) 1px,transparent 1px),linear-gradient(90deg,var(--br) 1px,transparent 1px);background-size:80px 80px;mask-image:radial-gradient(ellipse 70% 70% at 50% 50%,#000 20%,transparent 100%);pointer-events:none;}
+.l-hero-glow{position:absolute;top:20%;left:50%;transform:translateX(-50%);width:800px;height:400px;background:radial-gradient(ellipse,rgba(200,255,87,.04) 0%,transparent 68%);pointer-events:none;}
+.l-eyebrow{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--ac-border);padding:7px 16px;border-radius:100px;font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--ac);margin-bottom:40px;}
+.l-eyebrow-dot{width:6px;height:6px;border-radius:50%;background:var(--ac);animation:pulse 2s ease infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.25;}}
+.l-hero h1{font-family:'Syne',sans-serif;font-size:clamp(48px,8vw,108px);font-weight:800;letter-spacing:-4px;line-height:.95;margin-bottom:32px;max-width:960px;}
+.l-hero h1 .out{-webkit-text-stroke:1.5px rgba(240,238,248,.18);color:transparent;}
+.l-hero h1 .hi{color:var(--ac);}
+.l-hero-sub{font-size:17px;color:var(--t3);max-width:460px;line-height:1.72;font-weight:300;margin-bottom:52px;}
+.l-hero-btns{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-bottom:72px;}
+.btn-primary{background:var(--ac);color:#000;border:none;padding:15px 36px;border-radius:var(--rx);font-size:14px;font-weight:700;font-family:'Inter',sans-serif;cursor:pointer;transition:all .2s;letter-spacing:.02em;}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 0 32px rgba(200,255,87,.22);}
+.btn-ghost{background:transparent;color:var(--t2);border:1px solid var(--br2);padding:15px 32px;border-radius:var(--rx);font-size:14px;font-weight:500;font-family:'Inter',sans-serif;cursor:pointer;transition:all .2s;}
+.btn-ghost:hover{background:var(--s1);border-color:var(--br2);color:var(--t1);}
+.l-hero-proof{display:flex;align-items:center;gap:32px;color:var(--t4);font-size:12px;letter-spacing:.06em;text-transform:uppercase;}
+.l-hero-proof-divider{width:1px;height:20px;background:var(--br2);}
+.l-hero-proof span strong{color:var(--t2);font-weight:600;}
 
-#prog-line {
-  position: fixed; bottom: 0; left: 0;
-  height: 2px; background: var(--accent);
-  width: 0%; z-index: 1002;
-  transition: width 0.5s ease;
-}
-#skip {
-  position: fixed; top: 24px; right: 28px; z-index: 1003;
-  font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase;
-  color: rgba(255,255,255,0.20); background: none; border: none;
-  cursor: pointer; font-family: 'Inter', sans-serif;
-  transition: color var(--transition);
-}
-#skip:hover { color: rgba(255,255,255,0.50); }
+/* ── STRIP ── */
+.l-strip{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--br);border-bottom:1px solid var(--br);background:var(--bg);}
+.l-strip-cell{padding:40px;border-right:1px solid var(--br);}
+.l-strip-cell:last-child{border-right:none;}
+.l-strip-n{font-family:'Syne',sans-serif;font-size:48px;font-weight:800;letter-spacing:-2px;line-height:1;color:var(--t1);margin-bottom:8px;}
+.l-strip-n em{font-style:normal;color:var(--ac);}
+.l-strip-l{font-size:13px;color:var(--t3);line-height:1.55;}
 
-#intro.exit { animation: exitIntro 0.8s ease forwards; }
-@keyframes exitIntro {
-  0% { opacity: 1; filter: blur(0); }
-  100% { opacity: 0; filter: blur(6px); pointer-events: none; }
-}
+/* ── PROBLEM ── */
+.l-problem{padding:120px 0;}
+.l-section-tag{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ac);margin-bottom:18px;}
+.l-section-h{font-family:'Syne',sans-serif;font-size:clamp(32px,4vw,58px);font-weight:800;letter-spacing:-2px;line-height:1.05;margin-bottom:0;}
+.l-problem-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--br);margin-top:64px;}
+.l-p-card{background:var(--bg);padding:48px 40px;position:relative;overflow:hidden;transition:background .25s;}
+.l-p-card:hover{background:var(--s1);}
+.l-p-num{font-family:'Syne',sans-serif;font-size:88px;font-weight:800;color:rgba(200,255,87,.04);letter-spacing:-5px;line-height:1;margin-bottom:32px;transition:color .3s;}
+.l-p-card:hover .l-p-num{color:rgba(200,255,87,.08);}
+.l-p-q{font-family:'Syne',sans-serif;font-size:19px;font-weight:700;letter-spacing:-.3px;margin-bottom:14px;line-height:1.25;}
+.l-p-a{font-size:14px;color:var(--t3);line-height:1.76;font-weight:300;}
+.l-p-a strong{color:var(--ac);font-weight:500;}
 
-/* ============ APP LAYOUT ============ */
-#app { display: none; height: 100vh; }
-#app.show { display: flex; }
+/* ── HOW IT WORKS ── */
+.l-how{padding:120px 0;}
+.l-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--br);margin-top:64px;}
+.l-step{background:var(--bg);padding:48px 40px;position:relative;overflow:hidden;transition:background .25s;}
+.l-step:hover{background:var(--s1);}
+.l-step::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--ac);transform:scaleX(0);transform-origin:left;transition:transform .4s ease;}
+.l-step:hover::after{transform:scaleX(1);}
+.l-step-n{font-family:'Syne',sans-serif;font-size:80px;font-weight:800;color:rgba(200,255,87,.05);letter-spacing:-5px;line-height:1;margin-bottom:36px;}
+.l-step h3{font-family:'Syne',sans-serif;font-size:21px;font-weight:700;letter-spacing:-.3px;margin-bottom:12px;}
+.l-step p{font-size:14px;color:var(--t3);line-height:1.76;font-weight:300;}
 
-#app.landing-mode .topbar {
-  opacity: 0; pointer-events: none;
-}
-#app.landing-mode .messages {
-  min-height: 80vh; 
-  justify-content: center;
-}
-#app.landing-mode .input-area {
-  max-width: 600px;
-  position: absolute;
-  bottom: 30vh;
-  left: 50%;
-  transform: translateX(-50%);
-}
-#app:not(.landing-mode) .welcome {
-  display: none;
-}
+/* ── PIPELINE ── */
+.l-pipeline{padding:100px 0;border-top:1px solid var(--br);}
+.l-agents{display:flex;align-items:stretch;overflow-x:auto;gap:0;margin-top:52px;padding-bottom:8px;}
+.l-agent{background:var(--s1);border:1px solid var(--br);border-right:none;padding:24px 20px;min-width:130px;flex:1;position:relative;transition:background .2s;}
+.l-agent:first-child{border-radius:var(--rs) 0 0 var(--rs);}
+.l-agent:last-child{border-radius:0 var(--rs) var(--rs) 0;border-right:1px solid var(--br);}
+.l-agent:hover{background:var(--s2);}
+.l-agent-arrow{position:absolute;right:-10px;top:50%;transform:translateY(-50%);z-index:2;width:20px;height:20px;background:var(--bg);border:1px solid var(--br);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--ac);}
+.l-agent:last-child .l-agent-arrow{display:none;}
+.l-agent-tag{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ac);margin-bottom:8px;}
+.l-agent-name{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;letter-spacing:-.1px;margin-bottom:6px;color:var(--t1);}
+.l-agent-desc{font-size:11px;color:var(--t4);line-height:1.5;}
 
+/* ── OUTPUTS ── */
+.l-outputs{padding:120px 0;}
+.l-out-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:64px;}
+.l-out-card{background:var(--s1);border:1px solid var(--br);border-radius:var(--r);padding:32px;transition:all .2s;}
+.l-out-card:hover{border-color:var(--ac-border);transform:translateY(-2px);}
+.l-out-tag{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ac);margin-bottom:14px;}
+.l-out-card h3{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;letter-spacing:-.2px;margin-bottom:10px;}
+.l-out-card p{font-size:13px;color:var(--t3);line-height:1.7;font-weight:300;}
+.l-out-preview{margin-top:16px;padding:12px 14px;background:var(--bg);border:1px solid var(--br);border-radius:var(--rx);font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t3);}
+.l-out-preview .hi{color:var(--ac);}
 
-/* ── SIDEBAR ── */
-.sidebar {
-  width: var(--sidebar-w); height: 100vh;
-  background: var(--sidebar);
-  border-right: 1px solid var(--border);
-  display: flex; flex-direction: column;
-  flex-shrink: 0; transition: transform 0.3s ease;
-  z-index: 100;
-}
+/* ── CTA FINAL ── */
+.l-cta{padding:120px 0;}
+.l-cta-inner{background:var(--s1);border:1px solid var(--ac-border);border-radius:var(--r);padding:88px 80px;text-align:center;position:relative;overflow:hidden;}
+.l-cta-inner::before{content:'';position:absolute;top:-100px;left:50%;transform:translateX(-50%);width:600px;height:300px;background:radial-gradient(ellipse,rgba(200,255,87,.05) 0%,transparent 70%);pointer-events:none;}
+.l-cta-inner h2{font-family:'Syne',sans-serif;font-size:clamp(36px,4.5vw,68px);font-weight:800;letter-spacing:-2.5px;line-height:1;margin-bottom:18px;}
+.l-cta-inner h2 em{font-style:normal;color:var(--ac);}
+.l-cta-inner p{font-size:16px;color:var(--t3);font-weight:300;margin-bottom:44px;line-height:1.7;max-width:380px;margin-left:auto;margin-right:auto;}
 
-.sidebar-header {
-  padding: 20px 20px 16px;
-  border-bottom: 1px solid var(--border);
-}
-.sidebar-brand {
-  display: flex; align-items: center; gap: 10px;
-  text-decoration: none; margin-bottom: 16px;
-}
-.sidebar-logo {
-  width: 28px; height: 28px; background: var(--accent);
-  border-radius: 6px; display: flex;
-  align-items: center; justify-content: center;
-  flex-shrink: 0;
-}
-.sidebar-logo svg { width: 14px; height: 14px; }
-.sidebar-name {
-  font-family: 'Syne', sans-serif; font-weight: 800;
-  font-size: 16px; letter-spacing: 0.06em; color: var(--text);
-}
+/* ── FOOTER ── */
+.l-footer{border-top:1px solid var(--br);padding:32px 48px;display:flex;align-items:center;justify-content:space-between;}
+.l-footer-logo{font-family:'Syne',sans-serif;font-weight:800;font-size:14px;color:var(--t1);letter-spacing:.06em;}
+.l-footer-copy{font-size:11px;color:var(--t4);}
 
-.new-chat-btn {
-  width: 100%; padding: 10px 14px;
-  background: var(--surface); border: 1px solid var(--border-2);
-  border-radius: var(--radius-sm); color: var(--text);
-  font-size: 13px; font-weight: 500;
-  font-family: 'Inter', sans-serif;
-  cursor: pointer; transition: all var(--transition);
-  display: flex; align-items: center; gap: 8px;
-}
-.new-chat-btn:hover { background: var(--surface-2); border-color: var(--accent-border); }
-.new-chat-btn svg { width: 16px; height: 16px; opacity: 0.6; }
+/* REVEAL ANIMATION */
+.rev{opacity:0;transform:translateY(20px);transition:opacity .65s ease,transform .65s ease;}
+.rev.on{opacity:1;transform:translateY(0);}
+.rev-d1{transition-delay:.1s;} .rev-d2{transition-delay:.2s;} .rev-d3{transition-delay:.3s;}
 
-.sidebar-conversations {
-  flex: 1; overflow-y: auto; padding: 12px 12px;
-}
-.sidebar-section-label {
-  font-size: 11px; font-weight: 600; color: var(--text-4);
-  letter-spacing: 0.08em; text-transform: uppercase;
-  padding: 8px 8px 6px; margin-top: 8px;
-}
-.conv-item {
-  padding: 10px 12px; border-radius: var(--radius-sm);
-  font-size: 13px; color: var(--text-3);
-  cursor: pointer; transition: all var(--transition);
-  white-space: nowrap; overflow: hidden;
-  text-overflow: ellipsis; margin-bottom: 2px;
-}
-.conv-item:hover { background: var(--surface); color: var(--text-2); }
-.conv-item.active { background: var(--surface-2); color: var(--text); }
+/* ═══════════════════════════════════════════════
+   CHAT APP
+═══════════════════════════════════════════════ */
+#chat-screen{display:none;height:100vh;overflow:hidden;}
+#chat-screen.show{display:flex;}
 
-.sidebar-footer {
-  padding: 16px 20px;
-  border-top: 1px solid var(--border);
-}
-.sidebar-footer-text {
-  font-size: 11px; color: var(--text-4);
-  line-height: 1.5;
-}
-.sidebar-footer-text a {
-  color: var(--accent); text-decoration: none;
-}
+/* Sidebar */
+.c-sidebar{width:var(--sw);height:100vh;background:var(--bg2);border-right:1px solid var(--br);display:flex;flex-direction:column;flex-shrink:0;transition:transform .3s ease;z-index:100;}
+.c-sidebar-head{padding:18px 18px 14px;border-bottom:1px solid var(--br);}
+.c-brand{display:flex;align-items:center;gap:10px;text-decoration:none;margin-bottom:14px;}
+.c-brand-mark{width:26px;height:26px;background:var(--ac);border-radius:6px;display:flex;align-items:center;justify-content:center;}
+.c-brand-mark svg{width:13px;height:13px;}
+.c-brand-name{font-family:'Syne',sans-serif;font-weight:800;font-size:15px;letter-spacing:.06em;color:var(--t1);}
+.c-new-btn{width:100%;padding:9px 14px;background:var(--s1);border:1px solid var(--br2);border-radius:var(--rs);color:var(--t2);font-size:13px;font-weight:500;font-family:'Inter',sans-serif;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:8px;}
+.c-new-btn:hover{background:var(--s2);border-color:var(--ac-border);color:var(--t1);}
+.c-new-btn svg{width:15px;height:15px;opacity:.5;}
+.c-sidebar-convs{flex:1;overflow-y:auto;padding:10px;}
+.c-sidebar-label{font-size:10px;font-weight:600;color:var(--t4);letter-spacing:.08em;text-transform:uppercase;padding:8px 8px 5px;margin-top:6px;}
+.c-conv-item{padding:9px 10px;border-radius:var(--rx);font-size:12px;color:var(--t3);cursor:pointer;transition:all .2s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;}
+.c-conv-item:hover{background:var(--s1);color:var(--t2);}
+.c-conv-item.active{background:var(--s2);color:var(--t1);}
+.c-sidebar-foot{padding:14px 18px;border-top:1px solid var(--br);}
+.c-sidebar-foot-txt{font-size:11px;color:var(--t4);line-height:1.6;}
+.c-sidebar-foot-link{font-size:11px;color:var(--ac);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:4px;margin-top:8px;transition:opacity .2s;}
+.c-sidebar-foot-link:hover{opacity:.75;}
 
-/* ── MAIN CHAT AREA ── */
-.main {
-  flex: 1; display: flex; flex-direction: column;
-  height: 100vh; min-width: 0;
-  background: var(--bg-chat);
-}
+/* Main */
+.c-main{flex:1;display:flex;flex-direction:column;height:100vh;min-width:0;background:var(--bg);}
+.c-topbar{height:52px;padding:0 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--br);flex-shrink:0;}
+.c-topbar-left{display:flex;align-items:center;gap:10px;}
+.c-menu-btn{display:none;background:none;border:none;color:var(--t3);cursor:pointer;padding:4px;}
+.c-menu-btn svg{width:18px;height:18px;}
+.c-topbar-back{background:none;border:1px solid var(--br);color:var(--t3);padding:5px 12px;border-radius:var(--rx);font-size:12px;font-family:'Inter',sans-serif;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:6px;}
+.c-topbar-back:hover{background:var(--s1);color:var(--t1);}
+.c-topbar-back svg{width:12px;height:12px;}
+.c-topbar-title{font-size:13px;font-weight:600;color:var(--t2);}
+.c-topbar-badge{font-size:10px;font-weight:600;color:var(--ac);background:var(--ac-dim);border:1px solid var(--ac-border);padding:3px 8px;border-radius:100px;}
+.c-topbar-right{display:flex;gap:8px;}
+.c-topbar-btn{background:none;border:1px solid var(--br);color:var(--t3);padding:6px 12px;border-radius:var(--rx);font-size:12px;font-family:'Inter',sans-serif;cursor:pointer;transition:all .2s;}
+.c-topbar-btn:hover{background:var(--s1);color:var(--t1);}
 
-/* Top bar */
-.topbar {
-  height: 52px; padding: 0 20px;
-  display: flex; align-items: center; justify-content: space-between;
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0; background: var(--bg-chat);
-}
-.topbar-left { display: flex; align-items: center; gap: 12px; }
-.menu-toggle {
-  display: none; background: none; border: none;
-  color: var(--text-3); cursor: pointer; padding: 4px;
-}
-.menu-toggle svg { width: 20px; height: 20px; }
-.topbar-title {
-  font-size: 14px; font-weight: 600; color: var(--text);
-}
-.topbar-badge {
-  font-size: 10px; font-weight: 600; color: var(--accent);
-  background: var(--accent-dim); border: 1px solid var(--accent-border);
-  padding: 3px 8px; border-radius: 100px;
-  letter-spacing: 0.04em;
-}
-.topbar-right { display: flex; align-items: center; gap: 8px; }
-.topbar-btn {
-  background: none; border: 1px solid var(--border);
-  color: var(--text-3); padding: 6px 12px;
-  border-radius: var(--radius-xs); font-size: 12px;
-  font-family: 'Inter', sans-serif; font-weight: 500;
-  cursor: pointer; transition: all var(--transition);
-}
-.topbar-btn:hover { background: var(--surface); color: var(--text); border-color: var(--border-2); }
+/* Messages */
+.c-msgs-wrap{flex:1;overflow-y:auto;scroll-behavior:smooth;}
+.c-msgs{max-width:760px;margin:0 auto;padding:20px 24px 120px;display:flex;flex-direction:column;gap:0;}
 
-/* Messages area */
-.messages-wrap {
-  flex: 1; overflow-y: auto; scroll-behavior: smooth;
-}
-.messages {
-  max-width: 780px; margin: 0 auto;
-  padding: 24px 24px 100px;
-  display: flex; flex-direction: column; gap: 0;
-}
+/* Welcome */
+.c-welcome{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:60px 24px 40px;min-height:55vh;}
+.c-welcome-icon{width:52px;height:52px;background:var(--ac);border-radius:13px;display:flex;align-items:center;justify-content:center;margin-bottom:22px;box-shadow:0 0 48px rgba(200,255,87,.1);}
+.c-welcome-icon svg{width:26px;height:26px;}
+.c-welcome h1{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;letter-spacing:-.4px;margin-bottom:10px;}
+.c-welcome p{font-size:14px;color:var(--t3);max-width:400px;line-height:1.65;}
+.c-suggestions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:32px;max-width:520px;width:100%;}
+.c-sug{background:var(--s1);border:1px solid var(--br);border-radius:var(--rs);padding:13px 16px;text-align:left;cursor:pointer;transition:all .2s;}
+.c-sug:hover{border-color:var(--ac-border);background:var(--s2);transform:translateY(-1px);}
+.c-sug-title{font-size:13px;font-weight:600;color:var(--t1);margin-bottom:3px;}
+.c-sug-desc{font-size:11px;color:var(--t4);}
 
-/* Welcome state */
-.welcome {
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  text-align: center; padding: 80px 24px 40px;
-  min-height: 60vh;
-}
-.welcome-icon {
-  width: 56px; height: 56px; background: var(--accent);
-  border-radius: 14px; display: flex;
-  align-items: center; justify-content: center;
-  margin-bottom: 24px;
-  box-shadow: 0 0 40px rgba(200,255,87,0.08);
-}
-.welcome-icon svg { width: 28px; height: 28px; }
-.welcome h1 {
-  font-family: 'Syne', sans-serif;
-  font-size: 28px; font-weight: 800;
-  letter-spacing: -0.5px; margin-bottom: 10px;
-}
-.welcome p {
-  font-size: 15px; color: var(--text-3);
-  max-width: 420px; line-height: 1.6; font-weight: 400;
-}
-.welcome-suggestions {
-  display: grid; grid-template-columns: 1fr 1fr;
-  gap: 10px; margin-top: 36px;
-  max-width: 540px; width: 100%;
-}
-.suggestion-card {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius-sm); padding: 14px 16px;
-  text-align: left; cursor: pointer;
-  transition: all var(--transition);
-}
-.suggestion-card:hover {
-  border-color: var(--accent-border);
-  background: var(--surface-2);
-  transform: translateY(-1px);
-}
-.suggestion-title {
-  font-size: 13px; font-weight: 600; color: var(--text);
-  margin-bottom: 4px;
-}
-.suggestion-desc {
-  font-size: 12px; color: var(--text-4); line-height: 1.4;
-}
+/* Message groups */
+.c-msg-group{padding:22px 0;}
+.c-msg-group+.c-msg-group{border-top:1px solid var(--br);}
+.c-msg-row{display:flex;gap:13px;align-items:flex-start;}
+.c-av{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:700;}
+.c-av.user{background:var(--s3);color:var(--t2);}
+.c-av.ai{background:var(--ac);color:#000;}
+.c-av.ai svg{width:14px;height:14px;}
+.c-msg-meta{display:flex;align-items:center;gap:8px;margin-bottom:5px;}
+.c-msg-name{font-size:13px;font-weight:600;color:var(--t1);}
+.c-msg-time{font-size:11px;color:var(--t4);}
+.c-msg-body{font-size:14px;line-height:1.72;color:var(--t2);}
+.c-msg-body p{margin-bottom:10px;} .c-msg-body p:last-child{margin-bottom:0;}
+.c-msg-body strong{color:var(--t1);font-weight:600;}
+.c-msg-body em{font-style:italic;color:var(--t3);}
+.c-msg-body code{font-family:'JetBrains Mono',monospace;background:var(--s1);padding:2px 6px;border-radius:4px;font-size:12.5px;}
+.c-msg-body ol,.c-msg-body ul{padding-left:20px;margin:8px 0;}
+.c-msg-body li{margin-bottom:4px;}
 
-/* Message bubbles */
-.msg-group { padding: 24px 0; }
-.msg-group + .msg-group { border-top: 1px solid var(--border); }
+/* Typing indicator */
+.c-typing{display:flex;align-items:center;gap:5px;padding:6px 0;}
+.c-dot{width:6px;height:6px;border-radius:50%;background:var(--t4);animation:bounce 1.2s ease-in-out infinite;}
+.c-dot:nth-child(2){animation-delay:.15s;} .c-dot:nth-child(3){animation-delay:.3s;}
+@keyframes bounce{0%,60%,100%{transform:translateY(0);opacity:.4;}30%{transform:translateY(-5px);opacity:1;}}
 
-.msg-row {
-  display: flex; gap: 14px;
-  align-items: flex-start;
-}
-.msg-avatar {
-  width: 32px; height: 32px; border-radius: 8px;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; font-size: 13px; font-weight: 700;
-}
-.msg-avatar.user-av {
-  background: var(--surface-3);
-  color: var(--text-2);
-}
-.msg-avatar.ai-av {
-  background: var(--accent);
-  color: #000;
-}
-.msg-avatar.ai-av svg { width: 16px; height: 16px; }
+/* Analysis Card */
+.ac{background:var(--s1);border:1px solid var(--br2);border-radius:var(--r);overflow:hidden;margin-top:14px;}
+.ac-head{padding:14px 18px;background:var(--ac-dim);border-bottom:1px solid var(--br);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+.ac-head-l{display:flex;align-items:center;gap:10px;}
+.ac-tag{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ac);}
+.ac-verdict{display:inline-flex;align-items:center;gap:5px;padding:4px 11px;border-radius:100px;font-size:11px;font-weight:700;letter-spacing:.03em;}
+.ac-verdict.go{background:rgba(74,222,128,.1);color:var(--ok);border:1px solid rgba(74,222,128,.18);}
+.ac-verdict.caution{background:rgba(245,166,35,.1);color:var(--warn);border:1px solid rgba(245,166,35,.18);}
+.ac-verdict.stop{background:rgba(255,107,107,.1);color:var(--danger);border:1px solid rgba(255,107,107,.18);}
+.ac-verdict .vd{width:5px;height:5px;border-radius:50%;}
+.ac-verdict.go .vd{background:var(--ok);} .ac-verdict.caution .vd{background:var(--warn);} .ac-verdict.stop .vd{background:var(--danger);}
+.ac-meta{font-size:12px;color:var(--t3);}
+.ac-scores{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--br);}
+.ac-sc{padding:14px 16px;border-right:1px solid var(--br);}
+.ac-sc:last-child{border-right:none;}
+.ac-sc-lbl{font-size:9px;color:var(--t4);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px;font-weight:600;}
+.ac-sc-val{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;letter-spacing:-.4px;}
+.cg{color:var(--ac);} .ca{color:var(--warn);} .cr{color:var(--danger);} .cw{color:var(--t1);font-size:13px!important;font-weight:600!important;margin-top:2px;}
+.ac-signals{padding:14px 18px;border-bottom:1px solid var(--br);}
+.ac-sig-title{font-size:9px;font-weight:700;color:var(--t4);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;}
+.sig-row{display:flex;align-items:center;gap:8px;margin-bottom:5px;font-size:11px;}
+.sig-l{width:120px;color:var(--t3);flex-shrink:0;font-weight:500;}
+.sig-t{flex:1;height:3px;background:rgba(255,255,255,.04);border-radius:100px;overflow:hidden;}
+.sig-f{height:100%;border-radius:100px;background:var(--ac);}
+.sig-v{width:32px;text-align:right;color:var(--t4);font-size:10px;font-family:'JetBrains Mono',monospace;}
+.ac-idea{padding:14px 18px;border-bottom:1px solid var(--br);}
+.ac-idea-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;}
+.svs-wrap{display:flex;align-items:center;gap:10px;}
+.svs-num{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;letter-spacing:-1px;}
+.svs-lbl{font-size:9px;font-weight:600;color:var(--t4);text-transform:uppercase;letter-spacing:.06em;line-height:1.4;}
+.q-tag{font-size:10px;font-weight:700;padding:4px 10px;border-radius:100px;}
+.idea-dims{display:flex;flex-direction:column;gap:7px;}
+.idea-dim-row{display:flex;align-items:center;gap:8px;}
+.idea-dim-name{font-size:11px;color:var(--t3);width:115px;flex-shrink:0;font-weight:500;}
+.idea-dim-track{flex:1;height:5px;background:rgba(255,255,255,.04);border-radius:100px;overflow:hidden;}
+.idea-dim-fill{height:100%;border-radius:100px;}
+.idea-dim-val{font-size:10px;font-weight:600;color:var(--t2);width:36px;text-align:right;font-family:'JetBrains Mono',monospace;}
+.ac-reasons{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-top:12px;}
+.ac-reason{background:var(--bg);border:1px solid var(--br);border-radius:var(--rx);padding:9px 10px;}
+.ac-reason-title{font-size:8px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--ac);margin-bottom:3px;}
+.ac-reason-txt{font-size:10px;color:var(--t3);line-height:1.45;}
+.ac-trinity{padding:14px 18px;}
+.trinity-row{display:flex;gap:10px;align-items:flex-start;padding:9px 0;}
+.trinity-row+.trinity-row{border-top:1px solid var(--br);}
+.trinity-icon{width:22px;height:22px;border-radius:5px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:10px;font-weight:700;}
+.trinity-icon.f{background:rgba(96,165,250,.1);color:var(--info);}
+.trinity-icon.i{background:rgba(245,166,35,.1);color:var(--warn);}
+.trinity-icon.a{background:rgba(74,222,128,.1);color:var(--ok);}
+.trinity-lbl{font-size:9px;font-weight:700;color:var(--t4);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;}
+.trinity-txt{font-size:12px;color:var(--t2);line-height:1.55;}
 
-.msg-header {
-  display: flex; align-items: center; gap: 8px;
-  margin-bottom: 6px;
-}
-.msg-name { font-size: 13px; font-weight: 600; color: var(--text); }
-.msg-time { font-size: 11px; color: var(--text-4); }
+/* Input */
+.c-input-wrap{position:absolute;bottom:0;left:var(--sw);right:0;padding:0 24px 20px;background:linear-gradient(transparent,var(--bg) 30%);}
+.c-input-box{max-width:760px;margin:0 auto;background:var(--s1);border:1px solid var(--br2);border-radius:14px;transition:border-color .2s,box-shadow .2s;overflow:hidden;}
+.c-input-box:focus-within{border-color:var(--ac-border);box-shadow:0 0 0 3px rgba(200,255,87,.05);}
+.c-input-row{display:flex;align-items:flex-end;padding:6px 6px 6px 16px;}
+.c-input-field{flex:1;background:none;border:none;color:var(--t1);font-family:'Inter',sans-serif;font-size:14px;line-height:1.5;padding:9px 0;outline:none;resize:none;min-height:22px;max-height:140px;}
+.c-input-field::placeholder{color:var(--t4);}
+.c-send-btn{width:34px;height:34px;background:var(--ac);border:none;border-radius:9px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;flex-shrink:0;}
+.c-send-btn:hover{opacity:.85;transform:scale(1.04);}
+.c-send-btn:disabled{background:var(--s3);cursor:not-allowed;opacity:.5;}
+.c-send-btn:disabled:hover{transform:none;}
+.c-send-btn svg{width:15px;height:15px;}
+.c-input-hint{padding:0 16px 8px;font-size:11px;color:var(--t4);}
+.c-input-hint kbd{background:var(--s2);border:1px solid var(--br);padding:1px 5px;border-radius:3px;font-family:'Inter',sans-serif;font-size:10px;}
 
-.msg-body {
-  font-size: 14px; line-height: 1.72;
-  color: var(--text-2); max-width: 100%;
-}
-.msg-body p { margin-bottom: 10px; }
-.msg-body p:last-child { margin-bottom: 0; }
-.msg-body strong { color: var(--text); font-weight: 600; }
-.msg-body code {
-  font-family: 'JetBrains Mono', monospace;
-  background: var(--surface); padding: 2px 6px;
-  border-radius: 4px; font-size: 12.5px;
-}
+/* Overlay */
+.c-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:90;}
+.c-overlay.show{display:block;}
 
-/* ── Analysis Card (rendered inside AI message) ── */
-.analysis-card {
-  background: var(--surface);
-  border: 1px solid var(--border-2);
-  border-radius: var(--radius);
-  overflow: hidden; margin-top: 16px;
-}
+/* Animations */
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+.fu{animation:fadeUp .35s ease forwards;}
+@keyframes pulseRing{0%{box-shadow:0 0 0 0 rgba(200,255,87,.2);}70%{box-shadow:0 0 0 7px rgba(200,255,87,0);}100%{box-shadow:0 0 0 0 rgba(200,255,87,0);}}
+.pr{animation:pulseRing 1.5s ease infinite;}
 
-.ac-header {
-  padding: 16px 20px;
-  background: var(--accent-dim);
-  border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; justify-content: space-between;
+/* Responsive */
+@media(max-width:1024px){
+  .l-out-grid{grid-template-columns:1fr 1fr;}
+  .l-problem-grid,.l-steps{grid-template-columns:1fr;}
+  .l-strip{grid-template-columns:repeat(2,1fr);}
+  .l-agents{padding-bottom:12px;}
 }
-.ac-header-left { display: flex; align-items: center; gap: 10px; }
-.ac-tag {
-  font-size: 10px; font-weight: 700;
-  letter-spacing: 0.1em; text-transform: uppercase;
-  color: var(--accent);
+@media(max-width:768px){
+  .l-nav{padding:0 20px;} .l-nav-links{display:none;}
+  .lc{padding:0 20px;}
+  .l-hero h1{letter-spacing:-2px;}
+  .l-cta-inner{padding:52px 28px;}
+  .l-footer{flex-direction:column;gap:12px;text-align:center;}
+  .c-sidebar{position:fixed;left:0;top:0;bottom:0;transform:translateX(-100%);z-index:200;}
+  .c-sidebar.open{transform:translateX(0);}
+  .c-menu-btn{display:flex;}
+  .c-input-wrap{left:0;}
+  .c-suggestions{grid-template-columns:1fr;}
+  .ac-scores{grid-template-columns:repeat(2,1fr);}
+  .ac-reasons{grid-template-columns:1fr 1fr;}
+  .l-out-grid{grid-template-columns:1fr;}
+  .l-strip{grid-template-columns:repeat(2,1fr);}
 }
-.ac-verdict {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 4px 12px; border-radius: 100px;
-  font-size: 11px; font-weight: 700;
-  letter-spacing: 0.04em;
-}
-.ac-verdict.go { background: rgba(74,222,128,0.12); color: var(--success); border: 1px solid rgba(74,222,128,0.2); }
-.ac-verdict.caution { background: rgba(245,166,35,0.12); color: var(--warning); border: 1px solid rgba(245,166,35,0.2); }
-.ac-verdict.stop { background: rgba(255,107,107,0.12); color: var(--danger); border: 1px solid rgba(255,107,107,0.2); }
-.ac-verdict .dot { width: 6px; height: 6px; border-radius: 50%; }
-.ac-verdict.go .dot { background: var(--success); }
-.ac-verdict.caution .dot { background: var(--warning); }
-.ac-verdict.stop .dot { background: var(--danger); }
-
-.ac-meta { font-size: 12px; color: var(--text-3); }
-
-/* Score grid */
-.ac-scores {
-  display: grid; grid-template-columns: repeat(4, 1fr);
-  border-bottom: 1px solid var(--border);
-}
-.ac-score-cell {
-  padding: 16px 18px;
-  border-right: 1px solid var(--border);
-}
-.ac-score-cell:last-child { border-right: none; }
-.ac-score-label {
-  font-size: 10px; color: var(--text-4);
-  text-transform: uppercase; letter-spacing: 0.08em;
-  margin-bottom: 6px; font-weight: 600;
-}
-.ac-score-val {
-  font-family: 'Syne', sans-serif;
-  font-size: 20px; font-weight: 800;
-  letter-spacing: -0.5px;
-}
-.c-green { color: var(--accent); }
-.c-amber { color: var(--warning); }
-.c-red { color: var(--danger); }
-.c-white { color: var(--text); font-size: 14px !important; font-weight: 600 !important; margin-top: 3px; }
-
-/* SHAP bars */
-.ac-signals { padding: 16px 20px; border-bottom: 1px solid var(--border); }
-.ac-signals-title {
-  font-size: 10px; font-weight: 700; color: var(--text-4);
-  text-transform: uppercase; letter-spacing: 0.08em;
-  margin-bottom: 12px;
-}
-.sig-row {
-  display: flex; align-items: center; gap: 10px;
-  margin-bottom: 6px; font-size: 12px;
-}
-.sig-l { width: 110px; color: var(--text-3); flex-shrink: 0; font-weight: 500; }
-.sig-t { flex: 1; height: 4px; background: rgba(255,255,255,0.04); border-radius: 100px; overflow: hidden; }
-.sig-f { height: 100%; border-radius: 100px; background: var(--accent); transition: width 0.6s ease; }
-.sig-v { width: 36px; text-align: right; color: var(--text-4); font-size: 11px; font-family: 'JetBrains Mono', monospace; }
-
-/* Idea eval section */
-.ac-idea { padding: 16px 20px; border-bottom: 1px solid var(--border); }
-.ac-idea-header {
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 14px;
-}
-.ac-idea-scores {
-  display: flex; align-items: center; gap: 20px;
-}
-.svs-badge {
-  display: flex; align-items: center; gap: 8px;
-}
-.svs-number {
-  font-family: 'Syne', sans-serif;
-  font-size: 28px; font-weight: 800;
-  letter-spacing: -1px;
-}
-.svs-label {
-  font-size: 10px; font-weight: 600; color: var(--text-4);
-  text-transform: uppercase; letter-spacing: 0.06em;
-  line-height: 1.3;
-}
-.quadrant-tag {
-  font-size: 11px; font-weight: 700; padding: 5px 12px;
-  border-radius: 100px; letter-spacing: 0.02em;
-}
-
-.idea-dims { display: flex; flex-direction: column; gap: 8px; }
-.idea-dim-row {
-  display: flex; align-items: center; gap: 10px;
-}
-.idea-dim-name {
-  font-size: 12px; color: var(--text-3);
-  width: 120px; flex-shrink: 0; font-weight: 500;
-}
-.idea-dim-track {
-  flex: 1; height: 6px;
-  background: rgba(255,255,255,0.04);
-  border-radius: 100px; overflow: hidden;
-}
-.idea-dim-fill {
-  height: 100%; border-radius: 100px;
-  transition: width 0.6s ease;
-}
-.idea-dim-val {
-  font-size: 11px; font-weight: 600; color: var(--text-2);
-  width: 40px; text-align: right;
-  font-family: 'JetBrains Mono', monospace;
-}
-
-/* Reasons grid */
-.ac-reasons {
-  display: grid; grid-template-columns: repeat(5, 1fr);
-  gap: 6px; margin-top: 14px;
-}
-.reason-card {
-  background: var(--bg-chat);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xs);
-  padding: 10px 12px;
-}
-.reason-card-title {
-  font-size: 9px; font-weight: 700;
-  letter-spacing: 0.06em; text-transform: uppercase;
-  color: var(--accent); margin-bottom: 4px;
-}
-.reason-card-text {
-  font-size: 11px; color: var(--text-3); line-height: 1.4;
-}
-
-/* Trinity report */
-.ac-trinity { padding: 16px 20px; }
-.trinity-item {
-  display: flex; gap: 12px; align-items: flex-start;
-  padding: 10px 0;
-}
-.trinity-item + .trinity-item { border-top: 1px solid var(--border); }
-.trinity-icon {
-  width: 24px; height: 24px; border-radius: 6px;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; font-size: 11px;
-}
-.trinity-icon.finding { background: rgba(96,165,250,0.12); color: var(--info); }
-.trinity-icon.implication { background: rgba(245,166,35,0.12); color: var(--warning); }
-.trinity-icon.action { background: rgba(74,222,128,0.12); color: var(--success); }
-.trinity-label {
-  font-size: 10px; font-weight: 700; color: var(--text-4);
-  text-transform: uppercase; letter-spacing: 0.06em;
-  margin-bottom: 2px;
-}
-.trinity-text { font-size: 13px; color: var(--text-2); line-height: 1.55; }
-
-/* ── Typing indicator ── */
-.typing-indicator {
-  display: flex; align-items: center; gap: 4px;
-  padding: 8px 0;
-}
-.typing-dot {
-  width: 6px; height: 6px; border-radius: 50%;
-  background: var(--text-4);
-  animation: typingBounce 1.2s ease-in-out infinite;
-}
-.typing-dot:nth-child(2) { animation-delay: 0.15s; }
-.typing-dot:nth-child(3) { animation-delay: 0.3s; }
-@keyframes typingBounce {
-  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
-  30% { transform: translateY(-4px); opacity: 1; }
-}
-
-/* ── Input bar ── */
-.input-area {
-  padding: 0 24px 24px;
-  max-width: 780px; margin: 0 auto; width: 100%;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: 10;
-}
-.input-container {
-  background: var(--surface);
-  border: 1px solid var(--border-2);
-  border-radius: 16px;
-  transition: border-color var(--transition), box-shadow var(--transition);
-  overflow: hidden;
-}
-.input-container:focus-within {
-  border-color: var(--accent-border);
-  box-shadow: 0 0 0 3px rgba(200,255,87,0.06);
-}
-
-.input-row {
-  display: flex; align-items: flex-end;
-  padding: 6px 6px 6px 18px;
-}
-.input-field {
-  flex: 1; background: none; border: none;
-  color: var(--text); font-family: 'Inter', sans-serif;
-  font-size: 14px; line-height: 1.5;
-  padding: 10px 0; outline: none;
-  resize: none; min-height: 24px; max-height: 160px;
-}
-.input-field::placeholder { color: var(--text-4); }
-
-.send-btn {
-  width: 36px; height: 36px;
-  background: var(--accent);
-  border: none; border-radius: 10px;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; transition: all var(--transition);
-  flex-shrink: 0;
-}
-.send-btn:hover { opacity: 0.85; transform: scale(1.03); }
-.send-btn:disabled { background: var(--surface-3); cursor: not-allowed; opacity: 0.5; }
-.send-btn:disabled:hover { transform: none; }
-.send-btn svg { width: 16px; height: 16px; }
-
-.input-footer-hint {
-  padding: 0 18px 10px;
-  font-size: 11px; color: var(--text-4);
-}
-.input-footer-hint kbd {
-  background: var(--surface-2); border: 1px solid var(--border);
-  padding: 1px 5px; border-radius: 3px;
-  font-family: 'Inter', sans-serif; font-size: 10px;
-}
-
-/* ── Responsive ── */
-@media (max-width: 768px) {
-  .sidebar { position: fixed; left: 0; top: 0; bottom: 0; transform: translateX(-100%); z-index: 200; }
-  .sidebar.open { transform: translateX(0); }
-  .menu-toggle { display: flex; }
-  .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 150; }
-  .sidebar-overlay.show { display: block; }
-  .welcome-suggestions { grid-template-columns: 1fr; }
-  .ac-scores { grid-template-columns: repeat(2, 1fr); }
-  .ac-reasons { grid-template-columns: 1fr 1fr; }
-  .ac-idea-header { flex-direction: column; align-items: flex-start; gap: 10px; }
-}
-
-/* ── Fade-in animation ── */
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-.fade-up { animation: fadeUp 0.4s ease forwards; }
-
-/* ── Pulse ring for loading ── */
-@keyframes pulseRing {
-  0% { box-shadow: 0 0 0 0 rgba(200,255,87,0.25); }
-  70% { box-shadow: 0 0 0 8px rgba(200,255,87,0); }
-  100% { box-shadow: 0 0 0 0 rgba(200,255,87,0); }
-}
-.pulse-ring { animation: pulseRing 1.5s ease infinite; }
 </style>
 </head>
 <body>
 
-<!-- ============ INTRO ============ -->
-<section id="intro">
+<!-- ═══════════════════ INTRO ═══════════════════ -->
+<section id="intro-screen">
   <canvas id="three-canvas"></canvas>
   <div id="prog-line"></div>
-
-  <div class="intro-scene" id="s0">
-    <div class="intro-label">For every founder who ever wondered</div>
-    <div class="intro-headline">You've had<br>this idea for<br><em>a while now.</em></div>
-  </div>
-  <div class="intro-scene" id="s1">
-    <div class="intro-label">You've told people. Some nodded.</div>
-    <div class="intro-headline">But <em>nobody</em><br>actually <span class="dim">knows</span><br>if it'll work.</div>
-  </div>
-  <div class="intro-scene" id="s2">
-    <div class="intro-label">The real question keeping you up</div>
-    <div class="intro-headline">Is the market<br><em>ready</em> for<br>this right now?</div>
-  </div>
-  <div class="intro-scene" id="s3">
-    <div class="intro-label">Most founders guess. Then build. Then find out.</div>
-    <div class="intro-headline">You <em>don't</em><br>have to <span class="dim">guess.</span></div>
-  </div>
-  <div class="intro-scene" id="s4">
-    <div class="intro-label">AI Decision Engine for MENA Founders</div>
-    <div class="intro-headline"><em>MIDAN.</em></div>
-    <button id="enter-btn">Enter the Arena</button>
-  </div>
-
-  <button id="skip">Skip</button>
+  <div class="i-scene" id="s0"><div class="i-label">For every founder who ever wondered</div><div class="i-head">You've had<br>this idea for<br><em>a while now.</em></div></div>
+  <div class="i-scene" id="s1"><div class="i-label">You've told people. Some nodded.</div><div class="i-head">But <em>nobody</em><br>actually <span class="dim">knows</span><br>if it'll work.</div></div>
+  <div class="i-scene" id="s2"><div class="i-label">The real question keeping you up</div><div class="i-head">Is the market<br><em>ready</em> for<br>this right now?</div></div>
+  <div class="i-scene" id="s3"><div class="i-label">Most founders guess. Then build. Then find out.</div><div class="i-head">You <em>don't</em><br>have to <span class="dim">guess.</span></div></div>
+  <div class="i-scene" id="s4"><div class="i-label">AI Decision Engine for MENA Founders</div><div class="i-head"><em>MIDAN.</em></div><button id="enter-btn">Enter the Arena</button></div>
+  <button id="skip-btn">Skip</button>
 </section>
 
-<!-- ============ APP ============ -->
-<div id="app">
-  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+<!-- ═══════════════════ LANDING ═══════════════════ -->
+<div id="landing-screen">
+  <nav class="l-nav" id="l-nav">
+    <a href="#" class="l-nav-logo">
+      <div class="l-nav-mark"><svg viewBox="0 0 14 14" fill="none"><polygon points="7,1 13,4 13,10 7,13 1,10 1,4" fill="#000"/></svg></div>
+      <span class="l-nav-name">MIDAN</span>
+    </a>
+    <ul class="l-nav-links">
+      <li><a href="#how">How it works</a></li>
+      <li><a href="#engine">The engine</a></li>
+      <li><a href="#outputs">What you get</a></li>
+    </ul>
+    <button class="l-nav-cta" onclick="enterChat()">Analyze My Idea</button>
+  </nav>
 
-  <!-- Sidebar -->
-  <aside class="sidebar" id="sidebar">
-    <div class="sidebar-header">
-      <div class="sidebar-brand">
-        <div class="sidebar-logo">
-          <svg viewBox="0 0 14 14" fill="none"><polygon points="7,1 13,4 13,10 7,13 1,10 1,4" fill="#000"/></svg>
+  <!-- HERO -->
+  <section class="l-hero">
+    <div class="l-hero-grid"></div>
+    <div class="l-hero-glow"></div>
+    <div class="l-eyebrow"><div class="l-eyebrow-dot"></div>AI Decision Engine — MENA & Global</div>
+    <h1>Your idea <span class="out">deserves</span><br>a real <span class="hi">answer.</span></h1>
+    <p class="l-hero-sub">Describe your startup idea. 8 AI agents read the live market, classify the regime, forecast 90 days, evaluate your concept — and give you one clear verdict in 30 seconds.</p>
+    <div class="l-hero-btns">
+      <button class="btn-primary" onclick="enterChat()">Analyze My Idea Free →</button>
+      <a href="#how" class="btn-ghost" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">See How It Works ↓</a>
+    </div>
+    <div class="l-hero-proof">
+      <span><strong>8</strong> AI Agents</span>
+      <div class="l-hero-proof-divider"></div>
+      <span><strong>8</strong> Markets</span>
+      <div class="l-hero-proof-divider"></div>
+      <span><strong>30s</strong> Verdict</span>
+      <div class="l-hero-proof-divider"></div>
+      <span><strong>5</strong> Idea Dimensions</span>
+    </div>
+  </section>
+
+  <!-- STAT STRIP -->
+  <div class="l-strip rev">
+    <div class="l-strip-cell"><div class="l-strip-n">8<em>+</em></div><div class="l-strip-l">AI models running in parallel on every single analysis</div></div>
+    <div class="l-strip-cell"><div class="l-strip-n">90</div><div class="l-strip-l">Days forecasted so you know what's coming, not just what's now</div></div>
+    <div class="l-strip-cell"><div class="l-strip-n">5</div><div class="l-strip-l">Idea evaluation dimensions scored by Agent A0</div></div>
+    <div class="l-strip-cell"><div class="l-strip-n">30<em>s</em></div><div class="l-strip-l">From description to full market intelligence report</div></div>
+  </div>
+
+  <!-- PROBLEM -->
+  <section id="questions">
+    <div class="lc">
+      <div class="l-problem">
+        <div class="rev"><div class="l-section-tag">The questions every founder asks at 2am</div><h2 class="l-section-h">We built MIDAN<br>to answer these.</h2></div>
+        <div class="l-problem-grid rev rev-d1">
+          <div class="l-p-card"><div class="l-p-num">01</div><div class="l-p-q">Is the timing right for my idea?</div><p class="l-p-a">We read <strong>live economic signals</strong> — inflation, GDP, investment velocity — and tell you if the market is heating up or cooling down right now. Not last year. Now.</p></div>
+          <div class="l-p-card"><div class="l-p-num">02</div><div class="l-p-q">Is my idea itself strong enough?</div><p class="l-p-a">Agent A0 scores your concept across <strong>5 dimensions</strong>: problem clarity, solution fit, differentiation, business model, and scalability — then combines it with market data into one viability score.</p></div>
+          <div class="l-p-card"><div class="l-p-num">03</div><div class="l-p-q">What should I actually do first?</div><p class="l-p-a">Not a percentage. A <strong>3-point action plan</strong> — what to prioritize, who to target, and how to move in the next 90 days, specific to your sector, your market, right now.</p></div>
         </div>
-        <span class="sidebar-name">MIDAN</span>
       </div>
-      <button class="new-chat-btn" onclick="newChat()">
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section id="how" class="l-how" style="border-top:1px solid var(--br);">
+    <div class="lc">
+      <div class="rev"><div class="l-section-tag">How it works</div><h2 class="l-section-h">Three steps.<br>One clear verdict.</h2></div>
+      <div class="l-steps rev rev-d1">
+        <div class="l-step"><div class="l-step-n">01</div><h3>You describe your idea</h3><p>Write it in plain language — what you want to build and where. No forms. No dropdowns. MIDAN extracts sector, country, and context automatically from what you type.</p></div>
+        <div class="l-step"><div class="l-step-n">02</div><h3>8 agents read the market</h3><p>MIDAN runs NLP parsing, macro vector construction, SVM regime classification, SARIMA trend forecasting, SHAP explainability, idea evaluation, LLM synthesis — all in parallel.</p></div>
+        <div class="l-step"><div class="l-step-n">03</div><h3>You get a verdict + advisor</h3><p>A market regime, opportunity score, Startup Viability Score, and a quadrant verdict: GO, Wait, Wrong Idea, or STOP. Then keep chatting — MIDAN becomes your on-demand VC advisor.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- AGENT PIPELINE -->
+  <section id="engine" class="l-pipeline">
+    <div class="lc">
+      <div class="rev"><div class="l-section-tag">The engine</div><h2 class="l-section-h">8 agents. Running<br>in parallel.</h2></div>
+      <div class="l-agents rev rev-d1">
+        <div class="l-agent"><div class="l-agent-tag">Agent A0</div><div class="l-agent-name">Idea Evaluator</div><div class="l-agent-desc">Scores 5 dimensions using LLM + keyword heuristics</div><div class="l-agent-arrow">›</div></div>
+        <div class="l-agent"><div class="l-agent-tag">Agent A1</div><div class="l-agent-name">NLP Parser</div><div class="l-agent-desc">Extracts sector, country, and context from free text</div><div class="l-agent-arrow">›</div></div>
+        <div class="l-agent"><div class="l-agent-tag">Macro</div><div class="l-agent-name">Vector Builder</div><div class="l-agent-desc">Constructs 5-feature economic vector per market</div><div class="l-agent-arrow">›</div></div>
+        <div class="l-agent"><div class="l-agent-tag">SVM RBF</div><div class="l-agent-name">Classifier</div><div class="l-agent-desc">Classifies market regime with confidence score</div><div class="l-agent-arrow">›</div></div>
+        <div class="l-agent"><div class="l-agent-tag">SARIMA</div><div class="l-agent-name">Forecaster</div><div class="l-agent-desc">90-day sector deal-volume trend prediction</div><div class="l-agent-arrow">›</div></div>
+        <div class="l-agent"><div class="l-agent-tag">LightGBM</div><div class="l-agent-name">SHAP XAI</div><div class="l-agent-desc">Explains which signals drove the regime verdict</div><div class="l-agent-arrow">›</div></div>
+        <div class="l-agent"><div class="l-agent-tag">Agent A6</div><div class="l-agent-name">Trinity Report</div><div class="l-agent-desc">Finding → Implication → Action in plain language</div><div class="l-agent-arrow">›</div></div>
+        <div class="l-agent"><div class="l-agent-tag">Agent A7</div><div class="l-agent-name">LLM Synthesis</div><div class="l-agent-desc">Groq/Llama3 final synthesis + follow-up advisor</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- OUTPUTS -->
+  <section id="outputs" class="l-outputs" style="border-top:1px solid var(--br);">
+    <div class="lc">
+      <div class="rev"><div class="l-section-tag">What you get</div><h2 class="l-section-h">Six outputs.<br>One decision.</h2></div>
+      <div class="l-out-grid rev rev-d1">
+        <div class="l-out-card"><div class="l-out-tag">Market Regime</div><h3>Where your market sits right now</h3><p>GROWTH, EMERGING, HIGH_FRICTION, or CONTRACTING — computed from live macro data, not historical averages.</p><div class="l-out-preview"><span class="hi">GROWTH_MARKET</span> · 81% confidence</div></div>
+        <div class="l-out-card"><div class="l-out-tag">Opportunity Score (TAS)</div><h3>One number for the market</h3><p>Total Addressable Signal — combines market temperature, 90-day forecast, and SHAP signal weight into a 0–100 score.</p><div class="l-out-preview">TAS: <span class="hi">74</span>/100 · Threshold: 68</div></div>
+        <div class="l-out-card"><div class="l-out-tag">Startup Viability Score</div><h3>Market + idea, combined</h3><p>SVS = TAS × 50% + Idea Score × 50%. The only score that tells you whether <em>you specifically</em> should build this, in this market, right now.</p><div class="l-out-preview">SVS: <span class="hi">68</span>/100 · Verdict: GO</div></div>
+        <div class="l-out-card"><div class="l-out-tag">Idea Evaluation (Agent A0)</div><h3>Your concept, stress-tested</h3><p>5 dimensions scored 0–10: Problem Clarity, Solution Fit, Differentiation, Business Model, Scalability — each with a specific reason.</p><div class="l-out-preview">Avg: <span class="hi">6.4</span>/10 · Idea Score: 64</div></div>
+        <div class="l-out-card"><div class="l-out-tag">SHAP Signal Weights</div><h3>Why the verdict is what it is</h3><p>LightGBM + SHAP shows exactly which economic signals drove the regime classification — so you trust the verdict, not just accept it.</p><div class="l-out-preview">Top signal: <span class="hi">velocity_yoy</span> (82%)</div></div>
+        <div class="l-out-card"><div class="l-out-tag">Trinity Report</div><h3>Finding → Implication → Action</h3><p>Three sentences that matter: what the data shows, what it means for your specific idea, and what you should do in the next 90 days.</p><div class="l-out-preview">Action: <span class="hi">Move now.</span> Apply this cycle.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FINAL CTA -->
+  <div class="l-cta">
+    <div class="lc">
+      <div class="l-cta-inner rev">
+        <div class="l-section-tag" style="margin-bottom:20px">Start now — it's free</div>
+        <h2>Stop wondering.<br>Start <em>knowing.</em></h2>
+        <p>Describe your idea. Get your market verdict in 30 seconds. Then keep the conversation going with your on-demand AI advisor.</p>
+        <button class="btn-primary" style="font-size:15px;padding:17px 44px;" onclick="enterChat()">Analyze My Idea →</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="l-footer">
+    <span class="l-footer-logo">MIDAN</span>
+    <div style="display:flex;gap:24px;list-style:none;">
+      <a href="#how" style="font-size:11px;color:var(--t4);text-decoration:none;letter-spacing:.08em;text-transform:uppercase;">How it works</a>
+      <a href="#engine" style="font-size:11px;color:var(--t4);text-decoration:none;letter-spacing:.08em;text-transform:uppercase;">The Engine</a>
+      <a href="https://github.com/seifalaa111/Intelligent_Systems_Project" target="_blank" style="font-size:11px;color:var(--t4);text-decoration:none;letter-spacing:.08em;text-transform:uppercase;">GitHub</a>
+    </div>
+    <span class="l-footer-copy">2026 MIDAN — AI Decision Engine for Founders</span>
+  </footer>
+</div>
+
+<!-- ═══════════════════ CHAT ═══════════════════ -->
+<div id="chat-screen">
+  <div class="c-overlay" id="c-overlay" onclick="toggleSidebar()"></div>
+  <aside class="c-sidebar" id="c-sidebar">
+    <div class="c-sidebar-head">
+      <a href="#" class="c-brand">
+        <div class="c-brand-mark"><svg viewBox="0 0 14 14" fill="none"><polygon points="7,1 13,4 13,10 7,13 1,10 1,4" fill="#000"/></svg></div>
+        <span class="c-brand-name">MIDAN</span>
+      </a>
+      <button class="c-new-btn" onclick="newChat()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         New analysis
       </button>
     </div>
-
-    <div class="sidebar-conversations" id="sidebar-conversations">
-      <div class="sidebar-section-label">Recent</div>
+    <div class="c-sidebar-convs" id="c-sidebar-convs">
+      <div class="c-sidebar-label">Recent</div>
     </div>
-
-    <div class="sidebar-footer">
-      <div class="sidebar-footer-text">
-        MIDAN AI Decision Engine<br>
-        <span style="color:var(--text-4)">Built for MENA Founders &mdash; 2026</span>
-      </div>
+    <div class="c-sidebar-foot">
+      <div class="c-sidebar-foot-txt">MIDAN AI Decision Engine<br><span style="color:var(--t4)">8 Agents · MENA & Global · 2026</span></div>
+      <a href="#" class="c-sidebar-foot-link" onclick="goLanding();return false;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><polyline points="15 18 9 12 15 6"/></svg>
+        Back to overview
+      </a>
     </div>
   </aside>
 
-  <!-- Main -->
-  <div class="main">
-    <div class="topbar">
-      <div class="topbar-left">
-        <button class="menu-toggle" onclick="toggleSidebar()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-        </button>
-        <span class="topbar-title" id="topbar-title">New Analysis</span>
-        <span class="topbar-badge">AI Engine</span>
+  <div class="c-main">
+    <div class="c-topbar">
+      <div class="c-topbar-left">
+        <button class="c-menu-btn" onclick="toggleSidebar()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+        <button class="c-topbar-back" onclick="goLanding()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>Overview</button>
+        <span class="c-topbar-title" id="c-topbar-title">New Analysis</span>
+        <span class="c-topbar-badge">AI Advisor</span>
       </div>
-      <div class="topbar-right">
-        <button class="topbar-btn" onclick="newChat()">+ New</button>
+      <div class="c-topbar-right">
+        <button class="c-topbar-btn" onclick="newChat()">+ New</button>
       </div>
     </div>
 
-    <div class="messages-wrap" id="messages-wrap">
-      <div class="messages" id="messages">
-        <!-- Welcome state -->
-        <div class="welcome" id="welcome-state">
-          <div class="welcome-icon">
-            <svg viewBox="0 0 28 28" fill="none"><polygon points="14,2 26,8 26,20 14,26 2,20 2,8" fill="#000"/></svg>
-          </div>
-          <h1>What are you building?</h1>
-          <p>Describe your startup idea and MIDAN will analyze the market, evaluate your concept, and tell you exactly what to do next.</p>
-          <div class="welcome-suggestions">
-            <div class="suggestion-card" onclick="useSuggestion('An invoice financing app for Egyptian SMEs to get paid faster')">
-              <div class="suggestion-title">Fintech in Egypt</div>
-              <div class="suggestion-desc">Invoice financing for SMEs</div>
-            </div>
-            <div class="suggestion-card" onclick="useSuggestion('A health clinic booking platform for patients in Dubai and Abu Dhabi')">
-              <div class="suggestion-title">Healthtech in UAE</div>
-              <div class="suggestion-desc">Clinic booking platform</div>
-            </div>
-            <div class="suggestion-card" onclick="useSuggestion('An online tutoring platform connecting students with teachers in Cairo')">
-              <div class="suggestion-title">Edtech in Cairo</div>
-              <div class="suggestion-desc">Online tutoring marketplace</div>
-            </div>
-            <div class="suggestion-card" onclick="useSuggestion('A SaaS CRM tool for small businesses across Saudi Arabia')">
-              <div class="suggestion-title">SaaS in Saudi</div>
-              <div class="suggestion-desc">CRM for small businesses</div>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div class="c-msgs-wrap" id="c-msgs-wrap">
+      <div class="c-msgs" id="c-msgs"></div>
     </div>
 
-    <div class="input-area">
-      <div class="input-container">
-        <div class="input-row">
-          <textarea id="chat-input" class="input-field" placeholder="Describe your startup idea..." rows="1"></textarea>
-          <button class="send-btn" id="send-btn" onclick="handleSend()">
-            <svg viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13" stroke="#000" stroke-width="2" stroke-linecap="round"/><path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <div class="c-input-wrap">
+      <div class="c-input-box">
+        <div class="c-input-row">
+          <textarea id="c-input" class="c-input-field" placeholder="Describe your startup idea..." rows="1"></textarea>
+          <button class="c-send-btn" id="c-send-btn" onclick="handleSend()">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13" stroke="#000" stroke-width="2.5" stroke-linecap="round"/><path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
         </div>
-        <div class="input-footer-hint">
-          <kbd>Enter</kbd> to send &middot; <kbd>Shift+Enter</kbd> for new line
-        </div>
+        <div class="c-input-hint"><kbd>Enter</kbd> to send &middot; <kbd>Shift+Enter</kbd> for new line</div>
       </div>
     </div>
   </div>
@@ -749,609 +540,379 @@ body {
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
-/* ============ STATE ============ */
-const API_BASE = window.MIDAN_API_URL || 'http://localhost:8000';
-let chatHistory = [];
-let internalContext = {};
-let analysisComplete = false;
-let currentConvId = 0;
-let conversations = [];
-let isProcessing = false;
-
-/* ============ THREE.JS ============ */
-const canvas = document.getElementById('three-canvas');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-renderer.setSize(innerWidth, innerHeight);
-renderer.setClearColor(0x000000, 1);
-
-const scene = new THREE.Scene();
-const cam = new THREE.PerspectiveCamera(65, innerWidth / innerHeight, 0.1, 1000);
-cam.position.set(0, 0, 28);
-
-const N = 2200;
-const pos = new Float32Array(N * 3), col = new Float32Array(N * 3);
-for (let i = 0; i < N; i++) {
-  const th = Math.random() * Math.PI * 2, ph = Math.acos(2 * Math.random() - 1), r = 18 + Math.random() * 55;
-  pos[i*3] = r * Math.sin(ph) * Math.cos(th);
-  pos[i*3+1] = r * Math.sin(ph) * Math.sin(th);
-  pos[i*3+2] = r * Math.cos(ph);
-  if (Math.random() > 0.88) { col[i*3] = 0.78; col[i*3+1] = 1.0; col[i*3+2] = 0.34; }
-  else { const b = 0.08 + Math.random() * 0.22; col[i*3] = b; col[i*3+1] = b; col[i*3+2] = b + 0.04; }
+/* ═══════════════════════════════════════
+   THREE.JS INTRO
+═══════════════════════════════════════ */
+const canvas3 = document.getElementById('three-canvas');
+const renderer = new THREE.WebGLRenderer({canvas:canvas3,antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.setSize(innerWidth,innerHeight); renderer.setClearColor(0x000000,1);
+const scene3 = new THREE.Scene();
+const cam3 = new THREE.PerspectiveCamera(65,innerWidth/innerHeight,.1,1000);
+cam3.position.set(0,0,28);
+const N=2200,pos=new Float32Array(N*3),col=new Float32Array(N*3);
+for(let i=0;i<N;i++){
+  const th=Math.random()*Math.PI*2,ph=Math.acos(2*Math.random()-1),r=18+Math.random()*55;
+  pos[i*3]=r*Math.sin(ph)*Math.cos(th); pos[i*3+1]=r*Math.sin(ph)*Math.sin(th); pos[i*3+2]=r*Math.cos(ph);
+  if(Math.random()>.88){col[i*3]=.78;col[i*3+1]=1;col[i*3+2]=.34;}
+  else{const b=.08+Math.random()*.22;col[i*3]=b;col[i*3+1]=b;col[i*3+2]=b+.04;}
 }
-const pgeo = new THREE.BufferGeometry();
-pgeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-pgeo.setAttribute('color', new THREE.BufferAttribute(col, 3));
-const pmat = new THREE.PointsMaterial({ size: 0.45, vertexColors: true, transparent: true, opacity: 0, sizeAttenuation: true, depthWrite: false });
-const pts = new THREE.Points(pgeo, pmat);
-scene.add(pts);
-const addWire = (geo, opacity) => { const m = new THREE.MeshBasicMaterial({ color: 0xc8ff57, wireframe: true, transparent: true, opacity }); const mesh = new THREE.Mesh(geo, m); scene.add(mesh); return mesh; };
-const oct = addWire(new THREE.OctahedronGeometry(10, 1), 0);
-const ico = addWire(new THREE.IcosahedronGeometry(5, 1), 0);
-window.addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix(); });
-
-let t = 0, sceneIdx = 0, running = true;
-(function anim() {
-  requestAnimationFrame(anim); t += 0.007;
-  const tp = Math.min(sceneIdx / 1.5, 1);
-  pmat.opacity += (tp - pmat.opacity) * 0.018;
-  if (sceneIdx >= 2) { oct.material.opacity += (0.06 - oct.material.opacity) * 0.015; ico.material.opacity += (0.04 - ico.material.opacity) * 0.015; }
-  pts.rotation.y = t * 0.04; pts.rotation.x = Math.sin(t * 0.025) * 0.08;
-  oct.rotation.x = t * 0.06; oct.rotation.y = t * 0.04; oct.rotation.z = t * 0.02;
-  ico.rotation.x = -t * 0.09; ico.rotation.y = t * 0.07;
-  cam.position.x = Math.sin(t * 0.09) * 2.5; cam.position.y = Math.cos(t * 0.07) * 1.8;
-  cam.lookAt(0, 0, 0);
-  renderer.render(scene, cam);
+const pgeo=new THREE.BufferGeometry();
+pgeo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+pgeo.setAttribute('color',new THREE.BufferAttribute(col,3));
+const pmat=new THREE.PointsMaterial({size:.45,vertexColors:true,transparent:true,opacity:0,sizeAttenuation:true,depthWrite:false});
+const pts=new THREE.Points(pgeo,pmat); scene3.add(pts);
+const aw=(geo,op)=>{const m=new THREE.MeshBasicMaterial({color:0xc8ff57,wireframe:true,transparent:true,opacity:op});const mesh=new THREE.Mesh(geo,m);scene3.add(mesh);return mesh;};
+const oct=aw(new THREE.OctahedronGeometry(10,1),0);
+const ico=aw(new THREE.IcosahedronGeometry(5,1),0);
+window.addEventListener('resize',()=>{renderer.setSize(innerWidth,innerHeight);cam3.aspect=innerWidth/innerHeight;cam3.updateProjectionMatrix();});
+let t3=0,si=0,running=true;
+(function a3(){requestAnimationFrame(a3);t3+=.007;
+  pmat.opacity+=(Math.min(si/1.5,1)-pmat.opacity)*.018;
+  if(si>=2){oct.material.opacity+=(.06-oct.material.opacity)*.015;ico.material.opacity+=(.04-ico.material.opacity)*.015;}
+  pts.rotation.y=t3*.04;pts.rotation.x=Math.sin(t3*.025)*.08;
+  oct.rotation.x=t3*.06;oct.rotation.y=t3*.04;oct.rotation.z=t3*.02;
+  ico.rotation.x=-t3*.09;ico.rotation.y=t3*.07;
+  cam3.position.x=Math.sin(t3*.09)*2.5;cam3.position.y=Math.cos(t3*.07)*1.8;
+  cam3.lookAt(0,0,0); renderer.render(scene3,cam3);
 })();
 
-/* ============ INTRO SEQUENCER ============ */
-const scenes = document.querySelectorAll('.intro-scene');
-const prog = document.getElementById('prog-line');
-const timings = [2800, 2800, 2800, 2800, 0];
+/* ═══════════════════════════════════════
+   INTRO SEQUENCER
+═══════════════════════════════════════ */
+const iScenes=document.querySelectorAll('.i-scene');
+const progLine=document.getElementById('prog-line');
+const timings=[2800,2800,2800,2800,0];
+function showS(i){iScenes.forEach((s,j)=>{s.classList.remove('in','out');if(j===i)s.classList.add('in');else if(j<i)s.classList.add('out');});si=i;progLine.style.width=(i/(iScenes.length-1)*100)+'%';if(i===4){const b=document.getElementById('enter-btn');b.style.display='inline-block';setTimeout(()=>b.style.opacity='1',50);}}
+function startSeq(){showS(0);let idx=0;function nx(){if(!running)return;idx++;if(idx<iScenes.length){showS(idx);if(timings[idx]>0)setTimeout(nx,timings[idx]);}}setTimeout(nx,timings[0]);}
+function exitIntro(){running=false;document.getElementById('intro-screen').classList.add('exit');setTimeout(()=>{document.getElementById('intro-screen').style.display='none';showLanding();},800);}
+document.getElementById('enter-btn').addEventListener('click',exitIntro);
+document.getElementById('skip-btn').addEventListener('click',exitIntro);
+document.body.style.overflow='hidden';
+setTimeout(startSeq,500);
 
-function showS(i) {
-  scenes.forEach((s, j) => { s.classList.remove('in', 'out'); if (j === i) s.classList.add('in'); else if (j < i) s.classList.add('out'); });
-  sceneIdx = i;
-  prog.style.width = (((i) / (scenes.length - 1)) * 100) + '%';
-  if (i === 4) { const btn = document.getElementById('enter-btn'); btn.style.display = 'inline-block'; setTimeout(() => btn.style.opacity = '1', 50); }
+/* ═══════════════════════════════════════
+   SCREEN TRANSITIONS
+═══════════════════════════════════════ */
+function showLanding(){
+  document.getElementById('landing-screen').classList.add('show');
+  document.body.style.overflow='auto';
+  initReveal();
+  // Sticky nav
+  window.addEventListener('scroll',()=>{
+    document.getElementById('l-nav').classList.toggle('scrolled',window.scrollY>40);
+  });
 }
 
-function startSeq() {
-  showS(0);
-  let idx = 0;
-  function next() {
-    if (!running) return;
-    idx++;
-    if (idx < scenes.length) { showS(idx); if (timings[idx] > 0) setTimeout(next, timings[idx]); }
+function enterChat(){
+  document.body.style.overflow='hidden';
+  document.getElementById('landing-screen').classList.remove('show');
+  document.getElementById('chat-screen').classList.add('show');
+  initChat();
+}
+
+function goLanding(){
+  document.body.style.overflow='auto';
+  document.getElementById('chat-screen').classList.remove('show');
+  document.getElementById('landing-screen').classList.add('show');
+}
+
+/* ═══════════════════════════════════════
+   SCROLL REVEAL
+═══════════════════════════════════════ */
+function initReveal(){
+  const els=document.querySelectorAll('.rev');
+  const io=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('on');io.unobserve(e.target);}});},{threshold:.07});
+  els.forEach(el=>io.observe(el));
+}
+
+/* ═══════════════════════════════════════
+   CHAT STATE
+═══════════════════════════════════════ */
+const API_BASE = window.MIDAN_API_URL || 'http://localhost:8000';
+let chatHistory = [], internalContext = {}, analysisComplete = false;
+let currentConvId = 0, conversations = [], isProcessing = false;
+
+function initChat(){
+  if(!chatHistory.length){
+    newChat();
   }
-  setTimeout(next, timings[0]);
 }
 
-function enterLanding() {
-  running = false;
-  document.getElementById('intro').classList.add('exit');
-  setTimeout(() => {
-    document.getElementById('intro').style.display = 'none';
-    document.getElementById('app').classList.add('show');
-    document.getElementById('app').classList.add('landing-mode');
-    document.getElementById('chat-input').focus();
-    newChat(); // Initialize first chat
-  }, 800);
-}
-
-document.getElementById('enter-btn').addEventListener('click', enterLanding);
-document.getElementById('skip').addEventListener('click', enterLanding);
-document.body.style.overflow = 'hidden';
-setTimeout(startSeq, 500);
-
-/* ============ SIDEBAR / STATE INIT ============ */
-function toggleSidebar() {
-  document.getElementById('sidebar').classList.toggle('open');
-  document.getElementById('sidebar-overlay').classList.toggle('show');
-}
-document.getElementById('sidebar-overlay').addEventListener('click', toggleSidebar);
-
-function saveCurrentConversation() {
-  if (!currentConvId || chatHistory.length === 0) return;
-  const idx = conversations.findIndex(c => c.id === currentConvId);
-  const title = document.getElementById('topbar-title').textContent;
-  const cObj = { 
-    id: currentConvId, title, 
-    history: [...chatHistory], context: {...internalContext}, 
-    dom: document.getElementById('messages').innerHTML,
-    analysisComplete
-  };
-  if (idx >= 0) conversations[idx] = cObj;
-  else conversations.push(cObj);
-}
-
-function switchConversation(id) {
-  if (currentConvId === id) return;
+function newChat(){
   saveCurrentConversation();
-  
-  const target = conversations.find(c => c.id === id);
-  if (!target) return;
-  
-  chatHistory = [...target.history];
-  internalContext = {...target.context};
-  currentConvId = target.id;
-  analysisComplete = target.analysisComplete;
-  
-  document.getElementById('topbar-title').textContent = target.title;
-  document.getElementById('messages').innerHTML = target.dom;
-  document.getElementById('app').classList.remove('landing-mode');
-  
-  document.querySelectorAll('.conv-item').forEach(el => el.classList.remove('active'));
-  const el = document.getElementById('conv-' + id);
-  if (el) el.classList.add('active');
-  
-  scrollToBottom();
-  if(window.innerWidth <= 768) toggleSidebar();
-}
-
-function newChat() {
-  saveCurrentConversation();
-  
-  chatHistory = [];
-  internalContext = {};
-  analysisComplete = false;
+  chatHistory = []; internalContext = {}; analysisComplete = false;
   currentConvId = Date.now();
-
-  const msgs = document.getElementById('messages');
-  msgs.innerHTML = `
-    <div class="welcome" id="welcome-state">
-      <div class="welcome-icon">
-        <svg viewBox="0 0 28 28" fill="none"><polygon points="14,2 26,8 26,20 14,26 2,20 2,8" fill="#000"/></svg>
-      </div>
-      <h1>What are you building?</h1>
-      <p>Describe your startup idea and MIDAN will analyze the market, evaluate your concept, and tell you exactly what to do next.</p>
-      <div class="welcome-suggestions">
-        <div class="suggestion-card" onclick="useSuggestion('An invoice financing app for Egyptian SMEs to get paid faster')">
-          <div class="suggestion-title">Fintech in Egypt</div>
-          <div class="suggestion-desc">Invoice financing for SMEs</div>
-        </div>
-        <div class="suggestion-card" onclick="useSuggestion('A health clinic booking platform for patients in Dubai and Abu Dhabi')">
-          <div class="suggestion-title">Healthtech in UAE</div>
-          <div class="suggestion-desc">Clinic booking platform</div>
-        </div>
-        <div class="suggestion-card" onclick="useSuggestion('An online tutoring platform connecting students with teachers in Cairo')">
-          <div class="suggestion-title">Edtech in Cairo</div>
-          <div class="suggestion-desc">Online tutoring marketplace</div>
-        </div>
-        <div class="suggestion-card" onclick="useSuggestion('A SaaS CRM tool for small businesses across Saudi Arabia')">
-          <div class="suggestion-title">SaaS in Saudi</div>
-          <div class="suggestion-desc">CRM for small businesses</div>
-        </div>
-      </div>
-    </div>`;
-
-  document.getElementById('topbar-title').textContent = 'New Analysis';
-  document.getElementById('app').classList.add('landing-mode');
-  
-  document.querySelectorAll('.conv-item').forEach(el => el.classList.remove('active'));
-  
-  document.getElementById('sidebar').classList.remove('open');
-  document.getElementById('sidebar-overlay').classList.remove('show');
-  document.getElementById('chat-input').focus();
+  document.getElementById('c-msgs').innerHTML = '';
+  document.getElementById('c-topbar-title').textContent = 'New Analysis';
+  document.querySelectorAll('.c-conv-item').forEach(e=>e.classList.remove('active'));
+  // Auto-greeting from MIDAN
+  setTimeout(()=>addAIMessage(`<p>Hey — I'm MIDAN, your startup market intelligence advisor.</p><p>Describe your startup idea below — what you want to build and where — and I'll run 8 AI agents on it: market regime classification, 90-day forecast, idea evaluation, and a full action plan.</p><p style="color:var(--t4);font-size:13px">Or pick one of the examples below to see what a full analysis looks like.</p>${buildWelcomeSuggestions()}`, false), 100);
+  if(window.innerWidth<=768){document.getElementById('c-sidebar').classList.remove('open');document.getElementById('c-overlay').classList.remove('show');}
+  document.getElementById('c-input').focus();
 }
 
-function addConversationToSidebar(id, title) {
-  const container = document.getElementById('sidebar-conversations');
-  document.querySelectorAll('.conv-item').forEach(el => el.classList.remove('active'));
-  
-  const item = document.createElement('div');
-  item.className = 'conv-item active';
-  item.id = 'conv-' + id;
-  item.textContent = title;
-  item.onclick = () => switchConversation(id);
-  
-  const label = container.querySelector('.sidebar-section-label');
-  if (label && label.nextSibling) {
-    container.insertBefore(item, label.nextSibling);
-  } else {
-    container.appendChild(item);
-  }
+function buildWelcomeSuggestions(){
+  const sugs = [
+    {title:'Fintech in Egypt',desc:'Invoice financing for Egyptian SMEs',idea:'An invoice financing platform for Egyptian SMEs to solve the payment gap and get paid faster on their invoices'},
+    {title:'Healthtech in UAE',desc:'Clinic booking & telemedicine',idea:'A health clinic booking and telemedicine platform for patients in Dubai and Abu Dhabi with subscription revenue'},
+    {title:'Edtech in Cairo',desc:'Online tutoring marketplace',idea:'An online tutoring platform connecting students with expert teachers in Cairo using AI-matched sessions'},
+    {title:'SaaS in Saudi',desc:'CRM for SMBs',idea:'A SaaS CRM tool built for small businesses across Saudi Arabia to manage customers, invoices and sales pipelines'},
+  ];
+  return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px;max-width:560px">${sugs.map(s=>`<div class="c-sug" onclick="useSuggestion('${s.idea}')"><div class="c-sug-title">${s.title}</div><div class="c-sug-desc">${s.desc}</div></div>`).join('')}</div>`;
 }
 
+function useSuggestion(text){document.getElementById('c-input').value=text;handleSend();}
 
-/* ============ CHAT FUNCTIONS ============ */
-function getTimeStr() {
-  return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+/* ═══════════════════════════════════════
+   SIDEBAR
+═══════════════════════════════════════ */
+function toggleSidebar(){
+  document.getElementById('c-sidebar').classList.toggle('open');
+  document.getElementById('c-overlay').classList.toggle('show');
 }
 
-function useSuggestion(text) {
-  document.getElementById('chat-input').value = text;
-  handleSend();
+function saveCurrentConversation(){
+  if(!currentConvId||!chatHistory.length)return;
+  const title=document.getElementById('c-topbar-title').textContent;
+  const idx=conversations.findIndex(c=>c.id===currentConvId);
+  const obj={id:currentConvId,title,history:[...chatHistory],context:{...internalContext},dom:document.getElementById('c-msgs').innerHTML,analysisComplete};
+  if(idx>=0)conversations[idx]=obj; else conversations.push(obj);
 }
 
-function addUserMessage(text) {
-  const welcome = document.getElementById('welcome-state');
-  if (welcome) welcome.remove();
-
-  const group = document.createElement('div');
-  group.className = 'msg-group fade-up';
-  group.innerHTML = `
-    <div class="msg-row">
-      <div class="msg-avatar user-av">Y</div>
-      <div style="flex:1;min-width:0">
-        <div class="msg-header">
-          <span class="msg-name">You</span>
-          <span class="msg-time">${getTimeStr()}</span>
-        </div>
-        <div class="msg-body"><p>${escapeHtml(text)}</p></div>
-      </div>
-    </div>`;
-  document.getElementById('messages').appendChild(group);
-  scrollToBottom();
-}
-
-function addTypingIndicator() {
-  const group = document.createElement('div');
-  group.className = 'msg-group fade-up';
-  group.id = 'typing-indicator';
-  group.innerHTML = `
-    <div class="msg-row">
-      <div class="msg-avatar ai-av pulse-ring">
-        <svg viewBox="0 0 14 14" fill="none"><polygon points="7,1 13,4 13,10 7,13 1,10 1,4" fill="#000"/></svg>
-      </div>
-      <div style="flex:1;min-width:0">
-        <div class="msg-header">
-          <span class="msg-name">MIDAN</span>
-          <span class="msg-time">analyzing...</span>
-        </div>
-        <div class="typing-indicator">
-          <div class="typing-dot"></div>
-          <div class="typing-dot"></div>
-          <div class="typing-dot"></div>
-        </div>
-      </div>
-    </div>`;
-  document.getElementById('messages').appendChild(group);
-  scrollToBottom();
-}
-
-function removeTypingIndicator() {
-  const el = document.getElementById('typing-indicator');
-  if (el) el.remove();
-}
-
-function addAIMessage(html) {
-  const group = document.createElement('div');
-  group.className = 'msg-group fade-up';
-  group.innerHTML = `
-    <div class="msg-row">
-      <div class="msg-avatar ai-av">
-        <svg viewBox="0 0 14 14" fill="none"><polygon points="7,1 13,4 13,10 7,13 1,10 1,4" fill="#000"/></svg>
-      </div>
-      <div style="flex:1;min-width:0">
-        <div class="msg-header">
-          <span class="msg-name">MIDAN</span>
-          <span class="msg-time">${getTimeStr()}</span>
-        </div>
-        <div class="msg-body">${html}</div>
-      </div>
-    </div>`;
-  document.getElementById('messages').appendChild(group);
-  scrollToBottom();
-}
-
-function scrollToBottom() {
-  const wrap = document.getElementById('messages-wrap');
-  setTimeout(() => { wrap.scrollTop = wrap.scrollHeight; }, 50);
-}
-
-function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
-
-/* ============ ANALYSIS CARD BUILDER ============ */
-function buildAnalysisCard(d) {
-  const regimeLabel = d.regime.replace('_MARKET', '').replace('_', ' ');
-  const tasPercent = d.tas_score;
-
-  // Verdict
-  let verdictClass = 'caution';
-  let verdictText = 'EVALUATE FURTHER';
-  if (d.quadrant && d.quadrant.startsWith('GO')) { verdictClass = 'go'; verdictText = d.quadrant; }
-  else if (d.quadrant && d.quadrant.startsWith('STOP')) { verdictClass = 'stop'; verdictText = d.quadrant; }
-  else if (d.quadrant) { verdictClass = 'caution'; verdictText = d.quadrant; }
-
-  // Score colors
-  const tasColor = tasPercent >= 70 ? 'c-green' : tasPercent >= 50 ? 'c-amber' : 'c-red';
-  const confColor = d.confidence >= 75 ? 'c-green' : d.confidence >= 55 ? 'c-amber' : 'c-red';
-
-  // Trend
-  const trendText = d.sarima_trend > 0.55 ? 'Growing' : d.sarima_trend > 0.35 ? 'Stable' : 'Declining';
-  const trendColor = d.sarima_trend > 0.55 ? 'c-green' : d.sarima_trend > 0.35 ? 'c-amber' : 'c-red';
-
-  // SVS
-  const svs = d.svs || 0;
-  const svsColor = svs >= 60 ? 'c-green' : svs >= 45 ? 'c-amber' : 'c-red';
-
-  // SHAP bars
-  let shapHtml = '';
-  if (d.shap_weights) {
-    const features = Object.entries(d.shap_weights);
-    const maxVal = Math.max(...features.map(f => f[1]));
-    features.sort((a, b) => b[1] - a[1]);
-    shapHtml = features.map(([name, val]) => {
-      const pct = Math.round(val / maxVal * 100);
-      const opac = Math.max(0.35, pct / 100);
-      return `<div class="sig-row"><div class="sig-l">${name.replace(/_/g, ' ')}</div><div class="sig-t"><div class="sig-f" style="width:${pct}%;opacity:${opac}"></div></div><div class="sig-v">${pct}%</div></div>`;
-    }).join('');
-  }
-
-  // Idea dimension bars
-  let ideaHtml = '';
-  if (d.idea_dimensions) {
-    const dims = ['problem_clarity', 'solution_fit', 'differentiation', 'business_model', 'scalability'];
-    const dimLabels = { problem_clarity: 'Problem Clarity', solution_fit: 'Solution Fit', differentiation: 'Differentiation', business_model: 'Business Model', scalability: 'Scalability' };
-
-    const dimBars = dims.map(dim => {
-      const val = d.idea_dimensions[dim] || 5;
-      const pct = val * 10;
-      const fillColor = val >= 7 ? 'var(--accent)' : val >= 5 ? 'var(--info)' : 'var(--danger)';
-      return `<div class="idea-dim-row"><span class="idea-dim-name">${dimLabels[dim]}</span><div class="idea-dim-track"><div class="idea-dim-fill" style="width:${pct}%;background:${fillColor}"></div></div><span class="idea-dim-val">${val}/10</span></div>`;
-    }).join('');
-
-    // Reason cards
-    let reasonCards = '';
-    if (d.idea_reasons) {
-      reasonCards = `<div class="ac-reasons">${dims.map(dim => `<div class="reason-card"><div class="reason-card-title">${dimLabels[dim]}</div><div class="reason-card-text">${d.idea_reasons[dim] || ''}</div></div>`).join('')}</div>`;
-    }
-
-    // Quadrant tag color
-    let qColor = 'var(--warning)';
-    let qBg = 'rgba(245,166,35,0.12)';
-    let qBorder = 'rgba(245,166,35,0.2)';
-    if (d.quadrant && d.quadrant.startsWith('GO')) { qColor = 'var(--success)'; qBg = 'rgba(74,222,128,0.12)'; qBorder = 'rgba(74,222,128,0.2)'; }
-    else if (d.quadrant && d.quadrant.startsWith('STOP')) { qColor = 'var(--danger)'; qBg = 'rgba(255,107,107,0.12)'; qBorder = 'rgba(255,107,107,0.2)'; }
-
-    ideaHtml = `
-      <div class="ac-idea">
-        <div class="ac-idea-header">
-          <div class="ac-idea-scores">
-            <div class="svs-badge">
-              <span class="svs-number ${svsColor}">${svs}</span>
-              <span class="svs-label">Startup<br>Viability</span>
-            </div>
-            <span class="quadrant-tag" style="color:${qColor};background:${qBg};border:1px solid ${qBorder}">${d.quadrant || '—'}</span>
-          </div>
-          <div class="ac-tag">Agent A0 &mdash; Idea Evaluation</div>
-        </div>
-        <div class="idea-dims">${dimBars}</div>
-        ${reasonCards}
-      </div>`;
-  }
-
-  return `
-    <div class="analysis-card">
-      <div class="ac-header">
-        <div class="ac-header-left">
-          <span class="ac-tag">Market Intelligence Report</span>
-          <div class="ac-verdict ${verdictClass}"><div class="dot"></div>${verdictText}</div>
-        </div>
-        <span class="ac-meta">${(d.sector || '').charAt(0).toUpperCase() + (d.sector || '').slice(1)} &middot; ${d.country || ''}</span>
-      </div>
-
-      <div class="ac-scores">
-        <div class="ac-score-cell"><div class="ac-score-label">Market Regime</div><div class="ac-score-val c-white">${regimeLabel}</div></div>
-        <div class="ac-score-cell"><div class="ac-score-label">Opportunity</div><div class="ac-score-val ${tasColor}">${tasPercent}/100</div></div>
-        <div class="ac-score-cell"><div class="ac-score-label">Confidence</div><div class="ac-score-val ${confColor}">${d.confidence}%</div></div>
-        <div class="ac-score-cell"><div class="ac-score-label">90-Day Outlook</div><div class="ac-score-val ${trendColor}">${trendText}</div></div>
-      </div>
-
-      ${shapHtml ? `<div class="ac-signals"><div class="ac-signals-title">Signal Weights (SHAP)</div>${shapHtml}</div>` : ''}
-
-      ${ideaHtml}
-
-      <div class="ac-trinity">
-        <div class="trinity-item">
-          <div class="trinity-icon finding">F</div>
-          <div><div class="trinity-label">Finding</div><div class="trinity-text">${d.report.finding}</div></div>
-        </div>
-        <div class="trinity-item">
-          <div class="trinity-icon implication">I</div>
-          <div><div class="trinity-label">Implication</div><div class="trinity-text">${d.report.implication}</div></div>
-        </div>
-        <div class="trinity-item">
-          <div class="trinity-icon action">A</div>
-          <div><div class="trinity-label">Action</div><div class="trinity-text">${d.report.action}</div></div>
-        </div>
-      </div>
-    </div>`;
-}
-
-/* ============ OFFLINE HELPERS ============ */
-const _IDEA_SIGNALS = [
-  'app','platform','startup','business','product','service','tool','marketplace',
-  'saas','software','solution','system','company','build','create','launch',
-  'develop','connect','automate','help','enable','solve','simplify','replace',
-  'fintech','healthtech','edtech','ecommerce','logistics','agritech','payment',
-  'delivery','booking','learning','insurance','clinic','invoice','subscription',
-  'b2b','b2c','egypt','cairo','dubai','saudi','nigeria','kenya','mena',
-  'problem','pain','issue','gap','need','market','customer','user',
-];
-const _CONV_OPENERS = [
-  'hi','hello','hey','yo','thanks','thank you','ok','okay','sure','got it',
-  'cool','great','can you','could you','tell me','explain','help me understand',
-  'i have an idea','i want to','i would like','i am thinking',
-  'what do you think','is it good','any thoughts','give me feedback',
-];
-
-function looksLikeIdea(text) {
-  const t = text.toLowerCase().trim();
-  const words = t.split(/\s+/);
-  if (words.length < 8) return false;
-  if (_CONV_OPENERS.some(o => t.startsWith(o))) return false;
-  const hits = _IDEA_SIGNALS.filter(s => t.includes(s)).length;
-  return hits >= 2;
-}
-
-function offlineChatReply(text, ctx) {
-  const t = text.toLowerCase();
-  const sector = ctx.sector || 'your sector';
-  const country = ctx.country || 'your market';
-  const tas = ctx.tas_score || 0;
-  if (!ctx.sector) {
-    return "I'm MIDAN — tell me your startup idea and I'll analyze the market, score your concept, and tell you exactly what to do next.";
-  }
-  if (/pivot|change|switch|alternative/.test(t))
-    return `Pivoting within ${sector} makes sense if you can find an underserved niche. Run 10 focused customer interviews before committing to any new direction — validate the pain, not just the idea.`;
-  if (/compet|rival|who else|crowded/.test(t))
-    return `The ${sector} space in ${country} has both local and international players. Your edge needs to be specific — either go faster, go deeper into a niche, or solve a pain point global competitors can't reach. What's your unfair advantage?`;
-  if (/fund|invest|raise|capital|angel|vc/.test(t))
-    return tas >= 70
-      ? `With a ${tas}/100 opportunity score, you're in a solid position to approach regional accelerators (Flat6Labs, 500 MENA) or angels. Build 3 months of traction data first — it changes every conversation.`
-      : `At ${tas}/100, fundraising is harder right now. Focus on a revenue-first model and get 10 paying customers. That proof is worth more than any pitch deck to MENA investors.`;
-  if (/risk|fail|threat|worry|concern/.test(t))
-    return `Key risks in ${sector}/${country}: regulatory shifts can happen overnight, customer acquisition cost is high in this regime, and currency volatility can compress margins. Keep burn lean and validate before scaling.`;
-  if (/next|start|begin|first step|what should/.test(t))
-    return tas >= 70
-      ? `Strong signals. Next: 1) Build an MVP in 4–6 weeks. 2) Put it in front of 20 target users. 3) Apply to a MENA accelerator this cycle. Speed beats perfection at this stage.`
-      : `Market isn't ideal yet. Next: 1) Run 20 customer discovery interviews. 2) Build a landing page and measure intent. 3) Don't write code until people are willing to pay.`;
-  if (/go.to.market|gtm|launch|marketing|acquire|growth/.test(t))
-    return `For ${sector} in ${country}, start hyper-local. One neighborhood, one persona, one use case. Dominate that before expanding. WhatsApp and referrals outperform paid ads in MENA every time.`;
-  return `I'm operating offline. Your ${sector} idea in ${country} scored ${tas}/100. Ask me about pivot strategies, competitive risks, fundraising, go-to-market, or next steps.`;
-}
-
-/* ============ MOCK ANALYSIS ============ */
-function getMockAnalysis(idea) {
-  const v = idea.toLowerCase();
-  const isEcom = v.includes('ecommerce') || v.includes('e-commerce') || v.includes('delivery') || v.includes('shop');
-  const isHealth = v.includes('health') || v.includes('clinic') || v.includes('doctor') || v.includes('medical');
-  const isEd = v.includes('tutor') || v.includes('education') || v.includes('learning') || v.includes('school');
-
-  let sector = 'fintech', country = 'EG', regime = 'EMERGING_MARKET', tas = 72, conf = 81;
-  if (isEcom) { sector = 'ecommerce'; regime = 'HIGH_FRICTION_MARKET'; tas = 44; conf = 67; }
-  else if (isHealth) { sector = 'healthtech'; country = 'AE'; regime = 'GROWTH_MARKET'; tas = 78; conf = 85; }
-  else if (isEd) { sector = 'edtech'; regime = 'EMERGING_MARKET'; tas = 58; conf = 72; }
-
-  const quadrants = { 72: 'GO \u2014 Launch', 44: 'STOP \u2014 Rethink Everything', 78: 'GO \u2014 Launch', 58: 'Wait or Pivot Market' };
-  return {
-    success: true, sector, country, regime, tas_score: tas, confidence: conf,
-    sarima_trend: tas > 60 ? 0.62 : 0.38, drift_flag: false,
-    action_fired: tas >= 70,
-    report: {
-      finding: `Market classified as ${regime.replace('_', ' ').replace('_', ' ')} with ${conf}% confidence. Key signals: inflation rate, GDP growth, macro friction.`,
-      implication: `[Mock] The ${sector} space in ${country} shows ${tas >= 60 ? 'strong' : 'limited'} opportunity. ${tas >= 60 ? 'Funding activity is trending up.' : 'Competitive density is high.'}`,
-      action: tas >= 70 ? 'Move within the next 90 days. Apply to accelerators and start customer interviews.' : 'Validate demand before building. Run 20 direct customer interviews.'
-    },
-    shap_weights: { inflation: 0.82, gdp_growth: 0.65, macro_friction: 0.58, capital_concentration: 0.44, velocity_yoy: 0.35 },
-    idea_score: Math.round(tas * 0.8),
-    idea_dimensions: { problem_clarity: 6, solution_fit: 5, differentiation: 4, business_model: 7, scalability: 6 },
-    idea_reasons: {
-      problem_clarity: 'Problem statement detected in the idea description',
-      solution_fit: 'Solution approach needs more detail',
-      differentiation: 'What makes this different from existing solutions?',
-      business_model: 'Revenue model indicated',
-      scalability: 'Growth potential suggested'
-    },
-    svs: Math.round(tas * 0.5 + tas * 0.8 * 0.5 / 100 * 100 * 0.5),
-    quadrant: quadrants[tas] || 'Wait or Pivot Market'
-  };
-}
-
-/* ============ MAIN SEND HANDLER ============ */
-async function handleSend() {
-  const input = document.getElementById('chat-input');
-  const text = input.value.trim();
-  if (!text || isProcessing) return;
-
-  isProcessing = true;
-  input.value = '';
-  input.style.height = 'auto';
-  document.getElementById('send-btn').disabled = true;
-  
-  document.getElementById('app').classList.remove('landing-mode');
-
-  addUserMessage(text);
-  chatHistory.push({ role: 'user', content: text });
-
-  if (chatHistory.length === 1) {
-    const title = text.length > 35 ? text.substring(0, 35) + '...' : text;
-    document.getElementById('topbar-title').textContent = title;
-    addConversationToSidebar(currentConvId, title);
-  }
-
-  addTypingIndicator();
-
-  let data = null;
-  let replyHtml = '';
-
-  try {
-    const response = await fetch(API_BASE + '/interact', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ context: internalContext, messages: chatHistory })
-    });
-    const respData = await response.json();
-    
-    if (respData.type === 'analysis' && respData.data) {
-      data = respData.data;
-      internalContext = {
-        sector: data.sector, country: data.country,
-        regime: data.regime, tas_score: data.tas_score,
-        implication: data.report.implication, idea: text
-      };
-      
-      const summaryText = `<p>${respData.reply}</p>`;
-      const cardHtml = buildAnalysisCard(data);
-      replyHtml = summaryText + cardHtml;
-      
-      chatHistory.push({ role: 'assistant', content: `[ANALYSIS CARDS TRIGGERED]\n\n${respData.reply}` });
-      analysisComplete = true;
-    } else {
-      replyHtml = `<p>${(respData.reply || '').replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>`;
-      chatHistory.push({ role: 'assistant', content: respData.reply || '' });
-    }
-  } catch (err) {
-    console.warn('API error, using local fallback:', err);
-    // Only show a mock analysis card if this looks like a real startup idea
-    if (looksLikeIdea(text) && !analysisComplete) {
-      const mockData = getMockAnalysis(text);
-      internalContext = {
-        sector: mockData.sector, country: mockData.country,
-        regime: mockData.regime, tas_score: mockData.tas_score,
-        implication: mockData.report.implication, idea: text
-      };
-      replyHtml = `<p>I've analyzed your startup idea (offline mode — connect the API for live data).</p>` + buildAnalysisCard(mockData);
-      chatHistory.push({ role: 'assistant', content: `[Offline analysis] ${mockData.report.implication}` });
-      analysisComplete = true;
-    } else {
-      const fallback = offlineChatReply(text, internalContext);
-      replyHtml = `<p>${fallback}</p>`;
-      chatHistory.push({ role: 'assistant', content: fallback });
-    }
-  }
-
-  removeTypingIndicator();
-  addAIMessage(replyHtml);
-  
+function switchConversation(id){
+  if(currentConvId===id)return;
   saveCurrentConversation();
-
-  isProcessing = false;
-  document.getElementById('send-btn').disabled = false;
-  input.focus();
+  const t=conversations.find(c=>c.id===id);
+  if(!t)return;
+  chatHistory=[...t.history];internalContext={...t.context};currentConvId=t.id;analysisComplete=t.analysisComplete;
+  document.getElementById('c-topbar-title').textContent=t.title;
+  document.getElementById('c-msgs').innerHTML=t.dom;
+  document.querySelectorAll('.c-conv-item').forEach(e=>e.classList.remove('active'));
+  const el=document.getElementById('conv-'+id);if(el)el.classList.add('active');
+  scrollBottom();
+  if(window.innerWidth<=768)toggleSidebar();
 }
 
-/* ============ INPUT HANDLING ============ */
-const chatInput = document.getElementById('chat-input');
+function addConvToSidebar(id,title){
+  document.querySelectorAll('.c-conv-item').forEach(e=>e.classList.remove('active'));
+  const el=document.createElement('div');
+  el.className='c-conv-item active';el.id='conv-'+id;
+  el.textContent=title;el.onclick=()=>switchConversation(id);
+  const label=document.getElementById('c-sidebar-convs').querySelector('.c-sidebar-label');
+  label.insertAdjacentElement('afterend',el);
+}
 
-chatInput.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    handleSend();
+/* ═══════════════════════════════════════
+   MESSAGE RENDERING
+═══════════════════════════════════════ */
+function ts(){return new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+
+function addUserMessage(text){
+  const g=document.createElement('div');g.className='c-msg-group fu';
+  g.innerHTML=`<div class="c-msg-row"><div class="c-av user">Y</div><div style="flex:1;min-width:0"><div class="c-msg-meta"><span class="c-msg-name">You</span><span class="c-msg-time">${ts()}</span></div><div class="c-msg-body"><p>${esc(text)}</p></div></div></div>`;
+  document.getElementById('c-msgs').appendChild(g); scrollBottom();
+}
+
+function addAIMessage(html, animate=true){
+  const g=document.createElement('div');g.className='c-msg-group'+(animate?' fu':'');
+  g.innerHTML=`<div class="c-msg-row"><div class="c-av ai pr"><svg viewBox="0 0 14 14" fill="none"><polygon points="7,1 13,4 13,10 7,13 1,10 1,4" fill="#000"/></svg></div><div style="flex:1;min-width:0"><div class="c-msg-meta"><span class="c-msg-name">MIDAN</span><span class="c-msg-time">${ts()}</span></div><div class="c-msg-body">${html}</div></div></div>`;
+  document.getElementById('c-msgs').appendChild(g); scrollBottom();
+}
+
+function addTyping(){
+  const g=document.createElement('div');g.className='c-msg-group fu';g.id='c-typing';
+  g.innerHTML=`<div class="c-msg-row"><div class="c-av ai pr"><svg viewBox="0 0 14 14" fill="none"><polygon points="7,1 13,4 13,10 7,13 1,10 1,4" fill="#000"/></svg></div><div style="flex:1;min-width:0"><div class="c-msg-meta"><span class="c-msg-name">MIDAN</span><span class="c-msg-time">analyzing…</span></div><div class="c-typing"><div class="c-dot"></div><div class="c-dot"></div><div class="c-dot"></div></div></div></div>`;
+  document.getElementById('c-msgs').appendChild(g); scrollBottom();
+}
+function removeTyping(){const e=document.getElementById('c-typing');if(e)e.remove();}
+function scrollBottom(){const w=document.getElementById('c-msgs-wrap');setTimeout(()=>w.scrollTop=w.scrollHeight,50);}
+
+/* ═══════════════════════════════════════
+   ANALYSIS CARD
+═══════════════════════════════════════ */
+function buildCard(d){
+  const regime=d.regime.replace(/_MARKET/,'').replace(/_/,' ');
+  const tas=d.tas_score;
+  const tasC=tas>=68?'cg':tas>=50?'ca':'cr';
+  const confC=d.confidence>=75?'cg':d.confidence>=55?'ca':'cr';
+  const trend=d.sarima_trend>0.55?'Growing':d.sarima_trend>0.35?'Stable':'Declining';
+  const trendC=d.sarima_trend>0.55?'cg':d.sarima_trend>0.35?'ca':'cr';
+  const svs=d.svs||0;
+  const svsC=svs>=65?'cg':svs>=48?'ca':'cr';
+
+  let vClass='caution',vTxt=d.quadrant||'Evaluating';
+  if(d.quadrant&&d.quadrant.startsWith('GO'))vClass='go';
+  else if(d.quadrant&&d.quadrant.startsWith('STOP'))vClass='stop';
+
+  // SHAP
+  let shapHtml='';
+  if(d.shap_weights){
+    const f=Object.entries(d.shap_weights).sort((a,b)=>b[1]-a[1]);
+    const mx=Math.max(...f.map(x=>x[1]));
+    shapHtml=f.map(([n,v])=>{const p=Math.round(v/mx*100);return `<div class="sig-row"><div class="sig-l">${n.replace(/_/g,' ')}</div><div class="sig-t"><div class="sig-f" style="width:${p}%;opacity:${Math.max(.3,p/100)}"></div></div><div class="sig-v">${p}%</div></div>`;}).join('');
   }
-});
 
-// Auto-resize textarea
-chatInput.addEventListener('input', () => {
-  chatInput.style.height = 'auto';
-  chatInput.style.height = Math.min(chatInput.scrollHeight, 160) + 'px';
-});
+  // Idea dims
+  let ideaHtml='';
+  if(d.idea_dimensions){
+    const dims=['problem_clarity','solution_fit','differentiation','business_model','scalability'];
+    const lbls={problem_clarity:'Problem Clarity',solution_fit:'Solution Fit',differentiation:'Differentiation',business_model:'Business Model',scalability:'Scalability'};
+    let qC='#F5A623',qBg='rgba(245,166,35,.1)',qBorder='rgba(245,166,35,.2)';
+    if(d.quadrant&&d.quadrant.startsWith('GO')){qC='#4ADE80';qBg='rgba(74,222,128,.1)';qBorder='rgba(74,222,128,.2)';}
+    else if(d.quadrant&&d.quadrant.startsWith('STOP')){qC='#FF6B6B';qBg='rgba(255,107,107,.1)';qBorder='rgba(255,107,107,.2)';}
+    const bars=dims.map(dim=>{
+      const v=d.idea_dimensions[dim]||5;
+      const fc=v>=7?'#C8FF57':v>=5?'#60A5FA':'#FF6B6B';
+      return `<div class="idea-dim-row"><span class="idea-dim-name">${lbls[dim]}</span><div class="idea-dim-track"><div class="idea-dim-fill" style="width:${v*10}%;background:${fc}"></div></div><span class="idea-dim-val">${v}/10</span></div>`;
+    }).join('');
+    let reasons='';
+    if(d.idea_reasons){
+      reasons=`<div class="ac-reasons">${dims.map(dim=>`<div class="ac-reason"><div class="ac-reason-title">${lbls[dim]}</div><div class="ac-reason-txt">${d.idea_reasons[dim]||''}</div></div>`).join('')}</div>`;
+    }
+    ideaHtml=`<div class="ac-idea">
+      <div class="ac-idea-head">
+        <div class="svs-wrap"><span class="svs-num ${svsC}">${svs}</span><span class="svs-lbl">Startup<br>Viability</span></div>
+        <span class="q-tag" style="color:${qC};background:${qBg};border:1px solid ${qBorder}">${d.quadrant||'—'}</span>
+        <span class="ac-tag">Agent A0 — Idea Eval</span>
+      </div>
+      <div class="idea-dims">${bars}</div>${reasons}
+    </div>`;
+  }
+
+  return `<div class="ac">
+    <div class="ac-head">
+      <div class="ac-head-l"><span class="ac-tag">Market Intelligence Report</span><div class="ac-verdict ${vClass}"><div class="vd"></div>${vTxt}</div></div>
+      <span class="ac-meta">${(d.sector||'').charAt(0).toUpperCase()+(d.sector||'').slice(1)} · ${d.country||''}</span>
+    </div>
+    <div class="ac-scores">
+      <div class="ac-sc"><div class="ac-sc-lbl">Market Regime</div><div class="ac-sc-val cw">${regime}</div></div>
+      <div class="ac-sc"><div class="ac-sc-lbl">Opportunity</div><div class="ac-sc-val ${tasC}">${tas}/100</div></div>
+      <div class="ac-sc"><div class="ac-sc-lbl">Confidence</div><div class="ac-sc-val ${confC}">${d.confidence}%</div></div>
+      <div class="ac-sc"><div class="ac-sc-lbl">90-Day Outlook</div><div class="ac-sc-val ${trendC}">${trend}</div></div>
+    </div>
+    ${shapHtml?`<div class="ac-signals"><div class="ac-sig-title">Signal Weights (SHAP)</div>${shapHtml}</div>`:''}
+    ${ideaHtml}
+    <div class="ac-trinity">
+      <div class="trinity-row"><div class="trinity-icon f">F</div><div><div class="trinity-lbl">Finding</div><div class="trinity-txt">${d.report.finding}</div></div></div>
+      <div class="trinity-row"><div class="trinity-icon i">I</div><div><div class="trinity-lbl">Implication</div><div class="trinity-txt">${d.report.implication}</div></div></div>
+      <div class="trinity-row"><div class="trinity-icon a">A</div><div><div class="trinity-lbl">Action</div><div class="trinity-txt">${d.report.action}</div></div></div>
+    </div>
+  </div>`;
+}
+
+/* ═══════════════════════════════════════
+   OFFLINE HELPERS
+═══════════════════════════════════════ */
+const _SIG=['app','platform','startup','business','product','service','tool','marketplace','saas','software','solution','build','create','launch','develop','connect','automate','solve','simplify','fintech','healthtech','edtech','ecommerce','logistics','agritech','payment','delivery','booking','learning','insurance','clinic','invoice','subscription','b2b','b2c','egypt','cairo','dubai','saudi','nigeria','kenya','mena','problem','pain','gap','market','customer'];
+const _OPENERS=['hi','hello','hey','yo','thanks','thank you','ok','okay','sure','got it','cool','what do you','who are','how does','tell me','explain','help me','i have an idea','i want to','i would like','i am thinking','what do you think','give me feedback'];
+function looksLikeIdea(text){const t=text.toLowerCase().trim();if(t.split(/\s+/).length<8)return false;if(_OPENERS.some(o=>t.startsWith(o)))return false;return _SIG.filter(s=>t.includes(s)).length>=2;}
+
+function mockAnalysis(idea){
+  const v=idea.toLowerCase();
+  const isH=v.includes('health')||v.includes('clinic')||v.includes('doctor')||v.includes('medical');
+  const isE=v.includes('edtech')||v.includes('tutor')||v.includes('education')||v.includes('learning')||v.includes('school');
+  const isEC=v.includes('ecommerce')||v.includes('delivery')||v.includes('shop')||v.includes('retail');
+  const isSA=v.includes('saas')||v.includes('software')||v.includes('platform')&&!isH&&!isE&&!isEC;
+  let sector='fintech',country='EG',tas=72,conf=81,regime='EMERGING_MARKET',trend=0.62;
+  if(isH){sector='healthtech';country='AE';tas=78;conf=85;regime='GROWTH_MARKET';}
+  else if(isE){sector='edtech';tas=58;conf=72;regime='EMERGING_MARKET';trend=0.45;}
+  else if(isEC){sector='ecommerce';tas=44;conf=67;regime='HIGH_FRICTION_MARKET';trend=0.32;}
+  else if(isSA){sector='saas';country='SA';tas=70;conf=78;regime='GROWTH_MARKET';}
+  const svs=Math.round(tas*.5+tas*.78*.5);
+  const q=svs>=65?'GO — Launch':tas>=55?'Wrong Idea — Right Market':'STOP — Rethink Everything';
+  return {sector,country,regime,tas_score:tas,confidence:conf,sarima_trend:trend,drift_flag:false,action_fired:tas>=70,
+    report:{finding:`Market classified as ${regime.replace(/_/g,' ')} with ${conf}% confidence. Key signals: velocity yoy, gdp growth, inflation.`,implication:`[Offline] The ${sector} space in ${country} shows ${tas>=60?'strong':'limited'} opportunity signals.`,action:tas>=70?'Move within the next 90 days. Apply to Flat6Labs or Cairo Angels this cycle.':'Validate demand before building. Run 20 direct customer interviews first.'},
+    shap_weights:{velocity_yoy:.82,gdp_growth:.58,inflation:.41,capital_concentration:.28,macro_friction:.14},
+    idea_score:Math.round(tas*.78),idea_dimensions:{problem_clarity:6,solution_fit:5,differentiation:4,business_model:7,scalability:6},
+    idea_reasons:{problem_clarity:'Problem scope detected in idea description',solution_fit:'Solution approach needs more specificity',differentiation:'Differentiation angle not yet clear',business_model:'Revenue model signals present',scalability:'Growth potential indicated'},
+    svs,quadrant:q};
+}
+
+function offlineReply(text,ctx){
+  const t=text.toLowerCase();
+  const sec=ctx.sector||'',ctry=ctx.country||'',tas=ctx.tas_score||0;
+  const regime=(ctx.regime||'').replace(/_/g,' ').replace(/MARKET/,'').trim().toLowerCase();
+  if(!sec){
+    if(/hi|hello|hey|yo/.test(t)&&t.split(' ').length<=3)return "Hey — I'm MIDAN. Tell me what you're building and where, and I'll run a full market intelligence analysis on it.";
+    if(/what|who|how|explain/.test(t))return "MIDAN runs 8 AI agents on your startup idea: NLP parsing, SVM market classification, SARIMA forecasting, SHAP explainability, idea evaluation, and LLM synthesis. Share your idea to see it in action.";
+    return "Tell me your startup idea — what you're building and which market you're targeting. I'll handle the rest.";
+  }
+  if(/pivot|switch|alternative|different/.test(t))return `Pivoting within ${sec}/${ctry} works only if you're solving a fundamentally different pain point — not just rebranding. The ${regime} market conditions stay regardless. Run 10 targeted customer interviews before committing to any new direction. What angle are you considering?`;
+  if(/compet|rival|exist|already|crowded/.test(t))return `The ${sec} space in ${ctry} has local operators and global entrants — your TAS of ${tas}/100 already prices that in. Your edge has to be local: regulatory navigation, language, trust, or workflow specificity. What's your unfair distribution advantage?`;
+  if(/fund|invest|raise|capital|vc|angel|accelerat/.test(t))return tas>=68?`At ${tas}/100 in a ${regime} market, you're fundable — but only after proof. Target Flat6Labs, 500 MENA, or Algebra Ventures for pre-seed. Come with 3 months of traction data and a clear unit economics story. What's your current MRR?`:`At ${tas}/100, institutional money will be difficult right now. Bootstrap or find a revenue-generating angle first — 10 paying customers will change every investor conversation. What's the fastest path to your first dollar of revenue?`;
+  if(/risk|fail|threat|worry|concern/.test(t))return `Top ${sec} risks in ${ctry}: regulatory timeline friction, high CAC in ${regime} conditions, and currency volatility compressing margins. Mitigate by keeping monthly burn under $5K until product-market fit is confirmed. Which of these is the most urgent threat to your timeline?`;
+  if(/next|first step|what do|how do|plan|roadmap/.test(t))return tas>=68?`Strong signals — now is your window. Three moves: 1) Ship a 4-week MVP solving exactly one workflow. 2) Put it in front of 20 target users this month. 3) Apply to Flat6Labs or 500 MENA before the next deadline. Which of these is your biggest blocker right now?`:`Market isn't ideal at ${tas}/100. Three moves: 1) Run 20 customer discovery interviews this month. 2) Find the highest-willingness-to-pay use case. 3) Build only that — no code before evidence. What's stopping you from making those calls this week?`;
+  if(/gtm|go.to.market|launch|marketing|growth|traction|users|acquire/.test(t))return `GTM for ${sec} in ${ctry}: start with one micro-segment you can dominate in 60 days. WhatsApp outreach and warm referrals beat paid ads in MENA 10-to-1. Set a Week-4 target: X signups, Y paid pilots, Z interviews. What does your Week-4 target look like?`;
+  if(/pric|monetiz|revenue|charge|fee|subscript/.test(t))return `For ${sec} in ${ctry}: avoid freemium unless you have viral mechanics. B2B here responds best to outcome-based pricing — charge a percentage of value created. Start with a high-touch paid pilot at $200-$500/mo and use it to prove ROI before scaling. What's the core value you can guarantee?`;
+  if(/team|hire|co-founder|talent|people/.test(t))return `Team composition matters more than the idea in MENA's early-stage market. For ${sec}, you need the skill set you don't have — technical if you're a BD person, or BD if you're technical. Prove the role with contractors before hiring employees. What's the single biggest skill gap right now?`;
+  if(/thank|great|awesome|helpful|good/.test(t))return `Glad that's useful. Your ${sec} play in ${ctry} has a ${tas}/100 market signal — keep pushing on the angles that matter. What else do you want to stress-test?`;
+  return `Your ${sec.charAt(0).toUpperCase()+sec.slice(1)} idea in ${ctry} sits in a ${regime} market with a ${tas}/100 opportunity score. Push me harder — competitive moat, fundraising strategy, GTM, pricing model, team composition, or risk mitigation. I'll give you a straight data-backed answer.`;
+}
+
+/* ═══════════════════════════════════════
+   MAIN SEND HANDLER
+═══════════════════════════════════════ */
+async function handleSend(){
+  const inp=document.getElementById('c-input');
+  const text=inp.value.trim();
+  if(!text||isProcessing)return;
+  isProcessing=true; inp.value=''; inp.style.height='auto';
+  document.getElementById('c-send-btn').disabled=true;
+  addUserMessage(text);
+  chatHistory.push({role:'user',content:text});
+  if(chatHistory.filter(m=>m.role==='user').length===1){
+    const title=text.length>38?text.substring(0,38)+'…':text;
+    document.getElementById('c-topbar-title').textContent=title;
+    addConvToSidebar(currentConvId,title);
+  }
+  addTyping();
+  let replyHtml='';
+  try{
+    const resp=await fetch(API_BASE+'/interact',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({context:internalContext,messages:chatHistory})});
+    const rd=await resp.json();
+    removeTyping();
+    if(rd.type==='analysis'&&rd.data){
+      const d=rd.data;
+      internalContext={sector:d.sector,country:d.country,regime:d.regime,tas_score:d.tas_score,implication:d.report.implication,idea:text};
+      const intro=`<p>${rd.reply.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')}</p>`;
+      replyHtml=intro+buildCard(d)+`<p style="margin-top:14px;font-size:13px;color:var(--t4)">Ask me anything — competitive risks, fundraising timing, GTM strategy, pivot options, or pricing.</p>`;
+      chatHistory.push({role:'assistant',content:`[Analysis complete: ${d.sector}/${d.country} TAS:${d.tas_score} Regime:${d.regime}]`});
+      analysisComplete=true;
+    } else {
+      const raw=rd.reply||'';
+      const fmt=raw.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br>');
+      replyHtml=`<p>${fmt}</p>`;
+      chatHistory.push({role:'assistant',content:raw});
+    }
+  } catch(err){
+    removeTyping();
+    console.warn('API offline, using local fallback:',err);
+    if(looksLikeIdea(text)&&!analysisComplete){
+      const d=mockAnalysis(text);
+      internalContext={sector:d.sector,country:d.country,regime:d.regime,tas_score:d.tas_score,implication:d.report.implication,idea:text};
+      replyHtml=`<p>Here's the offline analysis for your idea <em>(connect the API server for live data)</em>:</p>`+buildCard(d)+`<p style="margin-top:14px;font-size:13px;color:var(--t4)">Ask me about risks, GTM, fundraising, or next steps.</p>`;
+      chatHistory.push({role:'assistant',content:`[Offline analysis: ${d.sector}/${d.country}]`});
+      analysisComplete=true;
+    } else {
+      const r=offlineReply(text,internalContext);
+      replyHtml=`<p>${r}</p>`;
+      chatHistory.push({role:'assistant',content:r});
+    }
+  }
+  addAIMessage(replyHtml);
+  saveCurrentConversation();
+  isProcessing=false;
+  document.getElementById('c-send-btn').disabled=false;
+  inp.focus();
+}
+
+/* ═══════════════════════════════════════
+   INPUT
+═══════════════════════════════════════ */
+const cinput=document.getElementById('c-input');
+cinput.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();handleSend();}});
+cinput.addEventListener('input',()=>{cinput.style.height='auto';cinput.style.height=Math.min(cinput.scrollHeight,140)+'px';});
 </script>
 </body>
 </html>

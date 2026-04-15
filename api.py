@@ -428,66 +428,130 @@ async def analyze_idea(req: IdeaRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-def _chat_fallback(req: ChatRequest):
-    """Generate a context-aware fallback reply when no LLM is available."""
-    sector = req.context.get("sector", "your sector")
-    country = req.context.get("country", "your market")
-    regime = req.context.get("regime", "UNKNOWN").replace("_", " ").title()
-    tas = req.context.get("tas_score", 0)
-    idea = req.context.get("idea", "")
+def _chat_fallback(req: ChatRequest) -> str:
+    """
+    Context-aware multi-turn fallback when no LLM is available.
+    Varies by: conversation turn count, whether analysis exists, message intent.
+    """
+    sector  = req.context.get("sector", "")
+    country = req.context.get("country", "")
+    regime  = req.context.get("regime", "").replace("_", " ").title()
+    tas     = req.context.get("tas_score", 0)
+    idea    = req.context.get("idea", "")
 
-    last_msg = ""
-    for m in reversed(req.messages):
-        if m.role == "user":
-            last_msg = m.content.lower()
-            break
+    user_turns = [m for m in req.messages if m.role == "user"]
+    turn_n = len(user_turns)
+    last_msg = user_turns[-1].content.lower() if user_turns else ""
 
-    # Pattern-matched responses based on common follow-up questions
-    if any(w in last_msg for w in ["pivot", "change", "switch", "different idea", "alternative"]):
-        return (f"Given the {regime} conditions in {country}, pivoting within {sector} could work if you target "
-                f"an underserved niche. Before pivoting, validate that the new direction solves a problem "
-                f"people are already paying to fix. Run 10 customer interviews in the new vertical first.")
+    # ── NO ANALYSIS CONTEXT YET ──
+    if not sector:
+        greet_words = ["hi","hello","hey","yo","sup","good morning","good evening","greetings","what's up"]
+        meta_words  = ["what do you do","who are you","how does this work","what is midan","explain","tell me about"]
+        if any(g in last_msg for g in greet_words):
+            if turn_n == 1:
+                return ("Hey — I'm MIDAN, your AI startup market advisor. "
+                        "Describe your startup idea and I'll run 8 agents across live market data: "
+                        "classify the regime, forecast 90-day trends, evaluate your concept, and give you a single verdict. "
+                        "What are you building, and where?")
+            return "Still here — what's the startup idea? Even a rough one-liner works."
+        if any(m in last_msg for m in meta_words):
+            return ("MIDAN runs 8 AI agents on your startup idea in parallel — "
+                    "NLP parsing, SVM market classification, SARIMA forecasting, LightGBM SHAP explainability, and LLM synthesis. "
+                    "The output: a market regime, an opportunity score, a Startup Viability Score, "
+                    "and a three-point action plan. Tell me what you're building.")
+        if any(w in last_msg for w in ["help","can you","could you"]):
+            return ("Absolutely. Share your startup idea — what you want to build and where — "
+                    "and I'll do a full market intelligence run on it.")
+        if turn_n == 1:
+            return ("MIDAN here. Tell me your startup idea — what problem you're solving, "
+                    "what sector, and which market. I'll handle the analysis.")
+        return "What are you building? Drop the idea and I'll analyze the market for you."
 
-    if any(w in last_msg for w in ["compet", "rival", "player", "who else", "crowded"]):
-        return (f"The {sector} space in {country} has both local startups and international players. "
-                f"Your differentiation needs to be crystal clear — either move faster, go deeper into a niche, "
-                f"or solve a local pain point that global competitors can't touch. What's your unfair advantage?")
+    # ── HAS ANALYSIS CONTEXT ──
+    reg_adj = "hot" if "GROWTH" in regime.upper() else "cautious" if "EMERGING" in regime.upper() else "difficult"
+    timing  = "now is your window" if tas >= 70 else "timing needs work" if tas >= 50 else "the market isn't ready yet"
 
-    if any(w in last_msg for w in ["fund", "invest", "money", "raise", "capital", "angel", "vc"]):
-        if tas >= 70:
-            return (f"With a TAS of {tas}/100 in a {regime}, you're in a strong position to raise. "
-                    f"Target regional accelerators (Flat6Labs, 500 Global MENA) or angel networks first. "
-                    f"Build a 3-month runway plan and show traction before approaching VCs.")
-        else:
-            return (f"With a TAS of {tas}/100, fundraising will be harder right now. Focus on bootstrapping "
-                    f"or revenue-first models. Build a working prototype and get 10 paying customers — "
-                    f"that's more convincing to MENA investors than any pitch deck.")
+    if any(w in last_msg for w in ["pivot","change direction","switch","alternative","different idea"]):
+        return (f"Pivoting in {sector}/{country} makes sense only if you're solving a different pain point — "
+                f"not just re-skinning the same idea. The {regime} conditions stay regardless of your pivot. "
+                f"Before switching anything, run 10 targeted customer interviews and ask what they're currently paying to fix. "
+                f"What specific angle are you considering?")
 
-    if any(w in last_msg for w in ["risk", "danger", "threat", "fail", "worry", "concern"]):
-        return (f"Key risks in {sector}/{country}: 1) Regulatory shifts can change overnight in this region. "
-                f"2) Customer acquisition cost in {regime} conditions tends to be high. "
-                f"3) Currency volatility can eat margins. Mitigate by keeping burn low and validating demand before scaling.")
+    if any(w in last_msg for w in ["compet","rival","who else","already exist","crowded","saturated"]):
+        return (f"The {sector} space in {country} has both local operators and global entrants. "
+                f"At {tas}/100, your TAS already prices in competitive density. "
+                f"Your moat has to be local — regulatory navigation, language, trust networks, or hyper-specific workflow fit. "
+                f"What makes you the one who can win this specific geography?")
 
-    if any(w in last_msg for w in ["next", "start", "begin", "first step", "how do i", "what should"]):
-        if tas >= 70:
-            return (f"Your market signals are strong. Next steps: 1) Build an MVP in 4-6 weeks — not a full product. "
-                    f"2) Get 20 target users to test it. 3) Apply to a MENA accelerator this cycle. "
-                    f"Speed matters more than perfection in a {regime}.")
-        else:
-            return (f"The market conditions aren't ideal yet. Next steps: 1) Run 20 customer discovery interviews "
-                    f"to validate real demand. 2) Build a landing page and measure interest. "
-                    f"3) Don't write code until you have evidence people will pay.")
+    if any(w in last_msg for w in ["fund","invest","raise","capital","vc","angel","pitch","accelerator"]):
+        if tas >= 68:
+            return (f"With {tas}/100 TAS in a {regime}, you're fundable — but only after proof. "
+                    f"Target Flat6Labs, 500 MENA, or Algebra Ventures for pre-seed in Egypt; Wamda or BECO for the Gulf. "
+                    f"Come in with 3 months of traction data and a clear CAC-to-LTV model. "
+                    f"What's your current MRR or user count?")
+        return (f"At {tas}/100, institutional money will be hard to close right now. "
+                f"Bootstrap or find a revenue-generating angle first — consulting, a paid pilot, a letter of intent. "
+                f"10 paying customers changes every investor conversation. What's the fastest path to your first dollar?")
 
-    if any(w in last_msg for w in ["go-to-market", "gtm", "launch", "marketing", "customer", "acquire", "growth"]):
-        return (f"For {sector} in {country}, start hyper-local. Pick one neighborhood, one vertical, one persona. "
-                f"Dominate that before expanding. Word-of-mouth and WhatsApp groups beat paid ads in MENA every time. "
-                f"What specific customer segment are you targeting first?")
+    if any(w in last_msg for w in ["risk","danger","threat","fail","worry","concern","scared","afraid"]):
+        risks = {
+            "fintech":    "regulatory licensing timelines and CBE approval cycles",
+            "healthtech": "medical licensing friction and institutional procurement cycles",
+            "edtech":     "low willingness-to-pay and high churn after free trials",
+            "ecommerce":  "logistics cost structure and last-mile unit economics",
+            "saas":       "enterprise sales cycle length and integration friction",
+            "logistics":  "fuel price volatility and driver retention cost",
+            "agritech":   "seasonal revenue concentration and farmer trust barriers",
+        }
+        top_risk = risks.get(sector.lower(), "regulatory and currency volatility")
+        return (f"Top risk in {sector}/{country}: {top_risk}. "
+                f"Secondary risks: customer acquisition cost spikes in {regime} conditions, "
+                f"and FX exposure if you're billing in local currency. "
+                f"Mitigate by keeping monthly burn under $5K until you hit product-market fit. "
+                f"Which of these risks worries you most?")
 
-    # Default conversational response
-    return (f"I'm MIDAN's offline advisor. Your idea is in the {sector} space targeting {country}, "
-            f"currently a {regime} with {tas}/100 opportunity score. "
-            f"Ask me about competitive risks, fundraising strategy, go-to-market, pivot options, "
-            f"or next steps — I can help with all of these based on your market data.")
+    if any(w in last_msg for w in ["next","first step","what do i do","how do i start","begin","roadmap","plan"]):
+        if tas >= 68:
+            return (f"Strong signals — {timing}. Three moves: "
+                    f"1) Build a 4-week MVP that solves exactly one workflow. "
+                    f"2) Put it in front of 20 target users this month, not next. "
+                    f"3) Apply to Flat6Labs Spring cycle or 500 MENA before the deadline. "
+                    f"Which of these three is the biggest blocker for you right now?")
+        return (f"Market isn't ideal at {tas}/100 — but that doesn't mean wait. "
+                f"1) Run 20 customer discovery calls this month. "
+                f"2) Find the one use case with highest willingness-to-pay. "
+                f"3) Build only that. No code before evidence. "
+                f"What's stopping you from making those 20 calls this week?")
+
+    if any(w in last_msg for w in ["gtm","go to market","launch","acquire","marketing","growth","traction","users"]):
+        return (f"GTM for {sector} in {country}: start with one micro-segment you can dominate in 60 days. "
+                f"In MENA, WhatsApp outreach + warm referrals from your first 5 customers beats paid ads every time. "
+                f"Set a specific Week-4 target: X signups, Y paid pilots, Z interviews. "
+                f"What does your Week-4 target look like right now?")
+
+    if any(w in last_msg for w in ["pricing","price","monetize","revenue model","charge","subscription","fee"]):
+        return (f"For {sector} in {country}: avoid freemium unless you have viral mechanics. "
+                f"B2B in this market responds best to outcome-based pricing — charge a percentage of value created, "
+                f"not a flat monthly fee. Start with a high-touch paid pilot at $200-500/mo "
+                f"and use it to prove ROI before scaling. What's the core value you can guarantee?")
+
+    if any(w in last_msg for w in ["team","hire","co-founder","talent","people","employees"]):
+        return (f"Team composition matters more than idea in MENA's early-stage market. "
+                f"For {sector}, you need a technical co-founder if you're non-technical, "
+                f"or a sales/BD co-founder if you are. "
+                f"Hire contractors before employees — prove the role first. "
+                f"What skill gap is the most critical bottleneck right now?")
+
+    if any(w in last_msg for w in ["thank","thanks","great","awesome","helpful","nice","good","perfect"]):
+        return (f"Glad that's useful. Your {sector} play in {country} has real potential — "
+                f"the {regime} conditions with {tas}/100 TAS means {timing}. "
+                f"What else do you want to pressure-test?")
+
+    # Intelligent default that references their specific data
+    return (f"Your {sector.title()} idea in {country} sits in a {regime} with {tas}/100 market opportunity. "
+            f"That means {timing}. "
+            f"Push me on competitive strategy, fundraising, GTM, pricing, team, or risk — "
+            f"I'll give you a straight answer grounded in your market data.")
 
 
 @api.post("/chat")
@@ -499,15 +563,38 @@ async def chat_interaction(req: ChatRequest):
         reply = _chat_fallback(req)
         return {"success": True, "reply": reply}
 
-    system_prompt = dedent(f"""
-        You are the MIDAN AI Startup Advisor, a brutally honest but extremely helpful VC partner.
-        You are currently advising a founder based on the following computed market context:
-        - Sector: {req.context.get("sector", "Unknown")}
-        - Country: {req.context.get("country", "Unknown")}
-        - Regime: {req.context.get("regime", "Unknown")} (Score: {req.context.get("tas_score", 0)}/100)
-        - AI Original Read: {req.context.get("implication", "")}
+    sector  = req.context.get("sector", "unknown")
+    country = req.context.get("country", "unknown")
+    regime  = req.context.get("regime", "UNKNOWN").replace("_", " ").title()
+    tas     = req.context.get("tas_score", 0)
+    idea    = req.context.get("idea", "")
+    impl    = req.context.get("implication", "")
 
-        Keep your responses concise, sharp, and consultative. Speak directly to the founder. Ask probing questions if needed. Under 4 sentences.
+    system_prompt = dedent(f"""
+        You are MIDAN — a brutally honest AI startup market advisor trained on thousands of MENA venture outcomes.
+        You have just completed a full quantitative analysis for this founder. Use it in every response.
+
+        ── ANALYSIS RESULTS ──
+        Idea: "{idea}"
+        Sector: {sector.title()} | Country: {country}
+        Market Regime: {regime}
+        Opportunity Score (TAS): {tas}/100
+        AI Synthesis: {impl}
+
+        ── YOUR PERSONA ──
+        - Speak like a senior VC partner who has reviewed 2,000 MENA startups
+        - Every single response must reference specific numbers from the analysis (TAS, regime, country, sector)
+        - Be direct and specific — no platitudes, no generic startup advice
+        - Never start with "I" — lead with the insight
+        - End every response with exactly one sharp, specific question that challenges the founder's assumptions
+        - Max 3–4 sentences total. Dense, not long.
+
+        ── TONE EXAMPLES ──
+        WRONG: "Great question! You should focus on your target market and build an MVP."
+        RIGHT: "At {tas}/100 TAS in a {regime}, you have roughly 6 months before conditions tighten. The data says move now — but your idea score tells a different story. What specifically have you validated with actual paying customers in {country} in the last 30 days?"
+
+        WRONG: "There are many competitors in this space, so you need to differentiate."
+        RIGHT: "The {sector} regime in {country} has 3 funded players above Series A. Your differentiation can't be features — it has to be distribution. Who in {country} do you have access to that Stripe or Paymob doesn't?"
     """).strip()
 
     groq_msgs = [{"role": "system", "content": system_prompt}]
