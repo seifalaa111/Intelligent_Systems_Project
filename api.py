@@ -703,7 +703,7 @@ def _extract_components(text: str) -> dict:
         'has_solution':   has_solution,
         'has_market':     has_market,
         'word_count':     wc,
-        'is_substantial': wc >= 12,   # Minimum for a meaningful description
+        'is_substantial': wc >= 8,    # Minimum for a meaningful description (8 words)
     }
 
 

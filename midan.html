@@ -885,7 +885,7 @@ function extractComponents(text, prevState){
   const has_geo=_GEO_SIG.some(g=>t.includes(g));
   const has_cust=_CUST_SIG.some(c=>t.includes(c));
   const has_market=prev.has_market||(has_geo||has_cust);
-  const is_substantial=wc>=12;
+  const is_substantial=wc>=8;
   const comps={has_problem,has_solution,has_market,is_substantial,word_count:wc};
   const missing=['problem','solution','market'].filter(k=>!comps['has_'+k]);
   return {comps,missing};
