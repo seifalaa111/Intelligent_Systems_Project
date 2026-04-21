@@ -1,0 +1,14 @@
+{
+  "startup_name": "Loom",
+  "source_type": "yc",
+  "source_url": "https://www.ycombinator.com/companies/loom",
+  "raw_content": "Loom is a video messaging tool that helps you get your message across through instantly shareable videos.",
+  "collected_at": "2026-04-17T21:35:02.639591+00:00",
+  "metadata": {
+    "batch": "S15",
+    "industry": "Communication",
+    "status": "Acquired",
+    "website": "https://www.loom.com",
+    "data_source": "yc_seed"
+  }
+}

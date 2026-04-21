@@ -1,0 +1,14 @@
+{
+  "startup_name": "Webflow",
+  "source_type": "yc",
+  "source_url": "https://www.ycombinator.com/companies/webflow",
+  "raw_content": "Webflow empowers designers to build professional, custom websites in a completely visual canvas with no code.",
+  "collected_at": "2026-04-17T21:35:04.340706+00:00",
+  "metadata": {
+    "batch": "S13",
+    "industry": "Design",
+    "status": "Active",
+    "website": "https://webflow.com",
+    "data_source": "yc_seed"
+  }
+}

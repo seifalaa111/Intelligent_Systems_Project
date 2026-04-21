@@ -265,6 +265,12 @@ body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:var
 .sig-t{flex:1;height:3px;background:rgba(255,255,255,.04);border-radius:100px;overflow:hidden;}
 .sig-f{height:100%;border-radius:100px;background:var(--ac);}
 .sig-v{width:32px;text-align:right;color:var(--t4);font-size:10px;font-family:'JetBrains Mono',monospace;}
+.sig-f.idea-bar{background:var(--info);}
+.idf-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:14px 18px;}
+.idf-item{display:flex;flex-direction:column;gap:3px;}
+.idf-lbl{font-size:9px;font-weight:700;color:var(--t4);text-transform:uppercase;letter-spacing:.08em;}
+.idf-val{font-size:12px;font-weight:600;color:var(--t2);}
+.idf-val.cg{color:var(--ac);} .idf-val.ca{color:var(--warn);} .idf-val.cr{color:var(--danger);}
 .ac-idea{padding:14px 18px;border-bottom:1px solid var(--br);}
 .ac-idea-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;}
 .svs-wrap{display:flex;align-items:center;gap:10px;}
@@ -281,15 +287,52 @@ body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:var
 .ac-reason{background:var(--bg);border:1px solid var(--br);border-radius:var(--rx);padding:9px 10px;}
 .ac-reason-title{font-size:8px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--ac);margin-bottom:3px;}
 .ac-reason-txt{font-size:10px;color:var(--t3);line-height:1.45;}
-.ac-trinity{padding:14px 18px;}
-.trinity-row{display:flex;gap:10px;align-items:flex-start;padding:9px 0;}
-.trinity-row+.trinity-row{border-top:1px solid var(--br);}
-.trinity-icon{width:22px;height:22px;border-radius:5px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:10px;font-weight:700;}
-.trinity-icon.f{background:rgba(96,165,250,.1);color:var(--info);}
-.trinity-icon.i{background:rgba(245,166,35,.1);color:var(--warn);}
-.trinity-icon.a{background:rgba(74,222,128,.1);color:var(--ok);}
-.trinity-lbl{font-size:9px;font-weight:700;color:var(--t4);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;}
-.trinity-txt{font-size:12px;color:var(--t2);line-height:1.55;}
+/* ── What Matters Most — full-width decision banner ── */
+.ac-wmm{margin:0;padding:13px 18px;background:linear-gradient(135deg,rgba(200,255,87,.08),rgba(200,255,87,.03));border-bottom:1px solid rgba(200,255,87,.18);}
+.ac-wmm-lbl{font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--ac);margin-bottom:4px;display:flex;align-items:center;gap:5px;}
+.ac-wmm-lbl::before{content:'◆';font-size:7px;}
+.ac-wmm-txt{font-size:12.5px;font-weight:500;color:var(--t1);line-height:1.55;}
+/* L4 Strategic Reasoning — 7-part card */
+.ac-l4{padding:14px 18px;}
+.l4-row{display:flex;gap:10px;align-items:flex-start;padding:10px 0;}
+.l4-row+.l4-row{border-top:1px solid var(--br);}
+.l4-icon{width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:10px;font-weight:800;letter-spacing:0;}
+.l4-icon.s{background:rgba(200,255,87,.12);color:var(--ac);}
+.l4-icon.k{background:rgba(96,165,250,.12);color:var(--info);}
+.l4-icon.r{background:rgba(248,113,113,.12);color:#f87171;}
+.l4-icon.c{background:rgba(245,166,35,.12);color:var(--warn);}
+.l4-icon.d{background:rgba(167,139,250,.12);color:#a78bfa;}
+.l4-icon.ct{background:rgba(248,113,113,.16);color:#f87171;}
+.l4-lbl{font-size:9px;font-weight:700;color:var(--t4);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;}
+.l4-txt{font-size:12px;color:var(--t2);line-height:1.6;}
+/* Action plan card — with decision badge */
+.ac-action{margin:10px 18px 14px;background:rgba(200,255,87,.05);border:1px solid rgba(200,255,87,.15);border-radius:8px;padding:12px 14px;}
+.ac-action-head{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.ac-action-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--ac);}
+.decision-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:4px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;}
+.decision-badge.go{background:rgba(74,222,128,.15);color:#4ade80;border:1px solid rgba(74,222,128,.3);}
+.decision-badge.conditional{background:rgba(245,166,35,.15);color:#f5a623;border:1px solid rgba(245,166,35,.3);}
+.decision-badge.high-risk{background:rgba(248,113,113,.15);color:#f87171;border:1px solid rgba(248,113,113,.3);}
+.decision-badge.no-go{background:rgba(248,113,113,.2);color:#ef4444;border:1px solid rgba(248,113,113,.4);}
+.ac-action-txt{font-size:12px;color:var(--t2);line-height:1.6;}
+/* Explanation layer — per dimension ── */
+.dim-exp{margin-top:6px;display:none;background:var(--bg);border:1px solid var(--br);border-radius:6px;padding:10px 12px;}
+.dim-exp.open{display:block;}
+.dim-exp-row{display:flex;gap:6px;margin-bottom:7px;}
+.dim-exp-row:last-child{margin-bottom:0;}
+.dim-exp-ico{width:14px;height:14px;border-radius:3px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:7px;font-weight:800;margin-top:1px;}
+.dim-exp-ico.why{background:rgba(96,165,250,.15);color:var(--info);}
+.dim-exp-ico.miss{background:rgba(245,166,35,.15);color:var(--warn);}
+.dim-exp-ico.fix{background:rgba(74,222,128,.15);color:#4ade80;}
+.dim-exp-txt{font-size:10.5px;color:var(--t3);line-height:1.5;}
+.dim-exp-lbl{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--t4);margin-bottom:1px;}
+.idea-dim-row{cursor:pointer;}
+.idea-dim-row:hover .idea-dim-name{color:var(--ac);transition:color .15s;}
+/* Signal explanation ── */
+.sig-exp-panel{display:none;margin-top:4px;padding:8px 10px;background:var(--bg);border:1px solid var(--br);border-radius:5px;font-size:10px;color:var(--t3);line-height:1.5;}
+.sig-exp-panel.open{display:block;}
+.sig-row{cursor:pointer;}
+.sig-row:hover .sig-l{color:var(--t2);transition:color .15s;}
 
 /* Input */
 .c-input-wrap{position:absolute;bottom:0;left:var(--sw);right:0;padding:0 24px 20px;background:linear-gradient(transparent,var(--bg) 30%);}
@@ -336,6 +379,50 @@ body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:var
 /* ── CLARIFY MESSAGE ── */
 .c-clarify-badge{display:inline-flex;align-items:center;gap:5px;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--t4);margin-bottom:6px;}
 .c-clarify-dot{width:5px;height:5px;border-radius:50%;background:var(--warn);animation:pulse 2s ease infinite;}
+
+/* ── EMPTY STATE ── */
+.c-empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:72px 24px 32px;min-height:58vh;}
+.ces-icon{width:48px;height:48px;background:var(--ac);border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:24px;box-shadow:0 4px 32px rgba(200,255,87,.15);}
+.ces-icon svg{width:24px;height:24px;}
+.ces-head{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;letter-spacing:-.4px;margin-bottom:10px;color:var(--t1);}
+.ces-sub{font-size:14px;color:var(--t3);line-height:1.7;max-width:400px;font-weight:300;margin-bottom:28px;}
+.ces-chips{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;max-width:460px;}
+.ces-chip{background:var(--s1);border:1px solid var(--br);border-radius:100px;padding:7px 15px;font-size:12px;font-weight:500;color:var(--t3);cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s;}
+.ces-chip:hover{border-color:var(--ac-border);color:var(--t1);background:var(--s2);}
+
+/* ── CLARIFY BLOCK ── */
+.c-clarify-block{margin-top:2px;}
+.ccb-lead{font-size:14px;color:var(--t2);line-height:1.65;margin-bottom:14px;}
+.ccb-items{display:flex;flex-direction:column;gap:0;}
+.ccb-item{display:flex;align-items:flex-start;gap:12px;padding:11px 0;border-top:1px solid var(--br);}
+.ccb-n{width:22px;height:22px;min-width:22px;border-radius:6px;background:var(--s2);border:1px solid var(--br2);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--t4);flex-shrink:0;margin-top:1px;}
+.ccb-content strong{font-size:13px;font-weight:600;color:var(--t1);display:block;margin-bottom:2px;}
+.ccb-content span{font-size:13px;color:var(--t3);line-height:1.55;}
+.ccb-q{font-size:14px;color:var(--t2);line-height:1.7;}
+.ccb-ack{font-size:12px;color:var(--ac);margin-bottom:10px;font-weight:500;}
+
+/* ── DYNAMIC INPUT HINT ── */
+.c-input-hint-dynamic{padding:6px 16px 10px;font-size:11px;color:var(--t4);display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.cidh-chip{background:var(--s2);border:1px solid var(--br);border-radius:100px;padding:2px 9px;font-size:10px;color:var(--t4);cursor:pointer;transition:all .15s;font-family:'Inter',sans-serif;}
+.cidh-chip:hover{border-color:var(--br2);color:var(--t3);}
+
+/* ── ANALYZE CTA ── */
+.c-analyze-cta{margin-top:14px;padding:14px 16px;background:rgba(200,255,87,.04);border:1px solid var(--ac-border);border-radius:var(--r);display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+.cta-text{font-size:13px;color:var(--t2);line-height:1.6;flex:1;}
+.cta-text strong{color:var(--t1);display:block;margin-bottom:2px;font-size:13px;}
+.c-analyze-btn{background:var(--ac);color:#000;border:none;padding:10px 20px;border-radius:var(--rx);font-size:13px;font-weight:700;font-family:'Inter',sans-serif;cursor:pointer;transition:all .2s;white-space:nowrap;flex-shrink:0;letter-spacing:.02em;}
+.c-analyze-btn:hover{transform:translateY(-1px);box-shadow:0 0 24px rgba(200,255,87,.22);}
+
+/* ── COLLAPSIBLE SECTIONS ── */
+.ac-collapsible{border-bottom:1px solid var(--br);}
+.ac-collapsible:last-child{border-bottom:none;}
+.ac-col-head{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;cursor:pointer;user-select:none;transition:background .15s;}
+.ac-col-head:hover{background:rgba(255,255,255,.025);}
+.ac-col-title{font-size:9px;font-weight:700;color:var(--t4);text-transform:uppercase;letter-spacing:.1em;}
+.ac-col-chevron{font-size:10px;color:var(--t4);transition:transform .25s;line-height:1;}
+.ac-col-chevron.open{transform:rotate(180deg);}
+.ac-col-body{overflow:hidden;max-height:2000px;transition:max-height .4s var(--ease),opacity .3s ease;opacity:1;}
+.ac-col-body.closed{max-height:0!important;opacity:0;}
 
 /* Responsive */
 @media(max-width:1024px){
@@ -458,7 +545,7 @@ body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:var
         <div class="l-agent"><div class="l-agent-tag">SVM RBF</div><div class="l-agent-name">Classifier</div><div class="l-agent-desc">Classifies market regime with confidence score</div><div class="l-agent-arrow">›</div></div>
         <div class="l-agent"><div class="l-agent-tag">SARIMA</div><div class="l-agent-name">Forecaster</div><div class="l-agent-desc">90-day sector deal-volume trend prediction</div><div class="l-agent-arrow">›</div></div>
         <div class="l-agent"><div class="l-agent-tag">LightGBM</div><div class="l-agent-name">SHAP XAI</div><div class="l-agent-desc">Explains which signals drove the regime verdict</div><div class="l-agent-arrow">›</div></div>
-        <div class="l-agent"><div class="l-agent-tag">Agent A6</div><div class="l-agent-name">Trinity Report</div><div class="l-agent-desc">Finding → Implication → Action in plain language</div><div class="l-agent-arrow">›</div></div>
+        <div class="l-agent"><div class="l-agent-tag">L4 Reasoning</div><div class="l-agent-name">Strategic Engine</div><div class="l-agent-desc">Strategic read → Key driver → Risk → Counterpoint → Differentiation</div><div class="l-agent-arrow">›</div></div>
         <div class="l-agent"><div class="l-agent-tag">Agent A7</div><div class="l-agent-name">LLM Synthesis</div><div class="l-agent-desc">Groq/Llama3 final synthesis + follow-up advisor</div></div>
       </div>
     </div>
@@ -474,7 +561,7 @@ body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:var
         <div class="l-out-card"><div class="l-out-tag">Startup Viability Score</div><h3>Market + idea, combined</h3><p>SVS = TAS × 50% + Idea Score × 50%. The only score that tells you whether <em>you specifically</em> should build this, in this market, right now.</p><div class="l-out-preview">SVS: <span class="hi">68</span>/100 · Verdict: GO</div></div>
         <div class="l-out-card"><div class="l-out-tag">Idea Evaluation (Agent A0)</div><h3>Your concept, stress-tested</h3><p>5 dimensions scored 0–10: Problem Clarity, Solution Fit, Differentiation, Business Model, Scalability — each with a specific reason.</p><div class="l-out-preview">Avg: <span class="hi">6.4</span>/10 · Idea Score: 64</div></div>
         <div class="l-out-card"><div class="l-out-tag">SHAP Signal Weights</div><h3>Why the verdict is what it is</h3><p>LightGBM + SHAP shows exactly which economic signals drove the regime classification — so you trust the verdict, not just accept it.</p><div class="l-out-preview">Top signal: <span class="hi">velocity_yoy</span> (82%)</div></div>
-        <div class="l-out-card"><div class="l-out-tag">Trinity Report</div><h3>Finding → Implication → Action</h3><p>Three sentences that matter: what the data shows, what it means for your specific idea, and what you should do in the next 90 days.</p><div class="l-out-preview">Action: <span class="hi">Move now.</span> Apply this cycle.</div></div>
+        <div class="l-out-card"><div class="l-out-tag">L4 Strategic Engine</div><h3>5-Part Reasoning Output</h3><p>Strategic interpretation, key driver, main risk, counterpoint, and differentiation insight — each from a different angle, each challenging the comfortable read.</p><div class="l-out-preview">Verdict: <span class="hi">Operator-level</span> analysis, not a dashboard</div></div>
       </div>
     </div>
   </section>
@@ -561,12 +648,12 @@ body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:var
     <div class="c-input-wrap">
       <div class="c-input-box">
         <div class="c-input-row">
-          <textarea id="c-input" class="c-input-field" placeholder="Describe your startup idea..." rows="1"></textarea>
+          <textarea id="c-input" class="c-input-field" placeholder="Describe your idea..." rows="1"></textarea>
           <button class="c-send-btn" id="c-send-btn" onclick="handleSend()">
             <svg viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13" stroke="#000" stroke-width="2.5" stroke-linecap="round"/><path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
         </div>
-        <div class="c-input-hint"><kbd>Enter</kbd> to send &middot; <kbd>Shift+Enter</kbd> for new line</div>
+        <div class="c-input-hint-dynamic" id="c-input-hint"></div>
       </div>
     </div>
   </div>
@@ -662,7 +749,7 @@ function initReveal(){
 /* ═══════════════════════════════════════
    CHAT STATE
 ═══════════════════════════════════════ */
-const API_BASE = window.MIDAN_API_URL || 'http://localhost:8000';
+const API_BASE = window.MIDAN_API_URL || 'https://1d263931c8d0f1af-217-55-238-121.serveousercontent.com';
 let chatHistory = [], internalContext = {}, analysisComplete = false;
 let currentConvId = 0, conversations = [], isProcessing = false;
 
@@ -680,35 +767,131 @@ function newChat(){
   document.getElementById('c-topbar-title').textContent='New Analysis';
   document.querySelectorAll('.c-conv-item').forEach(e=>e.classList.remove('active'));
   clearGatherBar();
-  // Premium welcome — explicitly shows what MIDAN needs
-  setTimeout(()=>addAIMessage(`
-    <div class="c-welcome">
-      <div class="c-welcome-icon"><svg viewBox="0 0 14 14" fill="none"><polygon points="7,1 13,4 13,10 7,13 1,10 1,4" fill="#000"/></svg></div>
-      <h1>MIDAN — Market Intelligence</h1>
-      <p>Describe your startup idea. For a full analysis, include:</p>
-      <div class="c-welcome-checklist">
-        <div class="c-wc-item"><div class="c-wc-dot"></div><span><strong>The problem</strong> — what pain are you solving and for whom?</span></div>
-        <div class="c-wc-item"><div class="c-wc-dot"></div><span><strong>The market</strong> — geography and target customer</span></div>
-        <div class="c-wc-item"><div class="c-wc-dot"></div><span><strong>Your approach</strong> — app, platform, SaaS, service?</span></div>
-      </div>
-    </div>
-    ${buildWelcomeSuggestions()}
-  `,false),100);
+  showEmptyState();
+  setInputHint('empty');
   if(window.innerWidth<=768){document.getElementById('c-sidebar').classList.remove('open');document.getElementById('c-overlay').classList.remove('show');}
   document.getElementById('c-input').focus();
 }
 
-function buildWelcomeSuggestions(){
-  const sugs = [
-    {title:'Fintech in Egypt',desc:'Invoice financing for Egyptian SMEs',idea:'An invoice financing platform for Egyptian SMEs to solve the payment gap and get paid faster on their invoices'},
-    {title:'Healthtech in UAE',desc:'Clinic booking & telemedicine',idea:'A health clinic booking and telemedicine platform for patients in Dubai and Abu Dhabi with subscription revenue'},
-    {title:'Edtech in Cairo',desc:'Online tutoring marketplace',idea:'An online tutoring platform connecting students with expert teachers in Cairo using AI-matched sessions'},
-    {title:'SaaS in Saudi',desc:'CRM for SMBs',idea:'A SaaS CRM tool built for small businesses across Saudi Arabia to manage customers, invoices and sales pipelines'},
-  ];
-  return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px;max-width:560px">${sugs.map(s=>`<div class="c-sug" onclick="useSuggestion('${s.idea}')"><div class="c-sug-title">${s.title}</div><div class="c-sug-desc">${s.desc}</div></div>`).join('')}</div>`;
+function useSuggestion(text){document.getElementById('c-input').value=text;handleSend();}
+
+/* ═══════════════════════════════════════
+   EMPTY STATE
+═══════════════════════════════════════ */
+function showEmptyState(){
+  document.getElementById('c-msgs').innerHTML=`
+    <div class="c-empty-state" id="c-empty-state">
+      <div class="ces-icon"><svg viewBox="0 0 14 14" fill="none"><polygon points="7,1 13,4 13,10 7,13 1,10 1,4" fill="#000"/></svg></div>
+      <h2 class="ces-head">What are you building?</h2>
+      <p class="ces-sub">Describe your startup idea — I'll analyze market timing, score the concept, and give you a clear verdict.</p>
+      <div class="ces-chips">
+        <button class="ces-chip" onclick="useSuggestion('An invoice financing platform for Egyptian SMEs to solve the payment gap and get paid faster on their invoices')">Fintech · Egypt</button>
+        <button class="ces-chip" onclick="useSuggestion('A health clinic booking and telemedicine platform for patients in Dubai and Abu Dhabi with subscription revenue')">Healthtech · UAE</button>
+        <button class="ces-chip" onclick="useSuggestion('An online tutoring platform connecting students with expert teachers in Cairo using AI-matched sessions')">EdTech · Cairo</button>
+        <button class="ces-chip" onclick="useSuggestion('A SaaS CRM tool built for small businesses across Saudi Arabia to manage customers, invoices and sales pipelines')">SaaS · Saudi</button>
+      </div>
+    </div>`;
+}
+function hideEmptyState(){const e=document.getElementById('c-empty-state');if(e)e.remove();}
+
+/* ═══════════════════════════════════════
+   DYNAMIC INPUT HINT
+═══════════════════════════════════════ */
+function setInputHint(mode, missing){
+  const el=document.getElementById('c-input-hint');
+  if(!el)return;
+  if(mode==='empty'){
+    el.innerHTML=`<span style="color:var(--t4)"><kbd style="background:var(--s2);border:1px solid var(--br);padding:1px 5px;border-radius:3px;font-family:Inter,sans-serif;font-size:10px;">Enter</kbd> to send &middot; <kbd style="background:var(--s2);border:1px solid var(--br);padding:1px 5px;border-radius:3px;font-family:Inter,sans-serif;font-size:10px;">Shift+Enter</kbd> for new line</span>`;
+  } else if(mode==='clarifying'&&missing&&missing.length){
+    const hints={problem:'describe the problem',market:'add geography + customer type',solution:'describe your approach'};
+    const chips=missing.slice(0,2).map(m=>`<button class="cidh-chip" onclick="document.getElementById('c-input').focus()">Missing: ${hints[m]||m}</button>`).join('');
+    el.innerHTML=chips+`<span style="margin-left:4px;color:var(--t4);font-size:10px;">— add these to unlock analysis</span>`;
+  } else {
+    el.innerHTML=`<span style="color:var(--t4)"><kbd style="background:var(--s2);border:1px solid var(--br);padding:1px 5px;border-radius:3px;font-family:Inter,sans-serif;font-size:10px;">Enter</kbd> to send &middot; <kbd style="background:var(--s2);border:1px solid var(--br);padding:1px 5px;border-radius:3px;font-family:Inter,sans-serif;font-size:10px;">Shift+Enter</kbd> for new line</span>`;
+  }
 }
 
-function useSuggestion(text){document.getElementById('c-input').value=text;handleSend();}
+/* ═══════════════════════════════════════
+   CLARIFY BLOCK BUILDER
+═══════════════════════════════════════ */
+function buildClarifyBlock(replyText, isInitial, ackText){
+  const ack=ackText?`<div class="ccb-ack">${ackText}</div>`:'';
+  if(isInitial){
+    return `<div class="c-clarify-block">${ack}
+      <p class="ccb-lead">To run the full analysis, I need three things:</p>
+      <div class="ccb-items">
+        <div class="ccb-item"><span class="ccb-n">1</span><div class="ccb-content"><strong>The problem</strong><span>What pain point exists, and who has it?</span></div></div>
+        <div class="ccb-item"><span class="ccb-n">2</span><div class="ccb-content"><strong>The market</strong><span>Geography and customer type — e.g. Egyptian SMEs, UAE consumers</span></div></div>
+        <div class="ccb-item"><span class="ccb-n">3</span><div class="ccb-content"><strong>Your approach</strong><span>App, marketplace, SaaS, or service?</span></div></div>
+      </div>
+    </div>`;
+  }
+  return `<div class="c-clarify-block">${ack}<p class="ccb-q">${fmtReply(replyText)}</p></div>`;
+}
+
+/* ═══════════════════════════════════════
+   ANALYZE CTA + REVEAL
+═══════════════════════════════════════ */
+let pendingAnalysis=null;
+
+function revealAnalysis(btn){
+  if(!pendingAnalysis)return;
+  const d=pendingAnalysis; pendingAnalysis=null;
+  const msgBody=btn.closest('.c-msg-body');
+  internalContext={
+    sector:d.sector, country:d.country, regime:d.regime, tas_score:d.tas_score,
+    signal_tier:d.signal_tier,
+    decision_badge:d.decision_badge||'',
+    dominant_risk:d.dominant_risk||'execution',
+    strategic_interpretation:d.strategic_interpretation||'',
+    key_driver:d.key_driver||'',
+    main_risk:d.main_risk||'',
+    counterpoint:d.counterpoint||'',
+    differentiation_insight:d.differentiation_insight||'',
+    what_matters_most:d.what_matters_most||'',
+    counter_thesis:d.counter_thesis||'',
+    idea_features:d.idea_features||{},
+    idea:''
+  };
+  clearGatherBar();
+  setInputHint('default');
+  // Swap CTA for analysis card with a brief transition
+  msgBody.style.opacity='0.4';
+  msgBody.style.transition='opacity .2s';
+  setTimeout(()=>{
+    msgBody.innerHTML=`<p style="margin-bottom:12px;font-size:14px;color:var(--t2);">Here's the full breakdown.</p>`+buildCard(d)+`<p style="margin-top:16px;font-size:13px;color:var(--t4)">Ask me anything — competitive risks, fundraising, GTM, or next steps.</p>`;
+    msgBody.style.opacity='1';
+    chatHistory.push({role:'assistant',content:`[Analysis: ${d.sector}/${d.country} TAS:${d.tas_score} Regime:${d.regime}]`});
+    analysisComplete=true;
+    saveCurrentConversation();
+    scrollBottom();
+  },200);
+}
+
+/* ═══════════════════════════════════════
+   COLLAPSIBLE TOGGLE
+═══════════════════════════════════════ */
+let _sid=0;
+function toggleSection(id){
+  const body=document.getElementById(id);
+  if(!body)return;
+  const chev=body.previousElementSibling&&body.previousElementSibling.querySelector('.ac-col-chevron');
+  body.classList.toggle('closed');
+  if(chev)chev.classList.toggle('open');
+}
+function toggleDimExp(id){
+  const el=document.getElementById(id);
+  if(!el)return;
+  el.classList.toggle('open');
+}
+function toggleSigExp(id){
+  const el=document.getElementById(id);
+  if(!el)return;
+  // Close any other open sig panels in same card
+  const card=el.closest('.ac');
+  if(card){card.querySelectorAll('.sig-exp-panel.open').forEach(p=>{if(p.id!==id)p.classList.remove('open');});}
+  el.classList.toggle('open');
+}
 
 /* ═══════════════════════════════════════
    SIDEBAR
@@ -778,10 +961,19 @@ function scrollBottom(){const w=document.getElementById('c-msgs-wrap');setTimeou
 /* ═══════════════════════════════════════
    ANALYSIS CARD
 ═══════════════════════════════════════ */
+function _tierFromScore(tas){
+  if(tas>=76)return'Strong';
+  if(tas>=60)return'Moderate';
+  if(tas>=44)return'Mixed';
+  return'Weak';
+}
+
 function buildCard(d){
+  const sid=++_sid;
   const regime=d.regime.replace(/_MARKET/,'').replace(/_/,' ');
   const tas=d.tas_score;
-  const tasC=tas>=68?'cg':tas>=50?'ca':'cr';
+  const tier=d.signal_tier||_tierFromScore(tas);
+  const tierC=tier==='Strong'?'cg':tier==='Moderate'?'ca':tier==='Mixed'?'cw':'cr';
   const confC=d.confidence>=75?'cg':d.confidence>=55?'ca':'cr';
   const trend=d.sarima_trend>0.55?'Growing':d.sarima_trend>0.35?'Stable':'Declining';
   const trendC=d.sarima_trend>0.55?'cg':d.sarima_trend>0.35?'ca':'cr';
@@ -792,32 +984,89 @@ function buildCard(d){
   if(d.quadrant&&d.quadrant.startsWith('GO'))vClass='go';
   else if(d.quadrant&&d.quadrant.startsWith('STOP'))vClass='stop';
 
-  // SHAP
-  let shapHtml='';
-  if(d.shap_weights){
-    const f=Object.entries(d.shap_weights).sort((a,b)=>b[1]-a[1]);
-    const mx=Math.max(...f.map(x=>x[1]));
-    shapHtml=f.map(([n,v])=>{const p=Math.round(v/mx*100);return `<div class="sig-row"><div class="sig-l">${n.replace(/_/g,' ')}</div><div class="sig-t"><div class="sig-f" style="width:${p}%;opacity:${Math.max(.3,p/100)}"></div></div><div class="sig-v">${p}%</div></div>`;}).join('');
+  // ── Market Signals (SHAP — macro regime drivers) ──────────
+  let mktSigHtml='';
+  const mktSrc=d.combined_signals
+    ?Object.entries(d.combined_signals).filter(([k])=>k.startsWith('market_'))
+    :d.shap_weights?Object.entries(d.shap_weights):[];
+  const sigExp=d.signal_explanations||{};
+  if(mktSrc.length){
+    const mx=Math.max(...mktSrc.map(x=>x[1]));
+    mktSigHtml=mktSrc.sort((a,b)=>b[1]-a[1]).map(([n,v])=>{
+      const lbl=(n.replace(/^market_/,'')).replace(/_/g,' ');
+      const p=Math.round(v/mx*100);
+      const exp=sigExp[n]||{};
+      const panelId=`sep-${sid}-${n.replace(/[^a-z0-9]/g,'')}`;
+      const panel=exp.what_it_means?`<div class="sig-exp-panel" id="${panelId}" onclick="event.stopPropagation()"><strong>${exp.what_it_means}</strong><br>${exp.impact||''}<br><em style="color:var(--t4);font-size:9px">${exp.reliability||''}</em></div>`:'';
+      const click=exp.what_it_means?`onclick="toggleSigExp('${panelId}')" title="Click to learn why this signal matters"`:'' ;
+      return `<div class="sig-row" ${click}><div class="sig-l">${lbl}${exp.what_it_means?' <span style="color:var(--t4);font-size:9px">↓</span>':''}</div><div class="sig-t"><div class="sig-f" style="width:${p}%;opacity:${Math.max(.35,p/100)}"></div></div><div class="sig-v">${p}%</div></div>${panel}`;
+    }).join('');
   }
 
-  // Idea dims
-  let ideaHtml='';
+  // ── Idea Signals (L3 — idea-specific breakdown) ───────────
+  let ideaSigHtml='';
+  const ideaSrc=d.combined_signals
+    ?Object.entries(d.combined_signals).filter(([k])=>k.startsWith('idea_'))
+    :[];
+  if(ideaSrc.length){
+    const mx=Math.max(...ideaSrc.map(x=>x[1]));
+    ideaSigHtml=ideaSrc.sort((a,b)=>b[1]-a[1]).map(([n,v])=>{
+      const lbl=(n.replace(/^idea_/,'')).replace(/_/g,' ');
+      const p=Math.round(v/mx*100);
+      const exp=sigExp[n]||{};
+      const panelId=`sep-${sid}-${n.replace(/[^a-z0-9]/g,'')}`;
+      const panel=exp.meaning?`<div class="sig-exp-panel" id="${panelId}" onclick="event.stopPropagation()"><strong>${exp.label||lbl}</strong>: ${exp.meaning}</div>`:'';
+      const click=exp.meaning?`onclick="toggleSigExp('${panelId}')" title="Click to understand this signal"`:'' ;
+      return `<div class="sig-row" ${click}><div class="sig-l">${lbl}${exp.meaning?' <span style="color:var(--t4);font-size:9px">↓</span>':''}</div><div class="sig-t"><div class="sig-f idea-bar" style="width:${p}%;opacity:${Math.max(.35,p/100)}"></div></div><div class="sig-v">${p}%</div></div>${panel}`;
+    }).join('');
+  }
+
+  // ── Idea Feature Panel (L1 extracted properties) ──────────
+  let idfHtml='';
+  if(d.idea_features){
+    const f=d.idea_features;
+    const ds=f.differentiation_score||3;
+    const diffLbl=['','Minimal','Low','Moderate','Strong','Exceptional'][ds]||'—';
+    const diffC=ds>=4?'cg':ds>=3?'ca':'cr';
+    const rmLbl=['','Not Proven','Early Signals','Validated','Strong Pull','Proven Demand'][f.market_readiness||3]||'—';
+    idfHtml=`<div class="idf-grid">
+      <div class="idf-item"><div class="idf-lbl">Business Model</div><div class="idf-val">${(f.business_model||'—').replace(/_/g,' ')}</div></div>
+      <div class="idf-item"><div class="idf-lbl">Segment</div><div class="idf-val">${(f.target_segment||'—').toUpperCase()}</div></div>
+      <div class="idf-item"><div class="idf-lbl">Stage</div><div class="idf-val">${(f.stage||'—').charAt(0).toUpperCase()+(f.stage||'idea').slice(1)}</div></div>
+      <div class="idf-item"><div class="idf-lbl">Differentiation</div><div class="idf-val ${diffC}">${diffLbl} (${ds}/5)</div></div>
+      <div class="idf-item"><div class="idf-lbl">Competition</div><div class="idf-val">${(f.competitive_intensity||'—').charAt(0).toUpperCase()+(f.competitive_intensity||'medium').slice(1)}</div></div>
+      <div class="idf-item"><div class="idf-lbl">Market Demand</div><div class="idf-val">${rmLbl}</div></div>
+    </div>`;
+  }
+
+  // ── Idea Evaluation (Agent A0) ────────────────────────────
+  let ideaEvalHtml='';
   if(d.idea_dimensions){
     const dims=['problem_clarity','solution_fit','differentiation','business_model','scalability'];
     const lbls={problem_clarity:'Problem Clarity',solution_fit:'Solution Fit',differentiation:'Differentiation',business_model:'Business Model',scalability:'Scalability'};
     let qC='#F5A623',qBg='rgba(245,166,35,.1)',qBorder='rgba(245,166,35,.2)';
     if(d.quadrant&&d.quadrant.startsWith('GO')){qC='#4ADE80';qBg='rgba(74,222,128,.1)';qBorder='rgba(74,222,128,.2)';}
     else if(d.quadrant&&d.quadrant.startsWith('STOP')){qC='#FF6B6B';qBg='rgba(255,107,107,.1)';qBorder='rgba(255,107,107,.2)';}
+    const dimExp=d.dimension_explanations||{};
     const bars=dims.map(dim=>{
       const v=d.idea_dimensions[dim]||5;
       const fc=v>=7?'#C8FF57':v>=5?'#60A5FA':'#FF6B6B';
-      return `<div class="idea-dim-row"><span class="idea-dim-name">${lbls[dim]}</span><div class="idea-dim-track"><div class="idea-dim-fill" style="width:${v*10}%;background:${fc}"></div></div><span class="idea-dim-val">${v}/10</span></div>`;
+      const exp=dimExp[dim]||{};
+      const panelId=`dexp-${sid}-${dim}`;
+      const expPanel=exp.why?`<div class="dim-exp" id="${panelId}">
+        <div class="dim-exp-row"><div class="dim-exp-ico why">W</div><div><div class="dim-exp-lbl">Why this score</div><div class="dim-exp-txt">${exp.why}</div></div></div>
+        <div class="dim-exp-row"><div class="dim-exp-ico miss">M</div><div><div class="dim-exp-lbl">What's missing</div><div class="dim-exp-txt">${exp.missing}</div></div></div>
+        <div class="dim-exp-row"><div class="dim-exp-ico fix">↑</div><div><div class="dim-exp-lbl">How to improve</div><div class="dim-exp-txt">${exp.improve}</div></div></div>
+      </div>`:'';
+      const click=exp.why?`onclick="toggleDimExp('${panelId}')" title="Click for why + how to improve"`:'';
+      return `<div class="idea-dim-row" ${click}><span class="idea-dim-name">${lbls[dim]}${exp.why?' <span style=\'color:var(--t4);font-size:9px\'>↓</span>':''}</span><div class="idea-dim-track"><div class="idea-dim-fill" style="width:${v*10}%;background:${fc}"></div></div><span class="idea-dim-val">${v}/10</span></div>${expPanel}`;
     }).join('');
     let reasons='';
-    if(d.idea_reasons){
+    if(d.idea_reasons && !Object.keys(dimExp).length){
+      // Only show old reasons panel if new explanation layer is not available
       reasons=`<div class="ac-reasons">${dims.map(dim=>`<div class="ac-reason"><div class="ac-reason-title">${lbls[dim]}</div><div class="ac-reason-txt">${d.idea_reasons[dim]||''}</div></div>`).join('')}</div>`;
     }
-    ideaHtml=`<div class="ac-idea">
+    ideaEvalHtml=`<div class="ac-idea">
       <div class="ac-idea-head">
         <div class="svs-wrap"><span class="svs-num ${svsC}">${svs}</span><span class="svs-lbl">Startup<br>Viability</span></div>
         <span class="q-tag" style="color:${qC};background:${qBg};border:1px solid ${qBorder}">${d.quadrant||'—'}</span>
@@ -827,23 +1076,103 @@ function buildCard(d){
     </div>`;
   }
 
+  // Decision badge
+  const dbadge=d.decision_badge||'';
+  let badgeClass='conditional',badgeTxt=dbadge;
+  if(dbadge.startsWith('GO —')){badgeClass='go';}
+  else if(dbadge.startsWith('CONDITIONAL')){badgeClass='conditional';}
+  else if(dbadge.startsWith('HIGH RISK')){badgeClass='high-risk';}
+  else if(dbadge.startsWith('NO-GO')){badgeClass='no-go';}
+
+  // What Matters Most banner
+  const wmmBanner=d.what_matters_most?`<div class="ac-wmm"><div class="ac-wmm-lbl">What Matters Most</div><div class="ac-wmm-txt">${d.what_matters_most}</div></div>`:'';
+
   return `<div class="ac">
     <div class="ac-head">
       <div class="ac-head-l"><span class="ac-tag">Market Intelligence Report</span><div class="ac-verdict ${vClass}"><div class="vd"></div>${vTxt}</div></div>
       <span class="ac-meta">${(d.sector||'').charAt(0).toUpperCase()+(d.sector||'').slice(1)} · ${d.country||''}</span>
     </div>
+    ${wmmBanner}
     <div class="ac-scores">
       <div class="ac-sc"><div class="ac-sc-lbl">Market Regime</div><div class="ac-sc-val cw">${regime}</div></div>
-      <div class="ac-sc"><div class="ac-sc-lbl">Opportunity</div><div class="ac-sc-val ${tasC}">${tas}/100</div></div>
+      <div class="ac-sc"><div class="ac-sc-lbl">Signal</div><div class="ac-sc-val ${tierC}">${tier}</div></div>
       <div class="ac-sc"><div class="ac-sc-lbl">Confidence</div><div class="ac-sc-val ${confC}">${d.confidence}%</div></div>
       <div class="ac-sc"><div class="ac-sc-lbl">90-Day Outlook</div><div class="ac-sc-val ${trendC}">${trend}</div></div>
     </div>
-    ${shapHtml?`<div class="ac-signals"><div class="ac-sig-title">Signal Weights (SHAP)</div>${shapHtml}</div>`:''}
-    ${ideaHtml}
-    <div class="ac-trinity">
-      <div class="trinity-row"><div class="trinity-icon f">F</div><div><div class="trinity-lbl">Finding</div><div class="trinity-txt">${d.report.finding}</div></div></div>
-      <div class="trinity-row"><div class="trinity-icon i">I</div><div><div class="trinity-lbl">Implication</div><div class="trinity-txt">${d.report.implication}</div></div></div>
-      <div class="trinity-row"><div class="trinity-icon a">A</div><div><div class="trinity-lbl">Action</div><div class="trinity-txt">${d.report.action}</div></div></div>
+    ${idfHtml?`
+    <div class="ac-collapsible">
+      <div class="ac-col-head" onclick="toggleSection('acs-idf-${sid}')">
+        <span class="ac-col-title">Extracted Idea Profile · L1</span>
+        <span class="ac-col-chevron">▲</span>
+      </div>
+      <div class="ac-col-body" id="acs-idf-${sid}">${idfHtml}</div>
+    </div>`:''}
+    ${mktSigHtml?`
+    <div class="ac-collapsible">
+      <div class="ac-col-head" onclick="toggleSection('acs-mkt-${sid}')">
+        <span class="ac-col-title">Market Signals · SHAP</span>
+        <span class="ac-col-chevron">▲</span>
+      </div>
+      <div class="ac-col-body ac-signals" id="acs-mkt-${sid}">
+        <div class="ac-sig-title">What drove the market regime classification</div>${mktSigHtml}
+      </div>
+    </div>`:''}
+    ${ideaSigHtml?`
+    <div class="ac-collapsible">
+      <div class="ac-col-head" onclick="toggleSection('acs-is-${sid}')">
+        <span class="ac-col-title">Idea Signals · L3</span>
+        <span class="ac-col-chevron">▲</span>
+      </div>
+      <div class="ac-col-body ac-signals" id="acs-is-${sid}">
+        <div class="ac-sig-title">What drives your idea-specific score in this regime</div>${ideaSigHtml}
+      </div>
+    </div>`:''}
+    ${ideaEvalHtml?`
+    <div class="ac-collapsible">
+      <div class="ac-col-head" onclick="toggleSection('acs-idea-${sid}')">
+        <span class="ac-col-title">Idea Evaluation · Agent A0</span>
+        <span class="ac-col-chevron">▲</span>
+      </div>
+      <div class="ac-col-body" id="acs-idea-${sid}">${ideaEvalHtml}</div>
+    </div>`:''}
+    <div class="ac-collapsible">
+      <div class="ac-col-head" onclick="toggleSection('acs-l4-${sid}')">
+        <span class="ac-col-title">Strategic Analysis</span>
+        <span class="ac-col-chevron">▲</span>
+      </div>
+      <div class="ac-col-body ac-l4" id="acs-l4-${sid}">
+        <div class="l4-row">
+          <div class="l4-icon s">S</div>
+          <div><div class="l4-lbl">Strategic Read</div><div class="l4-txt">${d.strategic_interpretation||'—'}</div></div>
+        </div>
+        <div class="l4-row">
+          <div class="l4-icon k">K</div>
+          <div><div class="l4-lbl">Key Driver</div><div class="l4-txt">${d.key_driver||'—'}</div></div>
+        </div>
+        <div class="l4-row">
+          <div class="l4-icon r">R</div>
+          <div><div class="l4-lbl">Main Risk</div><div class="l4-txt">${d.main_risk||'—'}</div></div>
+        </div>
+        <div class="l4-row">
+          <div class="l4-icon c">C</div>
+          <div><div class="l4-lbl">Counterpoint</div><div class="l4-txt">${d.counterpoint||'—'}</div></div>
+        </div>
+        <div class="l4-row">
+          <div class="l4-icon d">D</div>
+          <div><div class="l4-lbl">Why This Is Different</div><div class="l4-txt">${d.differentiation_insight||'—'}</div></div>
+        </div>
+        ${d.counter_thesis?`<div class="l4-row">
+          <div class="l4-icon ct">✕</div>
+          <div><div class="l4-lbl">Counter-Thesis</div><div class="l4-txt">${d.counter_thesis}</div></div>
+        </div>`:''}
+      </div>
+      <div class="ac-action">
+        <div class="ac-action-head">
+          <div class="ac-action-lbl">Decision</div>
+          ${badgeTxt?`<span class="decision-badge ${badgeClass}">${badgeTxt}</span>`:''}
+        </div>
+        <div class="ac-action-txt">${d.action||'—'}</div>
+      </div>
     </div>
   </div>`;
 }
@@ -885,7 +1214,7 @@ function extractComponents(text, prevState){
   const has_geo=_GEO_SIG.some(g=>t.includes(g));
   const has_cust=_CUST_SIG.some(c=>t.includes(c));
   const has_market=prev.has_market||(has_geo||has_cust);
-  const is_substantial=wc>=12;
+  const is_substantial=wc>=8;
   const comps={has_problem,has_solution,has_market,is_substantial,word_count:wc};
   const missing=['problem','solution','market'].filter(k=>!comps['has_'+k]);
   return {comps,missing};
@@ -950,17 +1279,69 @@ function mockAnalysis(ideaText){
   const idea_score=Math.round(tas*0.78);
   const svs=Math.round(tas*0.5+idea_score*0.5);
   const q=svs>=65&&idea_score>=60?'GO — Launch':tas>=68&&idea_score<60?'Wrong Idea — Right Market':tas<68&&idea_score>=60?'Wait or Pivot Market':'STOP — Rethink Everything';
+  const signal_tier=_tierFromScore(tas);
+
+  // Mock idea features inferred from sector/text
+  const bm=isSA?'saas':isEC?'marketplace':isH?'b2b_services':isE?'subscription':'saas';
+  const seg=isSA||isLog?'b2b':isEC||isE?'b2c':'b2b';
+  const diff=isSA?4:isH?3:isEC?2:3;
+  const stage=tas>=70?'mvp':tas>=58?'validation':'idea';
+  const mock_idea_features={
+    business_model:bm,target_segment:seg,monetization:bm==='saas'?'subscription':'transaction_fee',
+    stage,differentiation_score:diff,competitive_intensity:isEC?'high':'medium',
+    regulatory_risk:isH||sector==='fintech'?'high':'low',market_readiness:Math.max(1,Math.min(5,Math.round(tas/20)))
+  };
+
+  // Mock idea signal based on regime fit (mirrors api.py logic)
+  const ideaSignal=Math.min(0.95,Math.max(0.12,(tas/100)*0.85+diff*0.04-0.05));
+  const mock_combined_signals={
+    market_velocity_yoy:.82,market_gdp_growth:.58,market_inflation:.41,
+    market_capital_concentration:.28,market_macro_friction:.14,
+    idea_base_fit:Math.round(ideaSignal*0.7*100)/100,
+    idea_diff_multiplier:Math.round((0.78+(diff-1)*0.11)*100)/100,
+    idea_stage_adjustment:stage==='mvp'?0.06:stage==='validation'?-0.02:-0.09,
+    idea_competition_adj:isEC?-0.09:0.0,
+    idea_regulatory_adj:isH||sector==='fintech'?-0.11:0.04,
+    idea_market_readiness_adj:(Math.round(tas/20)-3)*0.04
+  };
+
+  const domRisk={'marketplace':'liquidity','saas':'differentiation','commission':'regulatory','service':'scalability','hardware':'capital','subscription':'churn'}[bm]||'execution';
+  const diffLabel=['','minimal','low','moderate','strong','exceptional'][diff]||'moderate';
+  const comp_int=mock_idea_features.competitive_intensity;
+  const decBadge=tas>=76?'GO — CONDITIONAL':tas>=60?'CONDITIONAL — VALIDATE FIRST':tas>=44?'HIGH RISK — PROVE OR STOP':'NO-GO — DO NOT BUILD';
   return {
-    sector,country,regime,tas_score:tas,confidence:conf,sarima_trend:trend,drift_flag:false,action_fired:tas>=70,
-    report:{
-      finding:`Market classified as ${regime.replace(/_/g,' ')} with ${conf}% confidence. Key signals: velocity yoy, gdp growth, inflation.`,
-      implication:`[Offline mode] The ${sector} space in ${country} shows ${tas>=65?'strong':'cautious'} opportunity signals based on macro data.`,
-      action:tas>=70?'Move within the next 90 days. Apply to Flat6Labs or Cairo Angels this cycle.':'Validate demand before building. Run 20 direct customer interviews first.'
-    },
-    shap_weights:{velocity_yoy:.82,gdp_growth:.58,inflation:.41,capital_concentration:.28,macro_friction:.14},
+    sector,country,regime,tas_score:tas,signal_tier,confidence:conf,sarima_trend:trend,drift_flag:false,action_fired:tas>=70,
+    dominant_risk:domRisk,
+    decision_badge:decBadge,
+    what_matters_most:`${bm==='marketplace'?'Whether you can manually broker the first 50 transactions in '+country+' without any product — if that does not happen, the platform never gets liquidity data to automate from.':bm==='saas'?'Signing 3 paying pilots — not LOIs, not free users, paying — within 30 days. Without that, every subsequent decision is built on assumption.':domRisk==='regulatory'?'The regulatory clearance timeline — it is the only variable you cannot control and the only one that terminates the company if mismanaged.':'Whether '+seg.toUpperCase()+' customers in '+country+' are currently solving this problem with a workaround that costs them more (in time or money) than your solution will.'}`,
+    counter_thesis:`${sector==='fintech'?'You think this is a product problem. In '+country+', fintech is a trust problem — and trust is built through regulated institutions, not better UX. A superior product without a banking license or institutional partnership will not reach adoption at scale.':bm==='marketplace'?'You think the problem is building the platform. The real problem is that someone will manually broker every transaction for the first 6 months to make the platform feel like it works — and that labor cost is not in your financial model.':bm==='saas'||bm==='subscription'?'You think differentiation wins deals. In '+country+', local distribution and enterprise relationships beat better product 8 times out of 10. Your network in '+country+' is the moat — not the features.':'The assumption embedded in this idea is that the market needs what is being built. The real test is whether '+seg.toUpperCase()+' customers in '+country+' are currently solving this problem with a workaround, and if that workaround costs them less than your solution will charge.'}`,
+    strategic_interpretation:`[Offline] The ${regime.replace(/_/g,' ').toLowerCase()} conditions in ${sector}/${country} create ${tas>=70?'a viable but competitive entry window':'significant structural headwinds'} for a ${bm} model targeting ${seg.toUpperCase()} customers. ${bm==='marketplace'?'Liquidity bootstrapping is the core challenge — supply and demand must both arrive before either side finds value, and the bootstrapping cost is almost always underestimated.':bm==='saas'?'Switching cost architecture determines long-term defensibility — the product must embed into '+seg.toUpperCase()+' workflows before competitors reach scale, and at '+diffLabel+' differentiation ('+diff+'/5) that window is narrow.':'Execution speed matters more than timing precision here — the '+domRisk+' risk is the structural variable that will either confirm or kill this thesis within 90 days.'}`,
+    key_driver:`${domRisk==='liquidity'?'If active suppliers do not reach critical mass before demand loses patience — typically within 60 days of launch — the marketplace dies regardless of product quality or funding.':domRisk==='differentiation'?'Switching cost creation before a competitor reaches feature parity. At '+diffLabel+' differentiation ('+diff+'/5), a well-resourced competitor can replicate the core feature in 6 months — the window to embed into customer workflows is exactly that long.':domRisk==='regulatory'?'Regulatory clearance timeline — not product development, not fundraising. Every week of delay is a week of burn without revenue, and the delay is not in your control.':'Speed to first paying customer — not signups, not pilots, not LOIs. The first paying customer who returns a second time is the only proof that matters in the current regime.'}`,
+    main_risk:`${tas<50?'Weak market signals ('+tas+'/100) mean buyers in this sector are capital-constrained and risk-averse — building now risks running out of runway before finding a segment willing to pay the price the unit economics require.':comp_int==='high'?'Feature commoditization within 6 months of visible traction. With '+diffLabel+' differentiation in a high-competition space, a funded competitor can replicate the core feature before you have locked in distribution — and distribution speed is a race you are already behind in.':'The '+domRisk+' risk is not a planning item — it is an existential unknown that must be resolved with evidence before capital is committed to a full build.'}`,
+    counterpoint:`${tas>=70?'The strong signal that makes this look viable will make every competitor in this space reach the same conclusion at the same time — expect funding competition and feature cloning within 12 months. The founders who win are the ones who moved on distribution before the signal attracted capital, not the ones who raised on the signal and built after.':tas>=50?'Moderate signals are the most dangerous tier — strong enough to convince yourself to build, not strong enough to attract the capital needed to actually win. At '+diffLabel+' differentiation ('+diff+'/5), every investor and every enterprise buyer will require you to justify the edge, and most will pass until you have 3 reference customers who can do it for you.':'The market is not telling you to wait — it is telling you this specific model does not fit this specific moment. The founders who survive Weak signals are the ones who stopped spending before runway ended, not the ones who pushed through on conviction alone.'}`,
+    differentiation_insight:`${bm==='marketplace'?'Most '+sector+' marketplace ideas in '+country+' fail because founders treat liquidity as a product problem rather than a sales and operations problem. The first 100 supply-side relationships are the defensible asset — not the platform.':bm==='saas'?'SaaS at '+diffLabel+' differentiation ('+diff+'/5) in '+sector+'/'+country+' means the switching cost moat is not yet built. The risk is building features while a competitor with better distribution closes the same customers.':'With '+diffLabel+' differentiation ('+diff+'/5) in a '+regime.replace(/_/g,' ').toLowerCase()+' regime, the moat must come from distribution access or regulatory positioning — product-level differentiation is too easily copied before the customer relationship is locked in.'}`,
+    action:tas>=76?`GO — but conditionally. Sign 3 paying ${seg.toUpperCase()} customers within 30 days without building anything. If that fails, the signal is wrong and you stop. Build only after that proof. If raising: Flat6Labs, 500 MENA, or Algebra Ventures — come with evidence, not a pitch.`:tas>=60?`DO NOT BUILD YET. Run 15 structured interviews with ${seg.toUpperCase()} buyers in the next 2 weeks. Find the 3 who would pay today. If you cannot find them in 2 weeks → stop. Do not raise, do not build, do not iterate — the idea needs a different angle.`:tas>=44?`HIGH RISK. Run the cheapest possible experiment that proves or kills the core ${domRisk} assumption in 3 weeks. If it fails → stop building this version entirely. If it succeeds → you have the evidence to raise on.`:`NO-GO. Do not build this now. The ${signal_tier} signal at ${tas}/100 means the market is working against this model. Keep the idea, spend nothing, revisit in 90 days when SARIMA signals change.`,
+    shap_weights:{velocity_yoy:.52,gdp_growth:.21,inflation:.14,capital_concentration:.08,macro_friction:.05},
+    combined_signals:{...mock_combined_signals,market_velocity_yoy:.52,market_gdp_growth:.21,market_inflation:.14,market_capital_concentration:.08,market_macro_friction:.05},
+    idea_features:mock_idea_features,
     idea_score,
-    idea_dimensions:{problem_clarity:6,solution_fit:5,differentiation:4,business_model:7,scalability:6},
-    idea_reasons:{problem_clarity:'Problem scope detected in idea description',solution_fit:'Solution approach needs more specificity',differentiation:'Differentiation angle needs work',business_model:'Revenue model signals detected',scalability:'Growth potential indicated'},
+    idea_dimensions:{problem_clarity:6,solution_fit:5,differentiation:diff+1,business_model:7,scalability:6},
+    idea_reasons:{problem_clarity:'Problem scope detected',solution_fit:'Solution approach partially described',differentiation:'Differentiation angle identified but needs proof',business_model:'Revenue model signals present',scalability:'Growth potential indicated'},
+    dimension_explanations:{
+      problem_clarity:{score:6,why:'The problem is described but the scope is broad — it applies to many segments equally.',missing:'A specific trigger event and current workaround for the exact customer.',improve:'Rewrite starting with: "[Specific customer] struggles with [specific problem] [frequency] and today they solve it by [workaround that costs X]."'},
+      solution_fit:{score:5,why:'The solution approach exists but the fit to the specific pain is loose — it could solve adjacent problems as easily.',missing:'A clear 3-step mechanism: input → process → customer outcome.',improve:'Map exactly which step in the customer\'s current workflow your solution replaces.'},
+      differentiation:{score:diff+1,why:diff>=3?'A differentiation angle exists but is feature-level — replicable within 6-12 months.':'The idea appears to replicate an existing model without a clear switch trigger.',missing:'A structural moat: network effects, switching costs, regulatory access, or proprietary data.',improve:'For each feature, ask: could a well-funded competitor copy this in 6 months? If yes, that is not your moat.'},
+      business_model:{score:7,why:'Revenue mechanism is present and matched to the segment.',missing:'Unit economics at target scale — CAC, LTV, payback period.',improve:'Build a unit economics model: cost per customer × required volume to cover burn.'},
+      scalability:{score:6,why:'Scale potential exists but is constrained by an unaddressed bottleneck.',missing:'The path from current model to one that does not grow cost proportionally with customers.',improve:'Identify what breaks first at 10x current customers. Fix that before scaling acquisition.'}
+    },
+    signal_explanations:{
+      market_velocity_yoy:{label:'Velocity YoY',what_it_means:'Year-over-year deal velocity — how fast investment and transaction activity is growing or shrinking in this sector.',impact:tas>=70?'High velocity means capital is validating this sector — but also means competitors arrive with it.':'Low velocity means the market is contracting. Building into shrinking deal flow requires a specific counter-cyclical thesis.',reliability:'High reliability — tracks actual transaction data, not sentiment.'},
+      market_gdp_growth:{label:'GDP Growth',what_it_means:'Macroeconomic output growth rate — determines whether buyers have expanding or contracting purchasing power.',impact:'Directly affects enterprise budget cycles and consumer discretionary spending.',reliability:'Medium reliability — GDP is a lagging indicator, often 6-12 months behind actual market behavior.'},
+      market_inflation:{label:'Inflation',what_it_means:'Rate of price increases — affects cost structures, purchasing power, and investor risk appetite.',impact:'High inflation compresses margins and makes subscription pricing decisions harder without alienating customers.',reliability:'High reliability for cost-structure analysis, but affects sectors asymmetrically.'},
+      'idea_model_regime_fit':{label:'Model-Regime Fit',meaning:'How well your business model type structurally fits the current market regime — this is the baseline before any idea-specific adjustments.'},
+      'idea_differentiation':{label:'Differentiation Effect',meaning:'The positive or negative adjustment based on how differentiated your idea is. Higher differentiation = more pricing power and moat potential.'},
+      'idea_stage_readiness':{label:'Stage Readiness',meaning:'How your current stage interacts with market conditions. Early-stage in friction markets gets penalized; growth-stage in growth markets gets boosted.'},
+    },
     svs,quadrant:q
   };
 }
@@ -1029,6 +1410,7 @@ async function handleSend(){
   if(!text||isProcessing)return;
   isProcessing=true; inp.value=''; inp.style.height='auto';
   document.getElementById('c-send-btn').disabled=true;
+  hideEmptyState();
   addUserMessage(text);
   chatHistory.push({role:'user',content:text});
   if(chatHistory.filter(m=>m.role==='user').length===1){
@@ -1049,26 +1431,37 @@ async function handleSend(){
     removeTyping();
 
     if(rd.type==='analysis'&&rd.data){
-      // ── Full analysis returned ──────────────────────────────────────────────
+      // ── Analysis ready — show CTA first ────────────────────────────────────
+      pendingAnalysis=rd.data;
       const d=rd.data;
-      internalContext={
-        sector:d.sector,country:d.country,regime:d.regime,
-        tas_score:d.tas_score,implication:d.report.implication,idea:text
-      };
+      const sector=(d.sector||'').charAt(0).toUpperCase()+(d.sector||'').slice(1);
+      replyHtml=`<p style="margin-bottom:12px;font-size:14px;color:var(--t2);">${fmtReply(rd.reply||'Analysis complete.')}</p>`+
+        `<div class="c-analyze-cta">
+          <div class="cta-text"><strong>Analysis ready — ${sector} · ${d.country||''}</strong>Market data processed. Tap to see the full verdict, scores, and action plan.</div>
+          <button class="c-analyze-btn" onclick="revealAnalysis(this)">View Analysis →</button>
+        </div>`;
       clearGatherBar();
-      const intro=`<p>${fmtReply(rd.reply||'')}</p>`;
-      replyHtml=intro+buildCard(d)+`<p style="margin-top:16px;font-size:13px;color:var(--t4)">Ask me anything — competitive risks, fundraising timing, GTM strategy, pivot options, or pricing.</p>`;
-      chatHistory.push({role:'assistant',content:`[Analysis: ${d.sector}/${d.country} TAS:${d.tas_score} Regime:${d.regime}]`});
-      analysisComplete=true;
+      setInputHint('default');
+      chatHistory.push({role:'assistant',content:rd.reply||'Analysis complete.'});
 
     } else if(rd.type==='clarifying'){
       // ── Clarification needed — update gather bar ────────────────────────────
+      const cs=rd.clarification_state||{};
       if(rd.clarification_state){
-        internalContext.clarification_state=rd.clarification_state;
-        updateGatherBar(rd.clarification_state);
+        internalContext.clarification_state=cs;
+        updateGatherBar(cs);
       }
-      const badge=`<div class="c-clarify-badge"><div class="c-clarify-dot"></div>Needs clarification</div>`;
-      replyHtml=badge+`<p>${fmtReply(rd.reply||'')}</p>`;
+      const missing=['problem','solution','market'].filter(k=>!cs['has_'+k]);
+      setInputHint('clarifying', missing);
+      // Detect if this is initial (nothing gathered yet) vs targeted
+      const noneGathered=!cs.has_problem&&!cs.has_market&&!cs.has_solution;
+      // Build ack text for partial progress
+      const newlyDone=[];
+      if(cs.has_problem)newlyDone.push('problem');
+      if(cs.has_market)newlyDone.push('market');
+      if(cs.has_solution)newlyDone.push('approach');
+      const ackText=(newlyDone.length&&!noneGathered)?`Got: ${newlyDone.join(', ')}`:null;
+      replyHtml=buildClarifyBlock(rd.reply||'',noneGathered,ackText);
       chatHistory.push({role:'assistant',content:rd.reply||''});
 
     } else {
@@ -1102,39 +1495,40 @@ async function handleSend(){
         chatHistory.push({role:'assistant',content:r});
 
       } else if(isVagueStarter(text)){
-        // Vague intent — same response as backend Gate 3
-        const msg="Let's get into it. I need three things before I can run the analysis:\n\n**1. The problem** — what pain point exists, and who has it?\n**2. The market** — geography and customer type\n**3. Your approach** — app, marketplace, SaaS, service?\n\nWrite it out in plain language — no structure needed.";
-        const badge=`<div class="c-clarify-badge"><div class="c-clarify-dot"></div>Needs clarification</div>`;
-        replyHtml=badge+`<p>${fmtReply(msg)}</p>`;
-        chatHistory.push({role:'assistant',content:msg});
+        // Vague intent — render as 3-item block
+        replyHtml=buildClarifyBlock('',true,null);
+        chatHistory.push({role:'assistant',content:'To run the full analysis, I need: the problem, the market, and your approach.'});
+        setInputHint('clarifying',['problem','market','solution']);
 
       } else {
         // Has content — run component extraction
         const {comps,missing}=extractComponents(text,cs);
         const accumulated=((cs.accumulated_text||'')+' '+text).trim();
         const newState={...comps,accumulated_text:accumulated,count:(cs.count||0)+1};
-        // Same gate as backend: solution + market required (problem optional)
         const hardMissing=missing.filter(k=>k==='solution'||k==='market');
 
         if(!hardMissing.length&&comps.is_substantial){
-          // All three present → mock analysis (offline mode)
+          // All present → show offline analysis via CTA
           const d=mockAnalysis(accumulated);
-          internalContext={
-            sector:d.sector,country:d.country,regime:d.regime,
-            tas_score:d.tas_score,implication:d.report.implication,idea:text
-          };
+          pendingAnalysis=d;
+          const sector=(d.sector||'').charAt(0).toUpperCase()+(d.sector||'').slice(1);
+          replyHtml=`<p style="margin-bottom:12px;font-size:14px;color:var(--t2);">I have what I need. <em>(Offline mode — connect the API for live market data.)</em></p>`+
+            `<div class="c-analyze-cta">
+              <div class="cta-text"><strong>Analysis ready — ${sector} · ${d.country||''}</strong>Tap to see scores, market regime, and action plan.</div>
+              <button class="c-analyze-btn" onclick="revealAnalysis(this)">View Analysis →</button>
+            </div>`;
           clearGatherBar();
-          replyHtml=`<p>Here's the offline analysis <em>(connect the API for live data)</em>:</p>`+buildCard(d)+`<p style="margin-top:16px;font-size:13px;color:var(--t4)">Ask me about risks, GTM, fundraising, or next steps.</p>`;
-          chatHistory.push({role:'assistant',content:`[Offline analysis: ${d.sector}/${d.country}]`});
-          analysisComplete=true;
+          setInputHint('default');
+          chatHistory.push({role:'assistant',content:`[Offline analysis ready: ${d.sector}/${d.country}]`});
 
         } else {
-          // Partial — clarify (use hardMissing for question priority)
+          // Partial — clarify
           internalContext.clarification_state=newState;
           updateGatherBar(newState);
+          setInputHint('clarifying', hardMissing.length?hardMissing:missing);
+          const noneGathered=!newState.has_problem&&!newState.has_market&&!newState.has_solution;
           const r=offlineClarify(hardMissing.length?hardMissing:missing,cs.count||0,comps,cs);
-          const badge=`<div class="c-clarify-badge"><div class="c-clarify-dot"></div>Needs clarification</div>`;
-          replyHtml=badge+`<p>${fmtReply(r)}</p>`;
+          replyHtml=buildClarifyBlock(r,noneGathered,null);
           chatHistory.push({role:'assistant',content:r});
         }
       }

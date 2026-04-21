@@ -1,0 +1,84 @@
+{
+  "startup_name": "Plaid",
+  "source_type": "websites",
+  "source_url": "https://plaid.com",
+  "raw_content": "[PAGE: /]\nPlaid: Enabling all companies to build fintech solutions The internet's fastest financial onboarding Increase conversion, fight fraud, and onboard customers to your app or service in seconds. See onboarding in action Fast and secure payments Increase revenue with seamless bank payments designed to deliver higher conversion rates. Explore payment solutions Network-powered fraud signals Stop identity fraud, account takeovers, and risky payments with ML-powered fraud signals. See how we protect you Cash flow data for smarter underwriting Say âyesâ to more qualified borrowers and reduce risk with real-time lending insights. Tap into cash flow insights Open finance solutions for everyone Meet open banking requirements and make it easy for customers to connect to the financial apps they need. Simplify data connectivity Venmo 2m ago for late night ð®ð®ð® Carvana 1hr ago You're pre-qualified! Robinhood Now $PLAID order filled A network that gets more powerful daily When you build on the worldâs largest open banking data network, every product and solution is made better for you and your customers through new data and insights. Your services improve each day without you having to do a thing. 1 in 2 1 in 2Â banked U.S. adults Join a trusted platform used by half of banked U.S. adults 0 % 25%Â higher conversion Increase sign-ups by up to 25% with easy onboarding 1 million 1 millionÂ daily connections Get data from nearly one million new daily connections 0 20Â countries Scale adoption and grow into new global markets Want access to 12K banks? We've got the (API) keys. Spend your time dreaming about the experiences youâll create, not stressing over how to get the data. Our APIs can unlock it all. Get the API keys Read the docs /auth/get 1 2 3 4 5 request = AuthGetRequest (access_token=access_token) response = client. auth_get (request) routing_number = response['numbers']['ach'][ 0 ]['routing'] account_number = response['numbers']['ach'][ 0 ]['account'] balance = response['accounts'][ 0 ]['balances']['available'] See what's possible with Plaid Previous items Next items More customers. Less fraud. Higher revenue. Let's get started First name Last name Company email Company name Country Phone number (optional) By submitting this form, I confirm that I have read and understood Plaid's Privacy Statement . Talk with our team When you connect to an app with Plaid, you're in control of who has access to your financial data. Manage your connections with Plaid Portal Â»\n\n[PAGE: /pricing]\nPricing - United States & Canada | Plaid Pricing Plans Simple, scalable plans for businesses of all sizes Pay as You Go Best for individuals and developers Start with our month-to-month plan: unlimited usage, no commitments upfrontâonly pay for what you use. Key Features Access to GA products Unlimited live API calls Link customization Standard Pricing Request access Growth Best for small teams and startups Scale with a 12-month commitment: access discounts, platform support package, and account management. Key Features Everything in Pay as You Go Discounted product rates Platform support package Single Sign-On for Plaid Dashboard Talk with our team Custom Best for businesses that need to scale Create a flexible plan with custom solutions, volume-based pricing, and support for regulated industries. Key Features Everything in Growth Access to beta products Volume discounts Integration assistance Premium support Account Management Talk with our team Start testing in sandbox for free Try it now Products Pay as You Go Growth Custom Auth Help customers fund accounts faster Balance Instantly confirm account balances Identity Verify bank account ownership Identity Match Match bank account ownership Investments Move Authorize investment transfers Assets Access financial data for underwriting Income Verify income and paystubs Statements Refresh statements by date Enrich Clean up raw transaction data Investments Get a holistic view of investments Liabilities Easily understand customer debt Transactions Access 24 months of transaction data Identity Verification Verify good users and stop bad ones Monitor Stay AML and PEP compliant Beacon Stop fraud with industry insights * Layer Onboard customers instantly * Signal Prevent NSFs and other returns * Transfer Transfer money between accounts * Consumer Report Get risk insights for underwriting * Protect Fraud intelligence system * Request access Talk with our team Talk with our team Products Pay as You Go Growth Custom Auth Included Included Included Balance Included Included Included Identity Included Included Included Identity Match Included Included Included Investments Move Included Included Included Assets Included Included Included Income Included Included Included Statements Included Included Included Enrich Included Included Included Investments Included Included Included Liabilities Included Included Included Transactions Included Included Included Identity Verification Included Included Included Monitor Included Included Included Beacon Not included Contact for pricing Included Layer Not included Contact for pricing Included Signal Not included Contact for pricing Included Transfer Not included Contact for pricing Included Consumer Report Not included Contact for pricing Included Protect Not included Contact for pricing Included *Talk to a Plaid Contact to learn more Get answers to your pricing questions Have a question we didnât answer? Talk with our sales team today. Is Plaid free for consumers? Yes. Consumers can use Plaid to safely connect and control the financial information they share with apps or services at no cost. Can I try Plaid for free? Absolutely. Our Limited Production service allows you to make up to 200 API calls with eachÂ availableÂ product using live data. This is the best way to start learning about and testing Plaidâs APIs. How much does Plaid cost? We offer three basic pricing models based on the product(s) youâre using and how itâs designed: one-time, subscription, and per-request. One-time fee products : Youâll incur a charge only once per connected account, regardless of the number of API calls made. Subscription products : These incur a monthly fee for each connected account. Per-request products : These have a flat fee for every successful API call. For more information on pricing, plans, or volume discounts, please visitÂ Plaid Billing or connect with our sales team . Does Plaid offer discounts? We offer volume discounts based on the length of your contract and/or the minimum monthly commitment you choose. For more details, please reach out to our sales team . How does Pay-as-You-Go billing work? Itâs simpleâonce you sign up for the products you need in Plaid's production dashboard, weâll charge the card on file for the connected items (accounts). No upfront commitments. Only pay for what you use.",
+  "collected_at": "2026-04-17T21:02:46.277512+00:00",
+  "metadata": {
+    "meta_tags": {
+      "title": "Plaid: Enabling all companies to build fintech solutions",
+      "description": "Plaid helps all companies build fintech solutions by making it easy, safe and reliable for people to connect their financial data to apps and services.",
+      "og_title": "Plaid: Enabling all companies to build fintech solutions",
+      "og_site_name": "Plaid",
+      "og_description": "Plaid helps all companies build fintech solutions by making it easy, safe and reliable for people to connect their financial data to apps and services.",
+      "og_type": "website",
+      "og_url": "https://plaid.com/",
+      "og_image": "https://plaid.com/assets/img/plaid-social-card-landscape.jpg",
+      "jsonld": {
+        "@context": "https://schema.org",
+        "@type": "organization",
+        "@id": "https://plaid.com/#organization",
+        "name": "Plaid",
+        "description": "Plaid enables you to tap into the industry's largest network of banks, fintechs, and consumers. Beyond connecting financial accounts, Plaid helps businesses onboard new customers, reduce fraud, and increase the lifetime value of customers across the user journey.",
+        "url": "https://plaid.com/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://security.plaid.com/api/share/f3892b6a-4afc-4cc0-ab7c-9a5363e37354/logo.png"
+        },
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "1098 Harrison St.",
+          "addressLocality": "San Francisco",
+          "addressRegion": "CA",
+          "postalCode": "94103",
+          "addressCountry": "US"
+        },
+        "sameAs": [
+          "https://www.linkedin.com/company/plaid-",
+          "https://en.wikipedia.org/wiki/Plaid_Inc.",
+          "https://x.com/Plaid",
+          "https://x.com/PlaidDev",
+          "https://www.youtube.com/c/PlaidInc",
+          "https://www.instagram.com/plaid/"
+        ]
+      }
+    },
+    "headings": [
+      "Turn data into revolutionary financial products",
+      "Intelligent finance is taking shape",
+      "The internet's fastest financial onboarding",
+      "Fast and secure payments",
+      "Network-powered fraud signals",
+      "Cash flow data for smarter underwriting",
+      "Open finance solutions for everyone",
+      "A network that gets more powerful daily",
+      "1 in 21 in 2Âbanked U.S. adults",
+      "0%25%Âhigher conversion",
+      "1 million1 millionÂdaily connections",
+      "020Âcountries",
+      "Want access to 12K banks?We've got the (API) keys.",
+      "See what's possible with Plaid",
+      "More customers.Less fraud.Higher revenue.",
+      "Let's get started",
+      "Products",
+      "About us",
+      "Use cases",
+      "For consumers",
+      "Resources",
+      "Developers",
+      "For financial institutions",
+      "Pricing Plans",
+      "Simple, scalable plans for businesses of all sizes",
+      "Pay as You Go",
+      "Growth",
+      "Custom",
+      "Start testing in sandbox for free",
+      "Products"
+    ],
+    "pages_fetched": [
+      "https://plaid.com",
+      "https://plaid.com/pricing"
+    ],
+    "total_text_length": 6906
+  }
+}

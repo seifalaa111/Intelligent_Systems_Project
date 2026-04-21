@@ -1,0 +1,14 @@
+{
+  "startup_name": "Deel",
+  "source_type": "yc",
+  "source_url": "https://www.ycombinator.com/companies/deel",
+  "raw_content": "Deel is a global payroll and compliance platform that helps companies hire anyone, anywhere.",
+  "collected_at": "2026-04-17T21:35:14.079027+00:00",
+  "metadata": {
+    "batch": "W19",
+    "industry": "HR / Recruiting",
+    "status": "Active",
+    "website": "https://www.deel.com",
+    "data_source": "yc_seed"
+  }
+}
