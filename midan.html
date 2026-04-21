@@ -413,6 +413,13 @@ body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:var
 .c-analyze-btn{background:var(--ac);color:#000;border:none;padding:10px 20px;border-radius:var(--rx);font-size:13px;font-weight:700;font-family:'Inter',sans-serif;cursor:pointer;transition:all .2s;white-space:nowrap;flex-shrink:0;letter-spacing:.02em;}
 .c-analyze-btn:hover{transform:translateY(-1px);box-shadow:0 0 24px rgba(200,255,87,.22);}
 
+/* ── REJECTION CARD ── */
+.c-rejection-card{margin-top:14px;padding:16px 18px;background:rgba(255,80,80,.05);border:1px solid rgba(255,80,80,.25);border-radius:var(--r);}
+.c-rejection-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,80,80,.12);border:1px solid rgba(255,80,80,.3);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;color:#ff6b6b;letter-spacing:.06em;margin-bottom:10px;}
+.c-rejection-verdict{font-size:14px;color:var(--t1);font-weight:600;line-height:1.5;margin-bottom:8px;}
+.c-rejection-missing{font-size:12.5px;color:var(--t2);line-height:1.6;}
+.c-rejection-missing strong{color:#ff9090;font-weight:600;}
+
 /* ── COLLAPSIBLE SECTIONS ── */
 .ac-collapsible{border-bottom:1px solid var(--br);}
 .ac-collapsible:last-child{border-bottom:none;}
@@ -749,7 +756,7 @@ function initReveal(){
 /* ═══════════════════════════════════════
    CHAT STATE
 ═══════════════════════════════════════ */
-const API_BASE = window.MIDAN_API_URL || 'https://1d263931c8d0f1af-217-55-238-121.serveousercontent.com';
+const API_BASE = window.MIDAN_API_URL || 'https://0073f87f6a0fb8ca-217-55-238-208.serveousercontent.com';
 let chatHistory = [], internalContext = {}, analysisComplete = false;
 let currentConvId = 0, conversations = [], isProcessing = false;
 
@@ -985,16 +992,20 @@ function buildCard(d){
   else if(d.quadrant&&d.quadrant.startsWith('STOP'))vClass='stop';
 
   // ── Market Signals (SHAP — macro regime drivers) ──────────
+  // FIX: show actual SHAP fractional-share % (v×100), NOT relative-to-max.
+  // Normalising by max always makes the top feature show 100% regardless of
+  // whether it holds 40% or 65% of signal — that is misleading and static.
   let mktSigHtml='';
   const mktSrc=d.combined_signals
     ?Object.entries(d.combined_signals).filter(([k])=>k.startsWith('market_'))
     :d.shap_weights?Object.entries(d.shap_weights):[];
   const sigExp=d.signal_explanations||{};
   if(mktSrc.length){
-    const mx=Math.max(...mktSrc.map(x=>x[1]));
     mktSigHtml=mktSrc.sort((a,b)=>b[1]-a[1]).map(([n,v])=>{
       const lbl=(n.replace(/^market_/,'')).replace(/_/g,' ');
-      const p=Math.round(v/mx*100);
+      // v is already a fractional share in [0,1] that sums to ~1 across all signals.
+      // Multiply by 100 to get an honest percentage contribution.
+      const p=Math.round(Math.min(v,1)*100);
       const exp=sigExp[n]||{};
       const panelId=`sep-${sid}-${n.replace(/[^a-z0-9]/g,'')}`;
       const panel=exp.what_it_means?`<div class="sig-exp-panel" id="${panelId}" onclick="event.stopPropagation()"><strong>${exp.what_it_means}</strong><br>${exp.impact||''}<br><em style="color:var(--t4);font-size:9px">${exp.reliability||''}</em></div>`:'';
@@ -1004,20 +1015,31 @@ function buildCard(d){
   }
 
   // ── Idea Signals (L3 — idea-specific breakdown) ───────────
+  // FIX: idea signals are on a 0–1 absolute scale, not relative shares.
+  // model_regime_fit = base score (0.58–0.91). Adjustments are signed deltas
+  // (positive = boost, negative = penalty). Render on 0–100% absolute scale.
+  // Color coding: green bar for positive adjustments, red for negative.
   let ideaSigHtml='';
   const ideaSrc=d.combined_signals
     ?Object.entries(d.combined_signals).filter(([k])=>k.startsWith('idea_'))
     :[];
   if(ideaSrc.length){
-    const mx=Math.max(...ideaSrc.map(x=>x[1]));
-    ideaSigHtml=ideaSrc.sort((a,b)=>b[1]-a[1]).map(([n,v])=>{
+    // Sort by absolute magnitude (largest bar first)
+    ideaSigHtml=ideaSrc.sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])).map(([n,v])=>{
       const lbl=(n.replace(/^idea_/,'')).replace(/_/g,' ');
-      const p=Math.round(v/mx*100);
+      const absV=Math.abs(v);
+      // Scale on 0–100% using the natural 0–1 range of these signals.
+      // model_regime_fit (0.58–0.91) renders as 58–91%.
+      // Adjustment deltas (0–0.20) render as 0–20%.
+      const p=Math.round(Math.min(absV,1)*100);
+      const isNeg=v<0&&n!=='idea_model_regime_fit';
+      const barColor=isNeg?'#FF6B6B':'var(--ac)';
+      const sign=isNeg?'−':n==='idea_model_regime_fit'?'':'+';
       const exp=sigExp[n]||{};
       const panelId=`sep-${sid}-${n.replace(/[^a-z0-9]/g,'')}`;
       const panel=exp.meaning?`<div class="sig-exp-panel" id="${panelId}" onclick="event.stopPropagation()"><strong>${exp.label||lbl}</strong>: ${exp.meaning}</div>`:'';
       const click=exp.meaning?`onclick="toggleSigExp('${panelId}')" title="Click to understand this signal"`:'' ;
-      return `<div class="sig-row" ${click}><div class="sig-l">${lbl}${exp.meaning?' <span style="color:var(--t4);font-size:9px">↓</span>':''}</div><div class="sig-t"><div class="sig-f idea-bar" style="width:${p}%;opacity:${Math.max(.35,p/100)}"></div></div><div class="sig-v">${p}%</div></div>${panel}`;
+      return `<div class="sig-row" ${click}><div class="sig-l">${lbl}${exp.meaning?' <span style="color:var(--t4);font-size:9px">↓</span>':''}</div><div class="sig-t"><div class="sig-f idea-bar" style="width:${p}%;opacity:${Math.max(.35,p/100)};background:${barColor}"></div></div><div class="sig-v" style="color:${isNeg?'#FF6B6B':'inherit'}">${sign}${p}%</div></div>${panel}`;
     }).join('');
   }
 
@@ -1251,6 +1273,18 @@ function offlineClarify(missing,count,comps,prevState){
   return 'Tell me more — the problem, market, and your approach.';
 }
 
+function mockInvalidCheck(v){
+  const FREE_MONEY=['give money','give cash','give people money','redistribute','give everyone','give users money','pay people to','pay users to','charity that','donation that'];
+  const IMPOSSIBLE=['time travel','teleport','anti-gravity','faster than light','perpetual motion','unlimited energy','immortality app','live forever'];
+  const UNSUSTAINABLE=['pay users with user payments','pyramid','ponzi','recruit people to recruit','make money by recruiting'];
+  const FREE_ALL=['everything for free','completely free forever','always free','free for everyone forever'];
+  for(const p of IMPOSSIBLE) if(v.includes(p)) return{one_line_verdict:'Physically impossible to execute.',what_is_missing:'A mechanism that obeys physical laws.',rejection_confidence:97};
+  for(const p of FREE_MONEY) if(v.includes(p)) return{one_line_verdict:'No revenue mechanism — value flows out with nothing returning.',what_is_missing:'A paying customer, a revenue model, and a unit economics path to profitability.',rejection_confidence:95};
+  for(const p of UNSUSTAINABLE) if(v.includes(p)) return{one_line_verdict:'Structurally unsustainable — the economics break by design.',what_is_missing:'A unit economics model where revenue at scale exceeds cost of delivery.',rejection_confidence:93};
+  for(const p of FREE_ALL) if(v.includes(p)) return{one_line_verdict:'Free service with no monetization path — not a viable business.',what_is_missing:'A paying segment: B2B, premium tier, commission, or subscription.',rejection_confidence:91};
+  return null;
+}
+
 function mockAnalysis(ideaText){
   const v=ideaText.toLowerCase();
   const isH=v.includes('health')||v.includes('clinic')||v.includes('doctor')||v.includes('medical');
@@ -1292,17 +1326,34 @@ function mockAnalysis(ideaText){
     regulatory_risk:isH||sector==='fintech'?'high':'low',market_readiness:Math.max(1,Math.min(5,Math.round(tas/20)))
   };
 
-  // Mock idea signal based on regime fit (mirrors api.py logic)
+  // Mock idea signal — keys match real API combined_signals structure exactly.
+  // market_* values are SHAP fractional shares (realistic per-sector estimates).
+  // idea_* values are signed adjustments + one absolute base score.
+  // These differ by sector so the charts show realistic variation in offline mode.
   const ideaSignal=Math.min(0.95,Math.max(0.12,(tas/100)*0.85+diff*0.04-0.05));
+  // Sector-differentiated SHAP mock shares (realistic per LGB model behaviour)
+  const shap_v=isSA?0.45:isH?0.52:isEC?0.38:isE?0.41:0.48;
+  const shap_g=isSA?0.24:isH?0.19:isEC?0.28:isE?0.22:0.21;
+  const shap_i=isSA?0.17:isH?0.14:isEC?0.19:isE?0.18:0.16;
+  const shap_c=isSA?0.09:isH?0.10:isEC?0.11:isE?0.12:0.10;
+  const shap_f=+(1-shap_v-shap_g-shap_i-shap_c).toFixed(2);
+  // Base fit from regime × model (approximate the fit table)
+  const basefit=Math.round(ideaSignal*0.82*100)/100;
+  // Signed adjustment deltas — vary by idea context
+  const stageDelta=stage==='mvp'?0.08:stage==='validation'?-0.02:-0.09;
+  const compDelta=isEC?-0.14:isSA?-0.07:0.0;
+  const regDelta=(isH||sector==='fintech')?-0.14:0.04;
+  const diffDelta=Math.round((diff-3)*0.10*100)/100;
+  const readyDelta=(Math.round(tas/20)-3)*0.05;
   const mock_combined_signals={
-    market_velocity_yoy:.82,market_gdp_growth:.58,market_inflation:.41,
-    market_capital_concentration:.28,market_macro_friction:.14,
-    idea_base_fit:Math.round(ideaSignal*0.7*100)/100,
-    idea_diff_multiplier:Math.round((0.78+(diff-1)*0.11)*100)/100,
-    idea_stage_adjustment:stage==='mvp'?0.06:stage==='validation'?-0.02:-0.09,
-    idea_competition_adj:isEC?-0.09:0.0,
-    idea_regulatory_adj:isH||sector==='fintech'?-0.11:0.04,
-    idea_market_readiness_adj:(Math.round(tas/20)-3)*0.04
+    market_velocity_yoy:shap_v,market_gdp_growth:shap_g,market_inflation:shap_i,
+    market_capital_concentration:shap_c,market_macro_friction:shap_f,
+    idea_model_regime_fit:basefit,
+    idea_differentiation:diffDelta,
+    idea_stage_readiness:stageDelta,
+    idea_competitive_density:compDelta,
+    idea_regulatory_exposure:regDelta,
+    idea_market_pull:readyDelta
   };
 
   const domRisk={'marketplace':'liquidity','saas':'differentiation','commission':'regulatory','service':'scalability','hardware':'capital','subscription':'churn'}[bm]||'execution';
@@ -1321,8 +1372,8 @@ function mockAnalysis(ideaText){
     counterpoint:`${tas>=70?'The strong signal that makes this look viable will make every competitor in this space reach the same conclusion at the same time — expect funding competition and feature cloning within 12 months. The founders who win are the ones who moved on distribution before the signal attracted capital, not the ones who raised on the signal and built after.':tas>=50?'Moderate signals are the most dangerous tier — strong enough to convince yourself to build, not strong enough to attract the capital needed to actually win. At '+diffLabel+' differentiation ('+diff+'/5), every investor and every enterprise buyer will require you to justify the edge, and most will pass until you have 3 reference customers who can do it for you.':'The market is not telling you to wait — it is telling you this specific model does not fit this specific moment. The founders who survive Weak signals are the ones who stopped spending before runway ended, not the ones who pushed through on conviction alone.'}`,
     differentiation_insight:`${bm==='marketplace'?'Most '+sector+' marketplace ideas in '+country+' fail because founders treat liquidity as a product problem rather than a sales and operations problem. The first 100 supply-side relationships are the defensible asset — not the platform.':bm==='saas'?'SaaS at '+diffLabel+' differentiation ('+diff+'/5) in '+sector+'/'+country+' means the switching cost moat is not yet built. The risk is building features while a competitor with better distribution closes the same customers.':'With '+diffLabel+' differentiation ('+diff+'/5) in a '+regime.replace(/_/g,' ').toLowerCase()+' regime, the moat must come from distribution access or regulatory positioning — product-level differentiation is too easily copied before the customer relationship is locked in.'}`,
     action:tas>=76?`GO — but conditionally. Sign 3 paying ${seg.toUpperCase()} customers within 30 days without building anything. If that fails, the signal is wrong and you stop. Build only after that proof. If raising: Flat6Labs, 500 MENA, or Algebra Ventures — come with evidence, not a pitch.`:tas>=60?`DO NOT BUILD YET. Run 15 structured interviews with ${seg.toUpperCase()} buyers in the next 2 weeks. Find the 3 who would pay today. If you cannot find them in 2 weeks → stop. Do not raise, do not build, do not iterate — the idea needs a different angle.`:tas>=44?`HIGH RISK. Run the cheapest possible experiment that proves or kills the core ${domRisk} assumption in 3 weeks. If it fails → stop building this version entirely. If it succeeds → you have the evidence to raise on.`:`NO-GO. Do not build this now. The ${signal_tier} signal at ${tas}/100 means the market is working against this model. Keep the idea, spend nothing, revisit in 90 days when SARIMA signals change.`,
-    shap_weights:{velocity_yoy:.52,gdp_growth:.21,inflation:.14,capital_concentration:.08,macro_friction:.05},
-    combined_signals:{...mock_combined_signals,market_velocity_yoy:.52,market_gdp_growth:.21,market_inflation:.14,market_capital_concentration:.08,market_macro_friction:.05},
+    shap_weights:{velocity_yoy:shap_v,gdp_growth:shap_g,inflation:shap_i,capital_concentration:shap_c,macro_friction:shap_f},
+    combined_signals:mock_combined_signals,
     idea_features:mock_idea_features,
     idea_score,
     idea_dimensions:{problem_clarity:6,solution_fit:5,differentiation:diff+1,business_model:7,scalability:6},
@@ -1338,9 +1389,12 @@ function mockAnalysis(ideaText){
       market_velocity_yoy:{label:'Velocity YoY',what_it_means:'Year-over-year deal velocity — how fast investment and transaction activity is growing or shrinking in this sector.',impact:tas>=70?'High velocity means capital is validating this sector — but also means competitors arrive with it.':'Low velocity means the market is contracting. Building into shrinking deal flow requires a specific counter-cyclical thesis.',reliability:'High reliability — tracks actual transaction data, not sentiment.'},
       market_gdp_growth:{label:'GDP Growth',what_it_means:'Macroeconomic output growth rate — determines whether buyers have expanding or contracting purchasing power.',impact:'Directly affects enterprise budget cycles and consumer discretionary spending.',reliability:'Medium reliability — GDP is a lagging indicator, often 6-12 months behind actual market behavior.'},
       market_inflation:{label:'Inflation',what_it_means:'Rate of price increases — affects cost structures, purchasing power, and investor risk appetite.',impact:'High inflation compresses margins and makes subscription pricing decisions harder without alienating customers.',reliability:'High reliability for cost-structure analysis, but affects sectors asymmetrically.'},
-      'idea_model_regime_fit':{label:'Model-Regime Fit',meaning:'How well your business model type structurally fits the current market regime — this is the baseline before any idea-specific adjustments.'},
-      'idea_differentiation':{label:'Differentiation Effect',meaning:'The positive or negative adjustment based on how differentiated your idea is. Higher differentiation = more pricing power and moat potential.'},
-      'idea_stage_readiness':{label:'Stage Readiness',meaning:'How your current stage interacts with market conditions. Early-stage in friction markets gets penalized; growth-stage in growth markets gets boosted.'},
+      'idea_model_regime_fit':{label:'Model-Regime Fit',meaning:'How well your business model type structurally fits the current market regime — this is the baseline score before any idea-specific adjustments. Ranges 0.58–0.91 depending on regime × model × segment combination.'},
+      'idea_differentiation':{label:'Differentiation Effect',meaning:'Adjustment from your differentiation score (1–5). Positive = moat potential; negative = vulnerable to cloning. Weighted more heavily for SaaS/subscription models where switching cost is the primary moat.'},
+      'idea_stage_readiness':{label:'Stage Readiness',meaning:'How your current stage interacts with market conditions. Early-stage in friction/contracting markets gets a compounded penalty — capital is scarce and tolerance for unproven products is low. Growth-stage in growth markets gets a boost.'},
+      'idea_competitive_density':{label:'Competition Adjustment',meaning:'Penalty or bonus based on competitive intensity in your sector. For winner-takes-all models (marketplace), high competition is sharply penalised — the window to dominate closes fast. For services, competition matters less.'},
+      'idea_regulatory_exposure':{label:'Regulatory Risk',meaning:'Sector-specific regulatory drag. Fintech and healthtech face amplified penalties because licensing timelines directly affect runway and trust. Low regulatory risk in those sectors gives a bonus — it is rare and converts to a moat.'},
+      'idea_market_pull':{label:'Market Pull',meaning:'Adjustment from market readiness score (1–5). High pull (score 4–5) means existing demand — you are capturing it, not creating it. Low pull means pioneering the market, which costs 5–10× more and takes 3–5× longer than capturing.'},
     },
     svs,quadrant:q
   };
@@ -1444,6 +1498,20 @@ async function handleSend(){
       setInputHint('default');
       chatHistory.push({role:'assistant',content:rd.reply||'Analysis complete.'});
 
+    } else if(rd.type==='invalid'&&rd.data){
+      // ── Layer 0 rejection — show structured rejection card ──────────────────
+      const d=rd.data;
+      const verdict=d.one_line_verdict||'Not a viable business concept.';
+      const missing=d.what_is_missing||'A revenue model and a paying customer.';
+      const conf=d.rejection_confidence||0;
+      replyHtml=
+        `<div class="c-rejection-card">
+          <div class="c-rejection-badge">⊘ INVALID CONCEPT · ${conf}% confidence</div>
+          <div class="c-rejection-verdict">${esc(verdict)}</div>
+          <div class="c-rejection-missing"><strong>What's missing:</strong> ${esc(missing)}</div>
+        </div>`;
+      chatHistory.push({role:'assistant',content:verdict+' '+missing});
+
     } else if(rd.type==='clarifying'){
       // ── Clarification needed — update gather bar ────────────────────────────
       const cs=rd.clarification_state||{};
@@ -1501,6 +1569,23 @@ async function handleSend(){
         setInputHint('clarifying',['problem','market','solution']);
 
       } else {
+        // Check for invalid idea patterns before component extraction
+        const invalidResult=mockInvalidCheck(t);
+        if(invalidResult){
+          replyHtml=
+            `<div class="c-rejection-card">
+              <div class="c-rejection-badge">⊘ INVALID CONCEPT · ${invalidResult.rejection_confidence}% confidence</div>
+              <div class="c-rejection-verdict">${esc(invalidResult.one_line_verdict)}</div>
+              <div class="c-rejection-missing"><strong>What's missing:</strong> ${esc(invalidResult.what_is_missing)}</div>
+            </div>`;
+          chatHistory.push({role:'assistant',content:invalidResult.one_line_verdict+' '+invalidResult.what_is_missing});
+          addAIMessage(replyHtml);
+          saveCurrentConversation();
+          isProcessing=false;
+          document.getElementById('c-send-btn').disabled=false;
+          inp.focus();
+          return;
+        }
         // Has content — run component extraction
         const {comps,missing}=extractComponents(text,cs);
         const accumulated=((cs.accumulated_text||'')+' '+text).trim();

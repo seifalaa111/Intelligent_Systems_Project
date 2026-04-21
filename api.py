@@ -228,8 +228,12 @@ def extract_idea_features(idea_text: str, sector: str) -> dict:
                 "regulatory_risk":       data.get("regulatory_risk")       if data.get("regulatory_risk")       in INTENSITY_LEVELS else "medium",
                 "market_readiness":      max(1, min(5, int(data.get("market_readiness", 3)))),
             }
-        except Exception:
-            pass
+        except Exception as llm_err:
+            import logging
+            logging.getLogger("midan.l1").warning(
+                f"[L1] extract_idea_features LLM failed ({type(llm_err).__name__}: {llm_err!r}) "
+                f"— falling back to keyword heuristics"
+            )
 
     return _heuristic_idea_features(idea_text, sector)
 
@@ -673,8 +677,12 @@ def _l4_reasoning_llm(
                     'differentiation_insight', 'what_matters_most', 'counter_thesis']
         if all(data.get(f) and len(str(data.get(f, ''))) > 25 for f in required):
             return {f: str(data[f]).strip() for f in required}
-    except Exception:
-        pass
+    except Exception as llm_err:
+        import logging
+        logging.getLogger("midan.l4").warning(
+            f"[L4] _l4_reasoning_llm failed ({type(llm_err).__name__}: {llm_err!r}) "
+            f"— falling back to conditional logic"
+        )
     return None
 
 
@@ -1082,8 +1090,12 @@ def agent_a0_evaluate_idea(idea_text: str, sector: str, country: str) -> dict:
             scores  = {d: max(0, min(10, int(data.get(d, {}).get('score', 5)))) for d in IDEA_DIMENSIONS}
             reasons = {d: data.get(d, {}).get('reason', '') for d in IDEA_DIMENSIONS}
             return {'scores': scores, 'reasons': reasons, 'idea_score': int(sum(scores.values()) / len(scores) * 10)}
-        except Exception:
-            pass
+        except Exception as llm_err:
+            import logging
+            logging.getLogger("midan.a0").warning(
+                f"[A0] agent_a0_evaluate_idea LLM failed ({type(llm_err).__name__}: {llm_err!r}) "
+                f"— falling back to keyword heuristics"
+            )
 
     # Keyword heuristic fallback
     t = idea_text.lower()
@@ -1300,38 +1312,52 @@ def _generate_explanation_layer(
 # ML PIPELINE HELPERS (existing models)
 # ═══════════════════════════════════════════════════════════════
 
-def compute_shap(lgb_model, x_scaled_row):
+def compute_shap(lgb_model, x_scaled_row, predicted_class_idx: int = None):
     """
-    Compute normalized SHAP feature importance shares.
-    Each value = fraction of total importance [0, 1].
-    Soft-cap: no single feature can claim >65% of total signal
-    to prevent unrealistic dominance in display.
+    Compute normalized SHAP feature importance shares for the predicted class.
+
+    Bug fix (v2): sv.shape=(1,5,3) — use predicted class's SHAP values, not
+    mean across all classes. Mean dilutes the signal of the actual prediction.
+
+    Soft-cap: no single feature can claim >65% of the display share so the bar
+    chart does not collapse to a single signal. Values still sum to 1.0 after
+    redistribution.
     """
     import shap as shap_lib
     explainer = shap_lib.TreeExplainer(lgb_model)
     sv = explainer.shap_values(x_scaled_row)
+
     if isinstance(sv, list):
-        arr = np.mean([np.abs(s) for s in sv], axis=0)[0]
+        # Old SHAP API: list of arrays per class
+        if predicted_class_idx is not None and predicted_class_idx < len(sv):
+            arr = np.abs(sv[predicted_class_idx][0])
+        else:
+            arr = np.mean([np.abs(s) for s in sv], axis=0)[0]
     elif hasattr(sv, 'ndim') and sv.ndim == 3:
-        arr = np.abs(sv[0]).mean(axis=-1)
+        # New SHAP API: shape (n_samples, n_features, n_classes)
+        # Use the predicted class's SHAP values for the single input row
+        if predicted_class_idx is not None and predicted_class_idx < sv.shape[2]:
+            arr = np.abs(sv[0, :, predicted_class_idx])
+        else:
+            arr = np.abs(sv[0]).mean(axis=-1)
     else:
         arr = np.abs(sv)[0]
 
-    raw   = dict(zip(FEATURES, arr))
+    raw   = {k: float(v) for k, v in zip(FEATURES, arr)}
     total = sum(raw.values())
     if total <= 0:
         return {k: round(1.0 / len(FEATURES), 4) for k in FEATURES}
 
-    # Normalize to fractional shares
     shares = {k: v / total for k, v in raw.items()}
 
-    # Soft-cap: redistribute anything above MAX_SHARE to uncapped features
+    # Soft-cap: redistribute overflow above MAX_SHARE to uncapped features
+    # preserving the relative ranking while preventing a single-bar collapse
     MAX_SHARE = 0.65
     overcapped = {k: v for k, v in shares.items() if v > MAX_SHARE}
     if overcapped:
-        overflow   = sum(v - MAX_SHARE for v in overcapped.values())
-        free_keys  = [k for k in shares if shares[k] <= MAX_SHARE]
-        bonus      = overflow / len(free_keys) if free_keys else 0
+        overflow  = sum(v - MAX_SHARE for v in overcapped.values())
+        free_keys = [k for k in shares if shares[k] <= MAX_SHARE]
+        bonus     = overflow / len(free_keys) if free_keys else 0
         for k in shares:
             shares[k] = MAX_SHARE if shares[k] > MAX_SHARE else min(MAX_SHARE, shares[k] + bonus)
 
@@ -1384,14 +1410,27 @@ def run_inference(sector: str, country: str, idea_text: str = "", logs: list = N
     proba      = svm.predict_proba(x_scaled)[0]
     svm_regime = le.inverse_transform([pred_enc])[0]
     svm_conf   = float(proba.max())
+    # predicted_class_idx: index into SVM proba array for the winning class
+    pred_class_idx = int(np.argmax(proba))
     regime, conf = enhanced_regime(svm_regime, svm_conf, inflation, gdp_growth, macro_fric, velocity)
     logs.append(f"[L2B] SVM: {svm_regime} ({svm_conf:.1%}) → Final: {regime} ({conf:.1%})")
 
     # ── L2C: SHAP (macro signal explainability) ───────────────────────────────
-    shap_dict = compute_shap(lgb, x_scaled)
-    xai_score = float(conf * np.mean(list(shap_dict.values())))
+    # Pass predicted class index so SHAP reports the features that drove
+    # THIS regime label — not an average across all class hypotheses.
+    shap_dict = compute_shap(lgb, x_scaled, predicted_class_idx=pred_class_idx)
+    # xai_score = signal clarity × confidence.
+    # max_share captures how decisively ONE macro factor drove the regime call.
+    # High max_share (e.g. 0.65) = one clear driver = high interpretability.
+    # Flat distribution (each ~0.20) = noisy market = lower xai contribution.
+    # Bug fix: np.mean(shap_dict.values()) was always 0.20 (1.0/5 features).
+    shap_max  = float(max(shap_dict.values()))
+    xai_score = float(conf * shap_max)
     top_feat  = max(shap_dict, key=shap_dict.get)
-    logs.append(f"[L2C] SHAP top macro signal: {top_feat} ({shap_dict[top_feat]:.3f})")
+    logs.append(
+        f"[L2C] SHAP top macro signal: {top_feat} ({shap_dict[top_feat]:.3f}) | "
+        f"xai_score={xai_score:.3f} (conf×shap_max)"
+    )
 
     # ── L2D: SARIMA Forecast ──────────────────────────────────────────────────
     sarima_trend = 0.50
@@ -1437,9 +1476,22 @@ def run_inference(sector: str, country: str, idea_text: str = "", logs: list = N
     )
 
     # ── Combined signals for display (macro SHAP + idea breakdown) ────────────
+    # IMPORTANT: market_* values are SHAP fractional shares (sum≈1.0, display as v×100%).
+    # idea_* values are signed adjustment deltas + one absolute base score.
+    # model_regime_fit is the absolute base (0.58–0.91) and is sent separately so
+    # the UI can render it on its own scale rather than conflating it with small deltas.
+    # Removing abs(): signs are preserved so the UI can color positive vs negative.
+    idea_breakdown = idea_signal_data['breakdown']
     combined_signals = {
         **{f"market_{k}": round(float(v), 4) for k, v in shap_dict.items()},
-        **{f"idea_{k}": round(abs(float(v)), 4) for k, v in idea_signal_data['breakdown'].items()},
+        # Base fit exposed alone so UI knows it's the baseline, not an adjustment
+        "idea_model_regime_fit": round(float(idea_breakdown['model_regime_fit']), 4),
+        # Signed adjustments — preserve sign so UI can distinguish boost vs penalty
+        **{
+            f"idea_{k}": round(float(v), 4)
+            for k, v in idea_breakdown.items()
+            if k != 'model_regime_fit'
+        },
     }
 
     # ── Agent A2: Competitor context ──────────────────────────────────────────
@@ -1603,7 +1655,391 @@ class ChatRequest(BaseModel):
     messages: List[ChatMessage]
 
 
+# ═══════════════════════════════════════════════════════════════
+# LAYER 0 — IDEA SANITY CHECKER  (full redesign)
+#
+# Architecture:
+#   Input idea
+#      │
+#      ├─ [D1] Length gate          < 5 words → too_short             (conf 0.99)
+#      ├─ [D2] Logical impossibility  physics/logic violation          (conf 0.97)
+#      ├─ [D3] No revenue model       free-money / charity / donation  (conf 0.96)
+#      ├─ [D4] No value exchange       free-everything, no B2B path    (conf 0.92)
+#      ├─ [D5] Unsustainable economics pay-users / pyramid / inf-burn  (conf 0.93)
+#      ├─ [D6] Vague / non-actionable  no sector+customer+problem      (conf 0.88)
+#      └─ [LLM] Arbiter               structured JSON verdict          (conf 0.90)
+#
+# On rejection: returns {valid:False, rejection_type, logical_validity_score,
+#               rejection_confidence, message, one_line_verdict, what_is_missing}
+# On pass:      returns {valid:True, logical_validity_score}
+#
+# logical_validity_score (0–1):
+#   1.0 = definitively a real business
+#   0.0 = definitively not a business
+#   Separate from market_confidence (SVM) — only valid ideas get market analysis.
+# ═══════════════════════════════════════════════════════════════
+
+import logging as _logging
+_L0_LOG = _logging.getLogger("midan.layer0")
+
+# ── D2: Logical / physical impossibilities ─────────────────────────────────────
+_L0_IMPOSSIBLE = [
+    'make people live forever', 'eliminate aging completely',
+    'cure all diseases instantly', 'end all disease',
+    'eliminate all poverty overnight', 'end world hunger instantly',
+    'predict the future with certainty', 'predict lottery numbers',
+    'time travel service', 'time travel startup', 'build a time machine',
+    'teleportation startup', 'teleportation service',
+    'perpetual motion machine', 'free energy machine',
+    'guaranteed 100% accuracy', 'zero error rate guaranteed',
+    'never fail', 'impossible to lose money', '100% guaranteed profit',
+]
+
+# ── D3: No revenue model — free-money, charity, pure redistribution ────────────
+# These describe moving money to people with no charging mechanism on top.
+_L0_FREE_MONEY = [
+    'give people money', 'giving people money', 'give money for free',
+    'giving money for free', 'giving away money', 'give away money',
+    'pay people for nothing', 'pay people to do nothing',
+    'pay everyone', 'give everyone money', 'give money to everyone',
+    'distribute money', 'distribute free cash', 'give cash to everyone',
+    'giving cash to people', 'free money for everyone', 'free money to people',
+    'money for free', 'give users money', 'paying users to exist',
+    'ubi startup', 'universal basic income app',
+    'give people free money', 'hand out money',
+]
+
+# ── D4: No value exchange — free-for-all with zero monetization path ───────────
+# Triggers when ALL of: free + no B2B/subscription/commission/enterprise signal
+_L0_FREE_EVERYTHING = [
+    'completely free for everyone', 'totally free forever',
+    'free for all users', 'free to everyone forever',
+    '100% free no cost', 'always free no charge',
+    'free forever with no premium', 'no cost ever',
+    'free with no monetization', 'free app no revenue',
+    'no business model just free', 'free service forever',
+]
+_L0_MONETIZATION_RESCUE = [
+    'subscription', 'enterprise', 'b2b', 'premium', 'freemium',
+    'commission', 'saas', 'paid plan', 'license', 'revenue', 'monetize',
+    'charge', 'fee', 'invoice', 'per user', 'per seat', 'api key',
+    'white label', 'data', 'ads', 'advertising', 'sponsored',
+]
+
+# ── D5: Unsustainable economics — pay-to-play / pyramid / infinite burn ────────
+_L0_UNSUSTAINABLE = [
+    'pay users to join', 'pay users to sign up', 'pay people to use',
+    'we pay users', 'users get paid just for using',
+    'earn by doing nothing', 'earn money for free',
+    'infinite returns', 'guaranteed returns', 'guaranteed profits',
+    'pyramid', 'ponzi', 'mlm model', 'multi-level marketing',
+    'recruit people to earn', 'earn by recruiting',
+    'fund it ourselves forever', 'no need to make money',
+    'investors keep funding forever', 'never need revenue',
+    'we absorb all costs forever', 'charity funded startup',
+    'donation funded startup', 'donor funded forever',
+]
+
+# ── D6: Vague / non-actionable — rescue words prevent rejection ────────────────
+_L0_VAGUE_INDICATORS = [
+    'something with', 'thing for', 'stuff about', 'idea about',
+    'general solution', 'do everything', 'solves everything',
+    'app for everything', 'platform for everything',
+    'connects everyone', 'helps everyone with anything',
+    'a better way', 'improve things', 'make things better',
+    'revolutionary idea', 'change the world',
+    'disrupt everything', 'fix society',
+]
+_L0_CONCRETE_RESCUE = [
+    'hospital', 'clinic', 'doctor', 'patient', 'student', 'farmer',
+    'driver', 'merchant', 'retailer', 'restaurant', 'logistics',
+    'payment', 'invoice', 'loan', 'insurance', 'delivery',
+    'health', 'education', 'finance', 'agriculture', 'real estate',
+    'sme', 'enterprise', 'factory', 'supplier', 'manufacturer',
+    'egypt', 'cairo', 'saudi', 'dubai', 'uae', 'nigeria', 'kenya',
+    'africa', 'mena', 'gulf', 'usa', 'europe',
+]
+
+
+# ── Per-dimension check functions ──────────────────────────────────────────────
+
+def _l0_check_length(t: str, wc: int) -> Optional[dict]:
+    if wc >= 5:
+        return None
+    return {
+        'valid':                  False,
+        'rejection_type':         'too_short',
+        'logical_validity_score': 0.05,
+        'rejection_confidence':   0.99,
+        'message': (
+            "Too short to evaluate. A startup idea needs at minimum: "
+            "the problem, who it affects, and how your solution works."
+        ),
+        'one_line_verdict': "Not enough information to evaluate as a business concept.",
+        'what_is_missing':  "Problem description, target customer, and solution mechanism.",
+    }
+
+
+def _l0_check_impossibility(t: str) -> Optional[dict]:
+    for p in _L0_IMPOSSIBLE:
+        if p in t:
+            return {
+                'valid':                  False,
+                'rejection_type':         'logical_impossibility',
+                'logical_validity_score': 0.02,
+                'rejection_confidence':   0.97,
+                'message': (
+                    "This describes a physical or logical impossibility — "
+                    "a constraint no commercial model can overcome. "
+                    "MIDAN evaluates ideas buildable with current technology "
+                    "and a viable economic structure."
+                ),
+                'one_line_verdict': "Physically or logically impossible — no commercial path exists.",
+                'what_is_missing':  "A constraint that technology or markets can actually solve.",
+            }
+    return None
+
+
+def _l0_check_no_revenue_model(t: str) -> Optional[dict]:
+    for p in _L0_FREE_MONEY:
+        if p in t:
+            return {
+                'valid':                  False,
+                'rejection_type':         'no_revenue_model',
+                'logical_validity_score': 0.04,
+                'rejection_confidence':   0.96,
+                'message': (
+                    "This describes redistributing money to people, not a business. "
+                    "A startup requires a revenue mechanism where the value delivered "
+                    "to customers generates income that exceeds the cost of delivery. "
+                    "Giving away money violates that constraint — it is a subsidy, "
+                    "charity, or government program, not a commercial entity. "
+                    "Who pays, why, and how much?"
+                ),
+                'one_line_verdict': "No revenue mechanism — value flows out with nothing returning.",
+                'what_is_missing':  "A paying customer, a revenue model, and a unit economics path to profitability.",
+            }
+    return None
+
+
+def _l0_check_no_value_exchange(t: str) -> Optional[dict]:
+    matched_free = any(p in t for p in _L0_FREE_EVERYTHING)
+    if not matched_free:
+        return None
+    has_monetization = any(m in t for m in _L0_MONETIZATION_RESCUE)
+    if has_monetization:
+        return None
+    return {
+        'valid':                  False,
+        'rejection_type':         'no_value_exchange',
+        'logical_validity_score': 0.08,
+        'rejection_confidence':   0.92,
+        'message': (
+            "This describes a free-for-all service with no described monetization path. "
+            "A viable business requires someone to pay for the value created — "
+            "either directly (subscription, commission, license) or indirectly (B2B, data, ads). "
+            "Offering everything free forever with no revenue source is not a startup, "
+            "it is a cost center. Add a paying segment."
+        ),
+        'one_line_verdict': "Free service with no monetization path — not a viable business.",
+        'what_is_missing':  "A paying segment: B2B, premium tier, commission, subscription, or data monetization.",
+    }
+
+
+def _l0_check_unsustainable_economics(t: str) -> Optional[dict]:
+    for p in _L0_UNSUSTAINABLE:
+        if p in t:
+            return {
+                'valid':                  False,
+                'rejection_type':         'unsustainable_economics',
+                'logical_validity_score': 0.06,
+                'rejection_confidence':   0.93,
+                'message': (
+                    "This describes an economically unsustainable model — "
+                    "either a pyramid structure, a model that pays users with no upstream revenue, "
+                    "or one that explicitly avoids needing to generate income. "
+                    "Every viable startup must have a path where revenue ≥ cost at some scale. "
+                    "This model has no such path."
+                ),
+                'one_line_verdict': "Structurally unsustainable — the economics break by design.",
+                'what_is_missing':  "A unit economics model where revenue at scale exceeds cost of delivery.",
+            }
+    return None
+
+
+def _l0_check_vague(t: str, wc: int) -> Optional[dict]:
+    if wc > 20:
+        return None
+    matched_vague = any(p in t for p in _L0_VAGUE_INDICATORS)
+    if not matched_vague:
+        return None
+    has_concrete = any(c in t for c in _L0_CONCRETE_RESCUE)
+    if has_concrete:
+        return None
+    return {
+        'valid':                  False,
+        'rejection_type':         'vague_non_actionable',
+        'logical_validity_score': 0.15,
+        'rejection_confidence':   0.88,
+        'message': (
+            "This idea is too vague to evaluate meaningfully. "
+            "MIDAN needs to know: what specific problem you are solving, "
+            "who specifically experiences it, and what your solution mechanism is. "
+            "Broad claims like 'fix everything' or 'connect everyone' describe a vision, "
+            "not a startup. Narrow it to one specific pain for one specific customer."
+        ),
+        'one_line_verdict': "Too vague to evaluate — no specific problem, customer, or mechanism.",
+        'what_is_missing':  "A specific problem, a specific customer segment, and a concrete solution mechanism.",
+    }
+
+
+def _l0_llm_arbiter(idea_text: str) -> Optional[dict]:
+    """
+    Structured LLM classification for borderline cases.
+    Returns a rejection dict if the LLM identifies a failure, None if it passes.
+    Only called after all pattern checks pass.
+    """
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    if not (GROQ_CLIENT and groq_key and groq_key != "dummy"):
+        return None
+
+    prompt = dedent(f"""
+        You are a startup viability analyst. Evaluate whether this text describes a
+        legitimate business concept that could realistically generate revenue.
+
+        Text: "{idea_text}"
+
+        A business is INVALID if ANY of these are true:
+        - No revenue mechanism (no one pays, pure charity/donation/redistribution)
+        - No value exchange (gives things away with no monetization path)
+        - Structurally unsustainable economics (pays users with no upstream revenue, pyramid)
+        - Logically or physically impossible to execute
+        - So vague it describes no specific product, customer, or problem
+
+        A business is VALID even if it is early-stage, unproven, competitive, or risky —
+        as long as it has a plausible path to revenue from a real customer.
+
+        Respond ONLY with this exact JSON (no markdown, no explanation):
+        {{
+          "is_valid": true,
+          "primary_failure": null,
+          "rejection_confidence": 0.0,
+          "one_line_verdict": "Brief verdict in one sentence.",
+          "what_is_missing": "What would make it valid, or null if already valid."
+        }}
+
+        primary_failure must be exactly one of:
+        "no_revenue_model" | "no_value_exchange" | "unsustainable_economics" |
+        "logical_impossibility" | "vague_non_actionable" | null
+    """).strip()
+
+    try:
+        resp = GROQ_CLIENT.chat.completions.create(
+            messages=[{"role": "user", "content": prompt}],
+            model="llama-3.1-8b-instant",
+            temperature=0.0,
+            max_tokens=180,
+            response_format={"type": "json_object"},
+        )
+        data = json.loads(resp.choices[0].message.content.strip())
+        if data.get("is_valid", True):
+            return None
+
+        rtype = data.get("primary_failure") or "not_a_business_idea"
+        conf  = float(data.get("rejection_confidence", 0.88))
+        conf  = max(0.85, min(0.96, conf))
+
+        _reason_messages = {
+            "no_revenue_model":       "No revenue mechanism identified — no paying customer, no charging model.",
+            "no_value_exchange":      "No value exchange: the idea gives value away with no monetization path.",
+            "unsustainable_economics":"The economics are structurally broken — costs exceed revenue by design.",
+            "logical_impossibility":  "This is physically or logically impossible to execute commercially.",
+            "vague_non_actionable":   "Too vague to evaluate — no specific problem, customer, or mechanism stated.",
+        }
+        return {
+            'valid':                  False,
+            'rejection_type':         rtype,
+            'logical_validity_score': round(1.0 - conf, 2),
+            'rejection_confidence':   conf,
+            'message':                _reason_messages.get(rtype, "This does not describe a viable business."),
+            'one_line_verdict':       str(data.get("one_line_verdict", "Not a viable business concept.")),
+            'what_is_missing':        str(data.get("what_is_missing") or "A revenue model and a paying customer."),
+        }
+    except Exception as llm_err:
+        _L0_LOG.warning(f"[L0] LLM arbiter failed: {llm_err!r} — passing idea through")
+        return None
+
+
+def _layer0_sanity_check(idea_text: str) -> dict:
+    """
+    Layer 0 orchestrator — runs all 6 deterministic checks then the LLM arbiter.
+
+    Priority order (fast → slow, high-confidence → low-confidence):
+      D1 Length → D2 Impossibility → D3 No Revenue → D4 No Value Exchange
+      → D5 Unsustainable Econ → D6 Vague → LLM Arbiter
+
+    Business viability is evaluated BEFORE any market analysis.
+    Only ideas that pass ALL checks proceed to L1–L4.
+
+    Returns:
+      {'valid': True,  'logical_validity_score': float}   — proceed
+      {'valid': False, 'rejection_type': str,
+       'logical_validity_score': float, 'rejection_confidence': float,
+       'message': str, 'one_line_verdict': str, 'what_is_missing': str}
+    """
+    t  = idea_text.lower().strip()
+    wc = len(t.split())
+
+    checks = [
+        _l0_check_length(t, wc),
+        _l0_check_impossibility(t),
+        _l0_check_no_revenue_model(t),
+        _l0_check_no_value_exchange(t),
+        _l0_check_unsustainable_economics(t),
+        _l0_check_vague(t, wc),
+    ]
+    for result in checks:
+        if result is not None:
+            _L0_LOG.info(
+                f"[L0] REJECTED — type={result['rejection_type']} "
+                f"conf={result['rejection_confidence']:.0%} "
+                f"idea='{idea_text[:60]}'"
+            )
+            return result
+
+    # All deterministic checks passed → LLM arbiter for borderline cases
+    llm_result = _l0_llm_arbiter(idea_text)
+    if llm_result is not None:
+        _L0_LOG.info(
+            f"[L0] LLM REJECTED — type={llm_result['rejection_type']} "
+            f"conf={llm_result['rejection_confidence']:.0%}"
+        )
+        return llm_result
+
+    _L0_LOG.debug(f"[L0] PASSED — idea='{idea_text[:60]}'")
+    return {'valid': True, 'logical_validity_score': 0.92}
+
+
 def process_idea(idea_text: str, default_sector: str = "fintech", default_country: str = "EG") -> dict:
+    # ── Layer 0: Sanity gate — reject invalid ideas before any ML pipeline ────
+    l0 = _layer0_sanity_check(idea_text)
+    if not l0['valid']:
+        return {
+            "success":                False,
+            "invalid_idea":           True,
+            "rejection_type":         l0['rejection_type'],
+            "message":                l0['message'],
+            "one_line_verdict":       l0['one_line_verdict'],
+            "what_is_missing":        l0['what_is_missing'],
+            "logical_validity_score": round(l0['logical_validity_score'], 2),
+            "rejection_confidence":   int(l0['rejection_confidence'] * 100),
+            "decision_badge":         "INVALID — NOT A VIABLE BUSINESS CONCEPT",
+            "tas_score":              0,
+            "signal_tier":            "Invalid",
+            "quadrant":               "STOP — Rethink Everything",
+            "svs":                    0,
+        }
+
     parsed_sec, parsed_ctry, sec_found, ctry_found = agent_a1_parse(idea_text)
     sector_key   = parsed_sec  if sec_found  else default_sector
     country_code = parsed_ctry if ctry_found else default_country
@@ -2169,7 +2605,12 @@ async def interact_route(req: InteractRequest):
     analysis_text = all_user_text if len(all_user_text.split()) > len(last_user_msg.split()) + 3 else last_user_msg
 
     try:
-        data  = process_idea(analysis_text)
+        data = process_idea(analysis_text)
+        if data.get("invalid_idea"):
+            verdict = data.get("one_line_verdict", "Not a viable business concept.")
+            missing = data.get("what_is_missing", "A revenue model and a paying customer.")
+            reply   = f"{verdict}\n\n**What's missing:** {missing}"
+            return {"success": True, "type": "invalid", "reply": reply, "data": data}
         reply = _generate_operator_reply(data, last_user_msg)
         return {"success": True, "type": "analysis", "reply": reply, "data": data}
     except Exception as e:
