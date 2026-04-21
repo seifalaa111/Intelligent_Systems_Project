@@ -1,0 +1,14 @@
+{
+  "startup_name": "Retool",
+  "source_type": "yc",
+  "source_url": "https://www.ycombinator.com/companies/retool",
+  "raw_content": "Retool is a development platform for building internal business tools quickly.",
+  "collected_at": "2026-04-17T21:35:04.339562+00:00",
+  "metadata": {
+    "batch": "W17",
+    "industry": "Devtools",
+    "status": "Active",
+    "website": "https://retool.com",
+    "data_source": "yc_seed"
+  }
+}

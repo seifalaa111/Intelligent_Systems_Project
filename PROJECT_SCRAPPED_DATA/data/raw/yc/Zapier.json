@@ -1,0 +1,14 @@
+{
+  "startup_name": "Zapier",
+  "source_type": "yc",
+  "source_url": "https://www.ycombinator.com/companies/zapier",
+  "raw_content": "Zapier lets you connect your apps and automate workflows. Easy automation for busy people.",
+  "collected_at": "2026-04-17T21:35:09.446785+00:00",
+  "metadata": {
+    "batch": "S12",
+    "industry": "Enterprise Software",
+    "status": "Active",
+    "website": "https://zapier.com",
+    "data_source": "yc_seed"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "startup_name": "Stripe",
+  "source_type": "yc",
+  "source_url": "https://www.ycombinator.com/companies/stripe",
+  "raw_content": "Financial infrastructure for the internet. Stripe builds the most powerful and flexible tools for internet commerce.",
+  "collected_at": "2026-04-17T21:34:52.054484+00:00",
+  "metadata": {
+    "batch": "S09",
+    "industry": "Fintech",
+    "status": "Active",
+    "website": "https://stripe.com",
+    "data_source": "yc_seed"
+  }
+}
