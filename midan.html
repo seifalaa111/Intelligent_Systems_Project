@@ -413,12 +413,44 @@ body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:var
 .c-analyze-btn{background:var(--ac);color:#000;border:none;padding:10px 20px;border-radius:var(--rx);font-size:13px;font-weight:700;font-family:'Inter',sans-serif;cursor:pointer;transition:all .2s;white-space:nowrap;flex-shrink:0;letter-spacing:.02em;}
 .c-analyze-btn:hover{transform:translateY(-1px);box-shadow:0 0 24px rgba(200,255,87,.22);}
 
-/* ── REJECTION CARD ── */
-.c-rejection-card{margin-top:14px;padding:16px 18px;background:rgba(255,80,80,.05);border:1px solid rgba(255,80,80,.25);border-radius:var(--r);}
-.c-rejection-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,80,80,.12);border:1px solid rgba(255,80,80,.3);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;color:#ff6b6b;letter-spacing:.06em;margin-bottom:10px;}
+/* ── REJECTION CARD — 3 severity variants ── */
+.c-rejection-card{margin-top:14px;padding:18px 20px;border-radius:var(--r);}
+/* IMPOSSIBLE 🟥 */
+.c-rejection-card.sev-impossible{background:rgba(255,60,60,.05);border:1px solid rgba(255,80,80,.28);}
+/* BROKEN 🟧 */
+.c-rejection-card.sev-broken{background:rgba(245,166,35,.05);border:1px solid rgba(245,166,35,.28);}
+/* INCOMPLETE 🟨 — pass-through with warning */
+.c-rejection-card.sev-incomplete{background:rgba(255,215,0,.04);border:1px solid rgba(255,215,0,.25);}
+/* L0 warning banner (inside valid analysis) */
+.c-l0-warning{margin-bottom:14px;padding:12px 14px;background:rgba(255,215,0,.05);border:1px solid rgba(255,215,0,.22);border-radius:var(--rs);}
+.c-l0-warn-label{font-size:11px;font-weight:700;color:#d4a017;letter-spacing:.07em;text-transform:uppercase;margin-bottom:4px;}
+.c-l0-warn-text{font-size:12.5px;color:var(--t2);line-height:1.5;}
+
+.c-rejection-badge{display:inline-flex;align-items:center;gap:6px;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;letter-spacing:.06em;margin-bottom:10px;}
+.sev-impossible .c-rejection-badge{background:rgba(255,80,80,.12);border:1px solid rgba(255,80,80,.3);color:#ff6b6b;}
+.sev-broken    .c-rejection-badge{background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.3);color:#f5a623;}
+.sev-incomplete .c-rejection-badge{background:rgba(255,215,0,.12);border:1px solid rgba(255,215,0,.3);color:#d4a017;}
+
 .c-rejection-verdict{font-size:14px;color:var(--t1);font-weight:600;line-height:1.5;margin-bottom:8px;}
-.c-rejection-missing{font-size:12.5px;color:var(--t2);line-height:1.6;}
-.c-rejection-missing strong{color:#ff9090;font-weight:600;}
+.c-rejection-missing{font-size:13px;color:var(--t2);line-height:1.6;margin-bottom:10px;}
+.c-rejection-missing strong{font-weight:600;}
+.sev-impossible .c-rejection-missing strong{color:#ff9090;}
+.sev-broken    .c-rejection-missing strong{color:#f5c842;}
+.sev-incomplete .c-rejection-missing strong{color:#d4a017;}
+
+.c-rejection-fixes{margin-top:10px;border-top:1px solid rgba(255,255,255,.05);padding-top:10px;}
+.c-rejection-fixes-label{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;margin-bottom:8px;}
+.sev-impossible .c-rejection-fixes-label{color:#ff9090;}
+.sev-broken    .c-rejection-fixes-label{color:#f5a623;}
+.sev-incomplete .c-rejection-fixes-label{color:#d4a017;}
+.c-rejection-fix-item{display:flex;gap:8px;margin-bottom:6px;font-size:12.5px;color:var(--t2);line-height:1.55;}
+.c-rejection-fix-bullet{flex-shrink:0;width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;margin-top:1px;}
+.sev-impossible .c-rejection-fix-bullet{background:rgba(255,80,80,.15);color:#ff6b6b;}
+.sev-broken    .c-rejection-fix-bullet{background:rgba(245,166,35,.15);color:#f5a623;}
+.sev-incomplete .c-rejection-fix-bullet{background:rgba(255,215,0,.12);color:#d4a017;}
+
+.c-analyze-anyway-btn{margin-top:12px;padding:8px 16px;background:transparent;border:1px solid rgba(255,215,0,.3);color:#d4a017;border-radius:var(--rx);font-size:12px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s;letter-spacing:.02em;}
+.c-analyze-anyway-btn:hover{background:rgba(255,215,0,.07);border-color:rgba(255,215,0,.5);}
 
 /* ── COLLAPSIBLE SECTIONS ── */
 .ac-collapsible{border-bottom:1px solid var(--br);}
@@ -866,7 +898,8 @@ function revealAnalysis(btn){
   msgBody.style.opacity='0.4';
   msgBody.style.transition='opacity .2s';
   setTimeout(()=>{
-    msgBody.innerHTML=`<p style="margin-bottom:12px;font-size:14px;color:var(--t2);">Here's the full breakdown.</p>`+buildCard(d)+`<p style="margin-top:16px;font-size:13px;color:var(--t4)">Ask me anything — competitive risks, fundraising, GTM, or next steps.</p>`;
+    const l0Banner=buildL0WarningBanner(d);
+    msgBody.innerHTML=`<p style="margin-bottom:12px;font-size:14px;color:var(--t2);">Here's the full breakdown.</p>`+l0Banner+buildCard(d)+`<p style="margin-top:16px;font-size:13px;color:var(--t4)">Ask me anything — competitive risks, fundraising, GTM, or next steps.</p>`;
     msgBody.style.opacity='1';
     chatHistory.push({role:'assistant',content:`[Analysis: ${d.sector}/${d.country} TAS:${d.tas_score} Regime:${d.regime}]`});
     analysisComplete=true;
@@ -1274,14 +1307,39 @@ function offlineClarify(missing,count,comps,prevState){
 }
 
 function mockInvalidCheck(v){
-  const FREE_MONEY=['give money','give cash','give people money','redistribute','give everyone','give users money','pay people to','pay users to','charity that','donation that'];
-  const IMPOSSIBLE=['time travel','teleport','anti-gravity','faster than light','perpetual motion','unlimited energy','immortality app','live forever'];
-  const UNSUSTAINABLE=['pay users with user payments','pyramid','ponzi','recruit people to recruit','make money by recruiting'];
-  const FREE_ALL=['everything for free','completely free forever','always free','free for everyone forever'];
-  for(const p of IMPOSSIBLE) if(v.includes(p)) return{one_line_verdict:'Physically impossible to execute.',what_is_missing:'A mechanism that obeys physical laws.',rejection_confidence:97};
-  for(const p of FREE_MONEY) if(v.includes(p)) return{one_line_verdict:'No revenue mechanism — value flows out with nothing returning.',what_is_missing:'A paying customer, a revenue model, and a unit economics path to profitability.',rejection_confidence:95};
-  for(const p of UNSUSTAINABLE) if(v.includes(p)) return{one_line_verdict:'Structurally unsustainable — the economics break by design.',what_is_missing:'A unit economics model where revenue at scale exceeds cost of delivery.',rejection_confidence:93};
-  for(const p of FREE_ALL) if(v.includes(p)) return{one_line_verdict:'Free service with no monetization path — not a viable business.',what_is_missing:'A paying segment: B2B, premium tier, commission, or subscription.',rejection_confidence:91};
+  const IMPOSSIBLE=['time travel','teleport','anti-gravity','faster than light','perpetual motion','unlimited energy','immortality app','live forever','cure all disease','end world hunger instantly'];
+  const FREE_MONEY=['give money','give cash','give people money','redistribute cash','give everyone money','give users money','pay people to do nothing','pay users to exist','ubi startup','free money for everyone','hand out money'];
+  const UNSUSTAINABLE=['pay users with user payments','pyramid','ponzi','mlm model','recruit people to recruit','make money by recruiting','earn by recruiting','guaranteed returns','guaranteed profits'];
+  const FREE_ALL=['everything for free','completely free forever','always free','free for everyone forever','100% free no cost','free with no monetization','no business model just free'];
+
+  for(const p of IMPOSSIBLE) if(v.includes(p)) return{
+    severity:'IMPOSSIBLE',rejection_type:'logical_impossibility',
+    one_line_verdict:'Physically or logically impossible — no commercial path exists.',
+    what_is_missing:'A constraint that technology and markets can actually solve.',
+    how_to_fix:['Reframe the promise: instead of eliminating the problem entirely, offer a measurable reduction with a defined timeframe.','Find the addressable subset: which part of this can be solved commercially with current technology?'],
+    rejection_confidence:97};
+
+  for(const p of FREE_MONEY) if(v.includes(p)) return{
+    severity:'IMPOSSIBLE',rejection_type:'no_revenue_model',
+    one_line_verdict:'No revenue mechanism — value flows out with nothing coming back.',
+    what_is_missing:'A paying customer, a revenue model, and a unit economics path to profitability.',
+    how_to_fix:['Identify who benefits commercially from this value existing — that entity is your real paying customer, not the end user.','Flip to B2B: if consumers cannot pay, which business gains economic benefit when they have this service? Charge that business.'],
+    rejection_confidence:95};
+
+  for(const p of UNSUSTAINABLE) if(v.includes(p)) return{
+    severity:'IMPOSSIBLE',rejection_type:'unsustainable_economics',
+    one_line_verdict:'Structurally unsustainable — the economics break by design.',
+    what_is_missing:'A unit economics model where revenue at scale exceeds cost of delivery.',
+    how_to_fix:['Replace the earn-by-recruiting structure with genuine product value — users must stay because the product solves a real problem.','Identify what is upstream: which business generates the revenue that would fund those payments? That entity is your customer.'],
+    rejection_confidence:93};
+
+  for(const p of FREE_ALL) if(v.includes(p)) return{
+    severity:'BROKEN',rejection_type:'no_value_exchange',
+    one_line_verdict:'Free service with no monetization path described — needs a paying segment.',
+    what_is_missing:'A paying segment: B2B, premium tier, commission, subscription, or data monetization.',
+    how_to_fix:['Define your paying segment: B2B (charge companies that benefit), premium tier (charge power users), or API/data (charge developers).','Replace "completely free" with freemium: free for basic access, paid for volume, integrations, or advanced features.'],
+    rejection_confidence:90};
+
   return null;
 }
 
@@ -1456,6 +1514,75 @@ function fmtReply(raw){
 }
 
 /* ═══════════════════════════════════════
+   OVERRIDE COMMANDS (client-side detection)
+═══════════════════════════════════════ */
+const OVERRIDE_CMDS=['analyze now','run it','full breakdown','analyze this','just analyze',
+  'go ahead','run analysis','analyze','skip the questions','stop asking','just go',
+  'run it now','do the analysis','show me the analysis','run the analysis','just run it',
+  'analyze it now','break it down','full analysis','start analysis','do it now',
+  'just do it','analyze already','please analyze','just run','go ahead and analyze','proceed'];
+
+function isOverrideCommand(t){
+  const tl=t.toLowerCase().trim();
+  const wc=tl.split(/\s+/).length;
+  return OVERRIDE_CMDS.some(c=>tl===c||tl.startsWith(c+' ')||tl.endsWith(' '+c))
+    || (wc<=5 && ['analyze','run it','go ahead','break it down','just go','proceed'].some(c=>tl.includes(c)));
+}
+
+/* ═══════════════════════════════════════
+   REJECTION CARD BUILDER (severity-aware)
+═══════════════════════════════════════ */
+function buildRejectionCard(d, forceAnalyzeCallback){
+  const sev=(d.severity||'BROKEN').toLowerCase();
+  const cls='c-rejection-card sev-'+sev;
+  const icons={impossible:'🟥',broken:'🟧',incomplete:'🟨'};
+  const labels={impossible:'IMPOSSIBLE',broken:'BROKEN',incomplete:'INCOMPLETE'};
+  const icon=icons[sev]||'🟧';
+  const label=labels[sev]||'BROKEN';
+  const conf=d.rejection_confidence||0;
+  const verdict=d.one_line_verdict||'Not a viable business concept.';
+  const missing=d.what_is_missing||'';
+  const fixes=(d.how_to_fix||[]);
+
+  let fixesHtml='';
+  if(fixes.length){
+    const nums=['1','2','3'];
+    fixesHtml=`<div class="c-rejection-fixes">
+      <div class="c-rejection-fixes-label">How to fix this idea</div>
+      ${fixes.map((f,i)=>`<div class="c-rejection-fix-item"><div class="c-rejection-fix-bullet">${nums[i]||'•'}</div><div>${esc(f)}</div></div>`).join('')}
+    </div>`;
+  }
+
+  let analyzeAnywayBtn='';
+  if(sev==='incomplete'&&forceAnalyzeCallback){
+    analyzeAnywayBtn=`<button class="c-analyze-anyway-btn" onclick="(${forceAnalyzeCallback.toString()})()">Analyze with what I've given you →</button>`;
+  }
+
+  return `<div class="${cls}">
+    <div class="c-rejection-badge">${icon} ${label} · ${conf}% confidence</div>
+    <div class="c-rejection-verdict">${esc(verdict)}</div>
+    ${missing?`<div class="c-rejection-missing"><strong>What's missing:</strong> ${esc(missing)}</div>`:''}
+    ${fixesHtml}
+    ${analyzeAnywayBtn}
+  </div>`;
+}
+
+/* ═══════════════════════════════════════
+   L0 INCOMPLETE WARNING BANNER
+═══════════════════════════════════════ */
+function buildL0WarningBanner(d){
+  if(!d.l0_flag)return'';
+  const verdict=d.l0_verdict||'Analysis ran on partial information.';
+  const missing=d.l0_what_is_missing||'';
+  const fixes=(d.l0_how_to_fix||[]);
+  let fixNote=fixes.length?` — ${fixes[0]}`:'';
+  return `<div class="c-l0-warning">
+    <div class="c-l0-warn-label">🟨 Partial Analysis — INCOMPLETE input</div>
+    <div class="c-l0-warn-text">${esc(verdict)}${missing?` <strong>Missing:</strong> ${esc(missing)}`:''}</div>
+  </div>`;
+}
+
+/* ═══════════════════════════════════════
    MAIN SEND HANDLER
 ═══════════════════════════════════════ */
 async function handleSend(){
@@ -1485,11 +1612,14 @@ async function handleSend(){
     removeTyping();
 
     if(rd.type==='analysis'&&rd.data){
-      // ── Analysis ready — show CTA first ────────────────────────────────────
+      // ── Analysis ready — show CTA (+ L0 INCOMPLETE banner if flagged) ────────
       pendingAnalysis=rd.data;
       const d=rd.data;
       const sector=(d.sector||'').charAt(0).toUpperCase()+(d.sector||'').slice(1);
-      replyHtml=`<p style="margin-bottom:12px;font-size:14px;color:var(--t2);">${fmtReply(rd.reply||'Analysis complete.')}</p>`+
+      const incompleteNote=d.l0_flag==='INCOMPLETE'
+        ?`<div class="c-l0-warning" style="margin-bottom:12px;"><div class="c-l0-warn-label">🟨 Partial input — analysis is approximate</div><div class="c-l0-warn-text">${esc(d.l0_verdict||'')}</div></div>`
+        :'';
+      replyHtml=`<p style="margin-bottom:12px;font-size:14px;color:var(--t2);">${fmtReply(rd.reply||'Analysis complete.')}</p>`+incompleteNote+
         `<div class="c-analyze-cta">
           <div class="cta-text"><strong>Analysis ready — ${sector} · ${d.country||''}</strong>Market data processed. Tap to see the full verdict, scores, and action plan.</div>
           <button class="c-analyze-btn" onclick="revealAnalysis(this)">View Analysis →</button>
@@ -1499,21 +1629,13 @@ async function handleSend(){
       chatHistory.push({role:'assistant',content:rd.reply||'Analysis complete.'});
 
     } else if(rd.type==='invalid'&&rd.data){
-      // ── Layer 0 rejection — show structured rejection card ──────────────────
+      // ── Layer 0 rejection — severity-aware card with how_to_fix ────────────
       const d=rd.data;
-      const verdict=d.one_line_verdict||'Not a viable business concept.';
-      const missing=d.what_is_missing||'A revenue model and a paying customer.';
-      const conf=d.rejection_confidence||0;
-      replyHtml=
-        `<div class="c-rejection-card">
-          <div class="c-rejection-badge">⊘ INVALID CONCEPT · ${conf}% confidence</div>
-          <div class="c-rejection-verdict">${esc(verdict)}</div>
-          <div class="c-rejection-missing"><strong>What's missing:</strong> ${esc(missing)}</div>
-        </div>`;
-      chatHistory.push({role:'assistant',content:verdict+' '+missing});
+      replyHtml=buildRejectionCard(d, null);
+      chatHistory.push({role:'assistant',content:(d.one_line_verdict||'Not viable.')+' '+(d.what_is_missing||'')});
 
     } else if(rd.type==='clarifying'){
-      // ── Clarification needed — update gather bar ────────────────────────────
+      // ── Single targeted follow-up — no "3 things needed" list ─────────────
       const cs=rd.clarification_state||{};
       if(rd.clarification_state){
         internalContext.clarification_state=cs;
@@ -1521,15 +1643,8 @@ async function handleSend(){
       }
       const missing=['problem','solution','market'].filter(k=>!cs['has_'+k]);
       setInputHint('clarifying', missing);
-      // Detect if this is initial (nothing gathered yet) vs targeted
-      const noneGathered=!cs.has_problem&&!cs.has_market&&!cs.has_solution;
-      // Build ack text for partial progress
-      const newlyDone=[];
-      if(cs.has_problem)newlyDone.push('problem');
-      if(cs.has_market)newlyDone.push('market');
-      if(cs.has_solution)newlyDone.push('approach');
-      const ackText=(newlyDone.length&&!noneGathered)?`Got: ${newlyDone.join(', ')}`:null;
-      replyHtml=buildClarifyBlock(rd.reply||'',noneGathered,ackText);
+      // Always render as a simple targeted question, never the 3-item list
+      replyHtml=`<p style="font-size:14px;color:var(--t1);line-height:1.6;">${fmtReply(rd.reply||'')}</p>`;
       chatHistory.push({role:'assistant',content:rd.reply||''});
 
     } else {
@@ -1549,36 +1664,61 @@ async function handleSend(){
       chatHistory.push({role:'assistant',content:r});
 
     } else {
-      // ── Apply the same intent gates as the backend ──────────────────────────
-      const t=text.toLowerCase().trim();
-      const wc=t.split(/\s+/).length;
+      // ── Offline intent classification (mirrors backend logic) ───────────────
+      const tl=text.toLowerCase().trim();
+      const wc=tl.split(/\s+/).length;
       const cs=internalContext.clarification_state||{};
 
-      // Greeting / meta
-      const GREET=['hi','hello','hey','yo','sup','thanks','thank you'];
-      const META=['what do you do','who are you','how does','what is midan'];
-      if((wc<=5&&GREET.some(g=>t.startsWith(g)))||META.some(m=>t.includes(m))){
+      // OVERRIDE_COMMAND — user explicitly wants analysis now
+      const userMsgs=chatHistory.filter(m=>m.role==='user');
+      const accumulated=((cs.accumulated_text||'')+' '+text).trim();
+
+      if(isOverrideCommand(text)&&accumulated.trim().length>10){
+        const d=mockAnalysis(accumulated);
+        pendingAnalysis=d;
+        const sector=(d.sector||'').charAt(0).toUpperCase()+(d.sector||'').slice(1);
+        replyHtml=`<p style="margin-bottom:12px;font-size:14px;color:var(--t2);">Running it. <em>(Offline mode)</em></p>`+
+          `<div class="c-analyze-cta">
+            <div class="cta-text"><strong>Analysis ready — ${sector} · ${d.country||''}</strong>Tap to see the full breakdown.</div>
+            <button class="c-analyze-btn" onclick="revealAnalysis(this)">View Analysis →</button>
+          </div>`;
+        clearGatherBar(); setInputHint('default');
+        chatHistory.push({role:'assistant',content:`[Offline analysis: ${d.sector}/${d.country}]`});
+
+      // CASUAL — name, ack, small talk
+      } else if(wc<=5 && [
+        'ok','okay','cool','nice','got it','understood','noted','makes sense',
+        'i see','lol','yes','no','sure','right','alright','perfect','thanks','thank you','ty'
+      ].includes(tl)){
+        replyHtml=`<p>${offlineReply(text,{})}</p>`;
+        chatHistory.push({role:'assistant',content:replyHtml.replace(/<[^>]+>/g,'')});
+
+      // CASUAL — personal intro
+      } else if(['call me ','my name is ',"i'm from ",'i am from '].some(p=>tl.startsWith(p))){
+        const words=text.trim().split(/\s+/);
+        const name=words[words.length>2?2:1]||'';
+        const reply=name?`Got it, ${name.charAt(0).toUpperCase()+name.slice(1)}. What are you working on?`:'What are you working on?';
+        replyHtml=`<p>${reply}</p>`;
+        chatHistory.push({role:'assistant',content:reply});
+
+      // GREETING / META
+      } else if((wc<=5&&['hi','hello','hey','yo','sup'].some(g=>tl.startsWith(g)))||
+                ['what do you do','who are you','how does','what is midan'].some(m=>tl.includes(m))){
         const r=offlineReply(text,{});
         replyHtml=`<p>${r}</p>`;
         chatHistory.push({role:'assistant',content:r});
 
-      } else if(isVagueStarter(text)){
-        // Vague intent — render as 3-item block
-        replyHtml=buildClarifyBlock('',true,null);
-        chatHistory.push({role:'assistant',content:'To run the full analysis, I need: the problem, the market, and your approach.'});
-        setInputHint('clarifying',['problem','market','solution']);
+      // Pure vague starter
+      } else if(isVagueStarter(text)&&wc<=12){
+        replyHtml=`<p>Tell me what it is — one sentence is enough to start.</p>`;
+        chatHistory.push({role:'assistant',content:'Tell me what it is.'});
 
       } else {
-        // Check for invalid idea patterns before component extraction
-        const invalidResult=mockInvalidCheck(t);
+        // Check invalid patterns first
+        const invalidResult=mockInvalidCheck(tl);
         if(invalidResult){
-          replyHtml=
-            `<div class="c-rejection-card">
-              <div class="c-rejection-badge">⊘ INVALID CONCEPT · ${invalidResult.rejection_confidence}% confidence</div>
-              <div class="c-rejection-verdict">${esc(invalidResult.one_line_verdict)}</div>
-              <div class="c-rejection-missing"><strong>What's missing:</strong> ${esc(invalidResult.what_is_missing)}</div>
-            </div>`;
-          chatHistory.push({role:'assistant',content:invalidResult.one_line_verdict+' '+invalidResult.what_is_missing});
+          replyHtml=buildRejectionCard(invalidResult, null);
+          chatHistory.push({role:'assistant',content:(invalidResult.one_line_verdict||'')});
           addAIMessage(replyHtml);
           saveCurrentConversation();
           isProcessing=false;
@@ -1586,35 +1726,51 @@ async function handleSend(){
           inp.focus();
           return;
         }
-        // Has content — run component extraction
+
+        // Component extraction
         const {comps,missing}=extractComponents(text,cs);
-        const accumulated=((cs.accumulated_text||'')+' '+text).trim();
         const newState={...comps,accumulated_text:accumulated,count:(cs.count||0)+1};
         const hardMissing=missing.filter(k=>k==='solution'||k==='market');
+        const priorTurns=userMsgs.filter(m=>m.content.trim().split(/\s+/).length>=5).length;
 
-        if(!hardMissing.length&&comps.is_substantial){
-          // All present → show offline analysis via CTA
+        // Anti-loop: after 2 substantive turns or override → force analysis
+        const forceAnalysis=priorTurns>=2&&comps.is_substantial;
+
+        if((!hardMissing.length&&comps.is_substantial)||forceAnalysis){
           const d=mockAnalysis(accumulated);
           pendingAnalysis=d;
           const sector=(d.sector||'').charAt(0).toUpperCase()+(d.sector||'').slice(1);
-          replyHtml=`<p style="margin-bottom:12px;font-size:14px;color:var(--t2);">I have what I need. <em>(Offline mode — connect the API for live market data.)</em></p>`+
+          const note=forceAnalysis?'Running with what I have.':'I have what I need.';
+          replyHtml=`<p style="margin-bottom:12px;font-size:14px;color:var(--t2);">${note} <em>(Offline mode — connect the API for live data.)</em></p>`+
             `<div class="c-analyze-cta">
               <div class="cta-text"><strong>Analysis ready — ${sector} · ${d.country||''}</strong>Tap to see scores, market regime, and action plan.</div>
               <button class="c-analyze-btn" onclick="revealAnalysis(this)">View Analysis →</button>
             </div>`;
-          clearGatherBar();
-          setInputHint('default');
-          chatHistory.push({role:'assistant',content:`[Offline analysis ready: ${d.sector}/${d.country}]`});
+          clearGatherBar(); setInputHint('default');
+          chatHistory.push({role:'assistant',content:`[Offline analysis: ${d.sector}/${d.country}]`});
 
         } else {
-          // Partial — clarify
+          // Single smart follow-up — never same question twice
           internalContext.clarification_state=newState;
           updateGatherBar(newState);
           setInputHint('clarifying', hardMissing.length?hardMissing:missing);
-          const noneGathered=!newState.has_problem&&!newState.has_market&&!newState.has_solution;
-          const r=offlineClarify(hardMissing.length?hardMissing:missing,cs.count||0,comps,cs);
-          replyHtml=buildClarifyBlock(r,noneGathered,null);
-          chatHistory.push({role:'assistant',content:r});
+
+          // Track what was already asked
+          const asked=new Set();
+          chatHistory.filter(m=>m.role==='assistant').forEach(m=>{
+            const mc=m.content.toLowerCase();
+            if(mc.includes('problem')||mc.includes('pain'))asked.add('problem');
+            if(mc.includes('market')||mc.includes('country')||mc.includes('customer type'))asked.add('market');
+            if(mc.includes('approach')||mc.includes('mechanism')||mc.includes('marketplace')||mc.includes('saas'))asked.add('solution');
+          });
+
+          let q='Add a bit more — what sector, which market, and the core mechanism.';
+          if(!comps.has_problem&&!asked.has('problem')) q='What specific pain does this solve, and for which customer type exactly?';
+          else if(!comps.has_market&&!asked.has('market')) q='Which country and customer type? E.g. Egyptian SMEs, UAE consumers, B2B or B2C.';
+          else if(!comps.has_solution&&!asked.has('solution')) q="What's the mechanism — marketplace, SaaS, service, or app? One sentence.";
+
+          replyHtml=buildClarifyBlock(q,false,null);
+          chatHistory.push({role:'assistant',content:q});
         }
       }
     }

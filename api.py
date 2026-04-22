@@ -1768,9 +1768,10 @@ def _l0_check_length(t: str, wc: int) -> Optional[dict]:
         return None
     return {
         'valid':                  False,
+        'severity':               'INCOMPLETE',
         'rejection_type':         'too_short',
-        'logical_validity_score': 0.05,
-        'rejection_confidence':   0.99,
+        'logical_validity_score': 0.20,
+        'rejection_confidence':   0.97,
         'message': (
             "Too short to evaluate. A startup idea needs at minimum: "
             "the problem, who it affects, and how your solution works."
@@ -1785,6 +1786,7 @@ def _l0_check_impossibility(t: str) -> Optional[dict]:
         if p in t:
             return {
                 'valid':                  False,
+                'severity':               'IMPOSSIBLE',
                 'rejection_type':         'logical_impossibility',
                 'logical_validity_score': 0.02,
                 'rejection_confidence':   0.97,
@@ -1805,6 +1807,7 @@ def _l0_check_no_revenue_model(t: str) -> Optional[dict]:
         if p in t:
             return {
                 'valid':                  False,
+                'severity':               'IMPOSSIBLE',
                 'rejection_type':         'no_revenue_model',
                 'logical_validity_score': 0.04,
                 'rejection_confidence':   0.96,
@@ -1831,9 +1834,10 @@ def _l0_check_no_value_exchange(t: str) -> Optional[dict]:
         return None
     return {
         'valid':                  False,
+        'severity':               'BROKEN',
         'rejection_type':         'no_value_exchange',
-        'logical_validity_score': 0.08,
-        'rejection_confidence':   0.92,
+        'logical_validity_score': 0.12,
+        'rejection_confidence':   0.90,
         'message': (
             "This describes a free-for-all service with no described monetization path. "
             "A viable business requires someone to pay for the value created — "
@@ -1841,7 +1845,7 @@ def _l0_check_no_value_exchange(t: str) -> Optional[dict]:
             "Offering everything free forever with no revenue source is not a startup, "
             "it is a cost center. Add a paying segment."
         ),
-        'one_line_verdict': "Free service with no monetization path — not a viable business.",
+        'one_line_verdict': "Free service with no monetization path described — needs a paying segment.",
         'what_is_missing':  "A paying segment: B2B, premium tier, commission, subscription, or data monetization.",
     }
 
@@ -1851,8 +1855,9 @@ def _l0_check_unsustainable_economics(t: str) -> Optional[dict]:
         if p in t:
             return {
                 'valid':                  False,
+                'severity':               'IMPOSSIBLE',
                 'rejection_type':         'unsustainable_economics',
-                'logical_validity_score': 0.06,
+                'logical_validity_score': 0.05,
                 'rejection_confidence':   0.93,
                 'message': (
                     "This describes an economically unsustainable model — "
@@ -1876,19 +1881,19 @@ def _l0_check_vague(t: str, wc: int) -> Optional[dict]:
     has_concrete = any(c in t for c in _L0_CONCRETE_RESCUE)
     if has_concrete:
         return None
+    # INCOMPLETE: valid=True so analysis runs; frontend shows yellow warning banner
     return {
-        'valid':                  False,
+        'valid':                  True,
+        'severity':               'INCOMPLETE',
         'rejection_type':         'vague_non_actionable',
-        'logical_validity_score': 0.15,
-        'rejection_confidence':   0.88,
+        'logical_validity_score': 0.35,
+        'rejection_confidence':   0.82,
         'message': (
-            "This idea is too vague to evaluate meaningfully. "
-            "MIDAN needs to know: what specific problem you are solving, "
-            "who specifically experiences it, and what your solution mechanism is. "
-            "Broad claims like 'fix everything' or 'connect everyone' describe a vision, "
-            "not a startup. Narrow it to one specific pain for one specific customer."
+            "This idea is too vague to evaluate with precision. "
+            "Analysis will run on the available signals, but results will be "
+            "less specific. Narrow to one customer, one problem, one mechanism."
         ),
-        'one_line_verdict': "Too vague to evaluate — no specific problem, customer, or mechanism.",
+        'one_line_verdict': "Idea is promising but under-defined — results will be approximate.",
         'what_is_missing':  "A specific problem, a specific customer segment, and a concrete solution mechanism.",
     }
 
@@ -1949,6 +1954,13 @@ def _l0_llm_arbiter(idea_text: str) -> Optional[dict]:
         conf  = float(data.get("rejection_confidence", 0.88))
         conf  = max(0.85, min(0.96, conf))
 
+        _severity_map = {
+            "no_revenue_model":       "IMPOSSIBLE",
+            "unsustainable_economics":"IMPOSSIBLE",
+            "logical_impossibility":  "IMPOSSIBLE",
+            "no_value_exchange":      "BROKEN",
+            "vague_non_actionable":   "INCOMPLETE",
+        }
         _reason_messages = {
             "no_revenue_model":       "No revenue mechanism identified — no paying customer, no charging model.",
             "no_value_exchange":      "No value exchange: the idea gives value away with no monetization path.",
@@ -1958,6 +1970,7 @@ def _l0_llm_arbiter(idea_text: str) -> Optional[dict]:
         }
         return {
             'valid':                  False,
+            'severity':               _severity_map.get(rtype, 'BROKEN'),
             'rejection_type':         rtype,
             'logical_validity_score': round(1.0 - conf, 2),
             'rejection_confidence':   conf,
@@ -1968,6 +1981,102 @@ def _l0_llm_arbiter(idea_text: str) -> Optional[dict]:
     except Exception as llm_err:
         _L0_LOG.warning(f"[L0] LLM arbiter failed: {llm_err!r} — passing idea through")
         return None
+
+
+# ── Rejection pattern store (session-level, last 200 rejections) ──────────────
+import time as _time
+
+_REJECTION_LOG: list = []
+
+
+def _log_rejection(rejection_type: str, severity: str, idea_snippet: str) -> None:
+    _REJECTION_LOG.append({
+        'ts':       _time.time(),
+        'type':     rejection_type,
+        'severity': severity,
+        'snippet':  idea_snippet[:80],
+    })
+    if len(_REJECTION_LOG) > 200:
+        _REJECTION_LOG.pop(0)
+
+
+# ── Rule-based how-to-fix fallbacks (specific > generic) ──────────────────────
+_L0_FIX_FALLBACKS: Dict[str, list] = {
+    'logical_impossibility': [
+        "Reframe the promise to something achievable: instead of eliminating the problem entirely, offer a measurable reduction (e.g., 60% cost cut in 30 days) — that is a product, not a fantasy.",
+        "Find the addressable subset: which part of this problem CAN be solved commercially with current technology and a viable cost structure? Start there.",
+    ],
+    'no_revenue_model': [
+        "Identify who benefits commercially from this value existing — that entity (employer, hospital, government, platform) is your real paying customer, not the end user who receives the money.",
+        "Flip to B2B: if consumers cannot pay, which business gains economic benefit when consumers have this service? Charge that business.",
+        "Structure a fee-on-transaction model: if value is being moved, take a cut of the movement — wage advances, micro-insurance, and credit scoring all do this.",
+    ],
+    'no_value_exchange': [
+        "Define your paying segment: B2B (charge companies that benefit), premium tier (charge power users), or API/data (charge developers who build on top).",
+        "Replace 'completely free' with freemium: free for basic access, paid for volume, integrations, analytics, or white-label. Remove 'forever' from your pitch.",
+    ],
+    'unsustainable_economics': [
+        "Replace the earn-by-recruiting structure with genuine product value — users must stay because the product solves a problem, not because of financial incentives that require more users to fund.",
+        "Identify what is upstream of the users getting paid: which business generates the revenue that would fund those payments? That entity is your customer.",
+    ],
+    'vague_non_actionable': [
+        "Compress to one sentence: 'We help [specific customer type] [do specific thing] by [specific mechanism].' That sentence is your minimum viable description.",
+        "Name your first customer: a real person, real role, real company type — then describe the specific workflow they would change if your product existed.",
+    ],
+    'too_short': [
+        "Add three things in one message: the customer type, the pain they have, and how you solve it.",
+        "Include where (country/market), who (B2B or B2C, which segment), and what specifically (app, platform, service, tool).",
+    ],
+    'not_a_business_idea': [
+        "Define what value you create, who receives it, and who pays for it — all three must be answered for a business to exist.",
+        "Describe the specific problem your first 10 customers have and why they would pay to solve it over a free alternative.",
+    ],
+}
+
+
+def _l0_how_to_fix(idea_text: str, rejection_type: str) -> list:
+    """
+    Generate 2–3 specific, idea-grounded fix suggestions.
+    LLM first (grounded in the actual idea text); rule-based fallback.
+    """
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    if GROQ_CLIENT and groq_key and groq_key != "dummy":
+        try:
+            prompt = dedent(f"""
+                A startup idea was rejected because of: {rejection_type.replace('_', ' ')}
+
+                The idea: "{idea_text}"
+
+                Give EXACTLY 2 or 3 specific ways to fix this idea to become a viable business.
+
+                HARD RULES — violations are rejected:
+                - Each fix MUST reference the actual idea, not give generic advice
+                - Be concrete: name a mechanism, model, or specific approach
+                - Reference the specific market/sector if detectable from the idea
+                - NOT: "Add a revenue model" (too generic)
+                - NOT: "Consider monetization" (too generic)
+                - YES: "In Egypt, employer-backed wage advance models work because employers pay the fee as an HR benefit — target payroll managers, not the workers receiving advances"
+                - YES: "Charge hospitals a per-referral fee for triaging patients before they arrive — the hospital saves ER costs, not the patients who pay nothing"
+
+                Return ONLY valid JSON:
+                {{"fixes": ["Fix 1 specific to this idea", "Fix 2 specific to this idea"]}}
+            """).strip()
+
+            resp = GROQ_CLIENT.chat.completions.create(
+                messages=[{"role": "user", "content": prompt}],
+                model="llama-3.1-8b-instant",
+                temperature=0.25,
+                max_tokens=350,
+                response_format={"type": "json_object"},
+            )
+            data  = json.loads(resp.choices[0].message.content.strip())
+            fixes = data.get('fixes', [])
+            if isinstance(fixes, list) and len(fixes) >= 2:
+                return [str(f) for f in fixes[:3]]
+        except Exception as e:
+            _L0_LOG.warning(f"[L0] how_to_fix LLM failed: {e!r}")
+
+    return _L0_FIX_FALLBACKS.get(rejection_type, _L0_FIX_FALLBACKS['not_a_business_idea'])
 
 
 def _layer0_sanity_check(idea_text: str) -> dict:
@@ -1982,10 +2091,12 @@ def _layer0_sanity_check(idea_text: str) -> dict:
     Only ideas that pass ALL checks proceed to L1–L4.
 
     Returns:
-      {'valid': True,  'logical_validity_score': float}   — proceed
-      {'valid': False, 'rejection_type': str,
-       'logical_validity_score': float, 'rejection_confidence': float,
-       'message': str, 'one_line_verdict': str, 'what_is_missing': str}
+      {'valid': True,  'logical_validity_score': float}              — proceed (clean pass)
+      {'valid': True,  'severity': 'INCOMPLETE', ...}                — proceed with warning
+      {'valid': False, 'severity': 'IMPOSSIBLE'|'BROKEN'|'INCOMPLETE',
+       'rejection_type': str, 'logical_validity_score': float,
+       'rejection_confidence': float, 'message': str,
+       'one_line_verdict': str, 'what_is_missing': str, 'how_to_fix': list}
     """
     t  = idea_text.lower().strip()
     wc = len(t.split())
@@ -1999,21 +2110,34 @@ def _layer0_sanity_check(idea_text: str) -> dict:
         _l0_check_vague(t, wc),
     ]
     for result in checks:
-        if result is not None:
-            _L0_LOG.info(
-                f"[L0] REJECTED — type={result['rejection_type']} "
-                f"conf={result['rejection_confidence']:.0%} "
-                f"idea='{idea_text[:60]}'"
-            )
+        if result is None:
+            continue
+
+        # D6 (vague) returns valid=True — proceed as INCOMPLETE with warning
+        if result.get('valid'):
+            _L0_LOG.info(f"[L0] INCOMPLETE pass — idea='{idea_text[:60]}'")
+            result['how_to_fix'] = _l0_how_to_fix(idea_text, result['rejection_type'])
             return result
+
+        # All other checks: rejected — enrich with how_to_fix + severity + log
+        result['how_to_fix'] = _l0_how_to_fix(idea_text, result['rejection_type'])
+        _L0_LOG.info(
+            f"[L0] REJECTED severity={result.get('severity','?')} "
+            f"type={result['rejection_type']} conf={result['rejection_confidence']:.0%} "
+            f"idea='{idea_text[:60]}'"
+        )
+        _log_rejection(result['rejection_type'], result.get('severity', 'BROKEN'), idea_text)
+        return result
 
     # All deterministic checks passed → LLM arbiter for borderline cases
     llm_result = _l0_llm_arbiter(idea_text)
     if llm_result is not None:
+        llm_result['how_to_fix'] = _l0_how_to_fix(idea_text, llm_result['rejection_type'])
         _L0_LOG.info(
-            f"[L0] LLM REJECTED — type={llm_result['rejection_type']} "
-            f"conf={llm_result['rejection_confidence']:.0%}"
+            f"[L0] LLM REJECTED severity={llm_result.get('severity','?')} "
+            f"type={llm_result['rejection_type']} conf={llm_result['rejection_confidence']:.0%}"
         )
+        _log_rejection(llm_result['rejection_type'], llm_result.get('severity', 'BROKEN'), idea_text)
         return llm_result
 
     _L0_LOG.debug(f"[L0] PASSED — idea='{idea_text[:60]}'")
@@ -2021,16 +2145,18 @@ def _layer0_sanity_check(idea_text: str) -> dict:
 
 
 def process_idea(idea_text: str, default_sector: str = "fintech", default_country: str = "EG") -> dict:
-    # ── Layer 0: Sanity gate — reject invalid ideas before any ML pipeline ────
+    # ── Layer 0: Sanity gate — reject/warn before any ML pipeline ─────────────
     l0 = _layer0_sanity_check(idea_text)
-    if not l0['valid']:
+    if not l0.get('valid', False):
         return {
             "success":                False,
             "invalid_idea":           True,
+            "severity":               l0.get('severity', 'BROKEN'),
             "rejection_type":         l0['rejection_type'],
             "message":                l0['message'],
             "one_line_verdict":       l0['one_line_verdict'],
             "what_is_missing":        l0['what_is_missing'],
+            "how_to_fix":             l0.get('how_to_fix', []),
             "logical_validity_score": round(l0['logical_validity_score'], 2),
             "rejection_confidence":   int(l0['rejection_confidence'] * 100),
             "decision_badge":         "INVALID — NOT A VIABLE BUSINESS CONCEPT",
@@ -2039,6 +2165,9 @@ def process_idea(idea_text: str, default_sector: str = "fintech", default_countr
             "quadrant":               "STOP — Rethink Everything",
             "svs":                    0,
         }
+
+    # INCOMPLETE pass-through: analysis runs but we carry the L0 warning
+    l0_flag = l0.get('severity') == 'INCOMPLETE'
 
     parsed_sec, parsed_ctry, sec_found, ctry_found = agent_a1_parse(idea_text)
     sector_key   = parsed_sec  if sec_found  else default_sector
@@ -2070,6 +2199,11 @@ def process_idea(idea_text: str, default_sector: str = "fintech", default_countr
 
     return {
         "success":         True,
+        # ── L0 partial-analysis warning (only set when severity='INCOMPLETE') ──
+        "l0_flag":         "INCOMPLETE" if l0_flag else None,
+        "l0_verdict":      l0.get('one_line_verdict') if l0_flag else None,
+        "l0_what_is_missing": l0.get('what_is_missing') if l0_flag else None,
+        "l0_how_to_fix":   l0.get('how_to_fix', []) if l0_flag else [],
         "sector":          sector_key,
         "country":         country_code,
         "regime":          report["regime"],
@@ -2365,6 +2499,31 @@ _VAGUE_STARTERS = [
     'working on something', 'building something', 'have an idea', 'had an idea',
     'i want to build', 'i want to create', 'i want to start',
 ]
+
+# ── Casual / personal conversation — no idea content ──────────────────────────
+_CASUAL_PREFIXES = [
+    'call me ', 'my name is ', 'i am ', "i'm ", 'im ',
+    'i live in ', 'i am from ', "i'm from ", 'from ',
+    'i studied ', 'just checking', 'just wanted to say',
+]
+_CASUAL_SHORT_SET = {
+    'ok', 'okay', 'cool', 'nice', 'great', 'got it', 'understood',
+    'makes sense', 'i see', 'interesting', 'lol', 'haha', 'yes', 'no',
+    'sure', 'right', 'alright', 'perfect', 'noted', 'agreed', 'good',
+    'awesome', 'wow', 'really', 'oh', 'ah', 'hmm', 'k', 'yep', 'nope',
+    'thanks again', 'ty', 'thx', 'not yet', 'maybe', 'later', 'soon',
+}
+
+# ── Override commands — user explicitly demands immediate analysis ─────────────
+_OVERRIDE_COMMANDS = [
+    'analyze now', 'run it', 'full breakdown', 'analyze this', 'just analyze',
+    'go ahead and analyze', 'run analysis', 'skip the questions', 'stop asking',
+    'just go', 'run it now', 'do the analysis', 'show me the analysis',
+    'run the analysis', 'just run it', 'analyze it now', 'break it down',
+    'full analysis', 'start analysis', 'do it now', 'just do it',
+    'analyze already', 'just analyze it', 'analyze please', 'please analyze',
+    'just run', 'run the model', 'go ahead', 'proceed', 'continue with analysis',
+]
 _PROBLEM_SIGNALS = [
     'problem','pain','issue','struggle','challenge','gap','need','lack',
     'inefficient','inefficiency','expensive','slow','difficult','hard to',
@@ -2419,6 +2578,151 @@ def _extract_components(text: str) -> dict:
         'word_count':     wc,
         'is_substantial': wc >= 8,
     }
+
+
+# ═══════════════════════════════════════════════════════════════
+# CONVERSATION INTELLIGENCE LAYER
+# Classifies every user turn BEFORE any pipeline decision.
+# Prevents loops, handles casual conversation, and respects
+# explicit user control commands.
+# ═══════════════════════════════════════════════════════════════
+
+def _classify_intent(text: str, context: dict, messages: list) -> dict:
+    """
+    Classify user message into one of 5 intent types.
+
+    Priority (evaluated top-down, first match wins):
+      OVERRIDE_COMMAND → user explicitly demands analysis ("analyze now", "run it")
+      CLARIFICATION    → post-analysis turn, route to advisor
+      CASUAL           → personal intro / ack / small talk, no idea content
+      ANALYSIS_REQUEST → enough signals to run analysis immediately
+      PARTIAL_IDEA     → has some idea signals but missing critical components
+
+    Anti-loop: if ≥ 2 prior non-vague user turns, forces ANALYSIS_REQUEST
+    to prevent repetitive questioning.
+
+    Returns: {intent, should_analyze, reason}
+    """
+    t  = text.lower().strip()
+    wc = len(t.split())
+
+    # ── 1. Override command ───────────────────────────────────────────────────
+    is_override = (
+        any(t == cmd or t.startswith(cmd + ' ') or t.endswith(' ' + cmd) for cmd in _OVERRIDE_COMMANDS)
+        or (wc <= 5 and any(cmd in t for cmd in ['analyze', 'run it', 'go ahead', 'break it down', 'just go']))
+    )
+    if is_override:
+        return {'intent': 'OVERRIDE_COMMAND', 'should_analyze': True, 'reason': 'explicit_trigger'}
+
+    # ── 2. Post-analysis clarification ───────────────────────────────────────
+    if context.get('tas_score'):
+        return {'intent': 'CLARIFICATION', 'should_analyze': False, 'reason': 'post_analysis'}
+
+    # ── 3. Casual / personal — no idea content ───────────────────────────────
+    is_personal_prefix = any(t.startswith(p) for p in _CASUAL_PREFIXES)
+    is_short_ack       = wc <= 4 and t in _CASUAL_SHORT_SET
+    no_idea_signals    = (
+        not any(s in t for s in _PROBLEM_SIGNALS)
+        and not any(s in t for s in _SOLUTION_SIGNALS)
+        and not any(g in t for g in _MARKET_GEO)
+        and not any(s in t for s in SECTOR_KEYWORDS.get('fintech', []) + SECTOR_KEYWORDS.get('saas', []))
+    )
+    if (is_personal_prefix or is_short_ack) and no_idea_signals:
+        return {'intent': 'CASUAL', 'should_analyze': False, 'reason': 'personal_conversation'}
+
+    # ── 4. Extract idea components ────────────────────────────────────────────
+    comps = _extract_components(text)
+
+    # ── Anti-loop guard: after ≥2 substantive partial turns, force analysis ──
+    user_msgs = [m for m in messages if m.role == 'user']
+    # Count turns where user gave partial content (not pure vague starters)
+    prior_partial = sum(
+        1 for m in user_msgs[:-1]
+        if len(m.content.split()) >= 5
+        and not any(m.content.lower().strip().startswith(v) for v in _VAGUE_STARTERS)
+    )
+    if prior_partial >= 2 and comps['is_substantial']:
+        return {'intent': 'ANALYSIS_REQUEST', 'should_analyze': True, 'reason': 'anti_loop_forced'}
+
+    # ── 5. Sufficient signals for immediate analysis ──────────────────────────
+    multi_signal = (
+        (comps['has_problem'] and comps['has_solution'])
+        or (comps['has_solution'] and comps['has_market'])
+        or (comps['has_problem'] and comps['has_market'])
+        or wc >= 15
+    )
+    if multi_signal:
+        return {'intent': 'ANALYSIS_REQUEST', 'should_analyze': True, 'reason': 'sufficient_signals'}
+
+    # ── 6. Partial — some signals, single follow-up needed ───────────────────
+    return {'intent': 'PARTIAL_IDEA', 'should_analyze': False, 'reason': 'insufficient_signals'}
+
+
+def _casual_response(text: str) -> str:
+    """Natural reply for casual / personal messages. Never triggers the pipeline."""
+    t = text.lower().strip()
+
+    # Name introduction
+    for prefix in ('call me ', 'my name is '):
+        if t.startswith(prefix):
+            name = t[len(prefix):].strip().split()[0].capitalize()
+            return f"Got it, {name}. What are you working on?"
+
+    # Location / background intro
+    for prefix in ("i'm from ", 'i am from ', 'from '):
+        if t.startswith(prefix):
+            place = text[len(prefix):].strip().split()[0].capitalize()
+            return f"{place} — that's a live market for a few sectors. What's the idea?"
+
+    for prefix in ("i'm a ", 'i am a ', 'i studied '):
+        if t.startswith(prefix):
+            return "Good context. What startup idea are you pressure-testing?"
+
+    # Acknowledgments
+    if t in {'ok', 'okay', 'cool', 'nice', 'got it', 'understood', 'noted', 'makes sense', 'i see', 'right', 'alright'}:
+        return "What's the idea you're working on?"
+    if t in {'thanks', 'thank you', 'ty', 'thx', 'thanks again'}:
+        return "Anytime. What else do you want to pressure-test?"
+    if t in {'yes', 'sure', 'yep', 'agreed', 'perfect', 'great', 'awesome'}:
+        return "Tell me the idea and I'll run the numbers."
+    if t in {'no', 'nope', 'not yet', 'maybe', 'later'}:
+        return "Whenever you're ready — drop the idea and I'll analyze it."
+
+    # Generic casual
+    return "What are you building? Drop the idea and I'll run a full analysis."
+
+
+def _smart_followup(text: str, messages: list) -> str:
+    """
+    Ask ONE targeted follow-up question for a PARTIAL_IDEA turn.
+    Tracks prior questions to avoid repetition.
+    Never asks more than one question per turn.
+    """
+    comps = _extract_components(text)
+
+    # Track what has already been asked
+    asked: set = set()
+    for m in messages:
+        if m.role != 'assistant':
+            continue
+        mc = m.content.lower()
+        if any(w in mc for w in ('problem', 'pain', 'what exactly', 'what specific')):
+            asked.add('problem')
+        if any(w in mc for w in ('market', 'geography', 'country', 'who exactly', 'customer type', 'which region')):
+            asked.add('market')
+        if any(w in mc for w in ('approach', 'mechanism', 'app', 'marketplace', 'saas', 'platform', 'how does it work')):
+            asked.add('solution')
+
+    # Ask about the most important missing component not yet asked about
+    if not comps['has_problem'] and 'problem' not in asked:
+        return "What specific pain does this solve, and for which customer type exactly?"
+    if not comps['has_market'] and 'market' not in asked:
+        return "Which country and customer type? E.g. Egyptian SMEs, UAE consumers, B2B or B2C."
+    if not comps['has_solution'] and 'solution' not in asked:
+        return "What's the mechanism — marketplace, SaaS, service, or app? One sentence."
+
+    # All targeted questions already asked — nudge for more info
+    return "Add a bit more detail — what sector, which market, and the core mechanism. Two sentences is enough."
 
 
 def _generate_operator_reply(data: dict, idea_text: str) -> str:
@@ -2532,16 +2836,18 @@ class InteractRequest(BaseModel):
 @api.post("/interact")
 async def interact_route(req: InteractRequest):
     """
-    Strategic operator chat — INFER → ANALYZE → CHALLENGE → ASK (max 1 question).
+    Conversation Intelligence Layer — classifies intent before any pipeline decision.
 
-    Abolished: sequential field collection (problem → market → solution form flow).
-    Abolished: asking "What is your problem?", "Who is your customer?", "Which market?"
+    Intent flow (priority order):
+      OVERRIDE_COMMAND → run analysis immediately, skip all questions
+      CLARIFICATION    → route to strategic advisor chat
+      CASUAL           → natural response (name, location, ack) — no pipeline
+      META             → explain MIDAN briefly
+      GREETING         → "what are you building?"
+      ANALYSIS_REQUEST → run pipeline immediately (or after anti-loop trigger)
+      PARTIAL_IDEA     → ask ONE smart follow-up (never the same question twice)
 
-    Pattern:
-      - Any substantive idea input → run inference immediately → strategic operator reply
-      - Post-analysis turns → route to /chat advisor
-      - Pure greetings / meta → brief, direct response
-      - Vague "I have an idea" with no content → ask them to say the idea, nothing more
+    Anti-loop: after ≥2 partial user turns, forces analysis with accumulated text.
     """
     last_user_msg = next(
         (m.content for m in reversed(req.messages) if m.role == "user"), ""
@@ -2549,15 +2855,22 @@ async def interact_route(req: InteractRequest):
     t  = last_user_msg.lower().strip()
     wc = len(t.split())
 
-    already_analyzed = bool(req.context.get("tas_score"))
+    # ── Intent classification (replaces all gate checks) ─────────────────────
+    intent_data = _classify_intent(last_user_msg, req.context, req.messages)
+    intent = intent_data['intent']
 
-    # ── Gate 1: Post-analysis → route to advisor chat ─────────────────────────
-    if already_analyzed:
+    # ── CLARIFICATION: post-analysis advisor ─────────────────────────────────
+    if intent == 'CLARIFICATION':
         chat_req = ChatRequest(context=req.context, messages=req.messages)
         chat_res = await chat_interaction(chat_req)
         return {"success": True, "type": "chat", "reply": chat_res.get("reply", ""), "data": None}
 
-    # ── Gate 2: Pure greeting (no idea content) ───────────────────────────────
+    # ── CASUAL: natural response — never trigger pipeline ────────────────────
+    if intent == 'CASUAL':
+        reply = _casual_response(last_user_msg)
+        return {"success": True, "type": "chat", "reply": reply, "data": None}
+
+    # ── GREETING: pure hi/hello ───────────────────────────────────────────────
     is_greeting = wc <= 6 and any(t == g or t.startswith(g) for g in _GREET_TOKENS)
     if is_greeting:
         return {
@@ -2566,53 +2879,68 @@ async def interact_route(req: InteractRequest):
             "data": None,
         }
 
-    # ── Gate 3: Meta question about MIDAN ────────────────────────────────────
+    # ── META: question about MIDAN ────────────────────────────────────────────
     is_meta = any(phrase in t for phrase in _META_PHRASES)
     if is_meta:
         return {
             "success": True, "type": "chat",
             "reply": (
                 "MIDAN runs a 4-layer analysis: LLM feature extraction, SVM market classification, "
-                "SARIMA 90-day forecast, and strategic reasoning grounded in your specific business model and market. "
+                "SARIMA 90-day forecast, and strategic reasoning grounded in your specific model and market. "
                 "The output is a verdict — not a dashboard, a decision. What's the idea?"
             ),
             "data": None,
         }
 
-    # ── Gate 4: Pure vague starter — no actual idea described ────────────────
-    # e.g. "I have an idea", "I want to build something"
-    # Do NOT ask for problem / market / solution — just ask them to say the idea
-    components = _extract_components(last_user_msg)
+    # ── Pure vague starter ("I have an idea") — no content yet ───────────────
     is_purely_vague = (
         wc <= 15
         and any(t.startswith(v) or t == v.strip() for v in _VAGUE_STARTERS)
-        and not components["has_problem"]
-        and not components["has_solution"]
+        and not _extract_components(last_user_msg)["has_problem"]
+        and not _extract_components(last_user_msg)["has_solution"]
     )
-    if is_purely_vague:
+    if is_purely_vague and intent == 'PARTIAL_IDEA':
         return {
             "success": True, "type": "chat",
-            "reply": "Tell me what it is. One sentence is enough to start.",
+            "reply": "Tell me what it is — one sentence is enough to start.",
             "data": None,
         }
 
-    # ── Gate 5: Run inference on whatever we have ─────────────────────────────
-    # Accumulate all user turns for richer context across a multi-turn session
-    all_user_text = " ".join(
-        m.content for m in req.messages if m.role == "user"
-    ).strip()
-    # Use accumulated text only if it meaningfully extends the last message
-    analysis_text = all_user_text if len(all_user_text.split()) > len(last_user_msg.split()) + 3 else last_user_msg
+    # ── PARTIAL_IDEA: ask ONE smart follow-up ─────────────────────────────────
+    if intent == 'PARTIAL_IDEA':
+        followup = _smart_followup(last_user_msg, req.messages)
+        return {
+            "success": True, "type": "clarifying",
+            "reply": followup,
+            "clarification_state": _extract_components(last_user_msg),
+            "data": None,
+        }
+
+    # ── ANALYSIS_REQUEST or OVERRIDE_COMMAND: run pipeline ───────────────────
+    # Accumulate all user turns for richer context in multi-turn sessions
+    all_user_text = " ".join(m.content for m in req.messages if m.role == "user").strip()
+    analysis_text = (
+        all_user_text
+        if len(all_user_text.split()) > len(last_user_msg.split()) + 3
+        else last_user_msg
+    )
 
     try:
         data = process_idea(analysis_text)
+
         if data.get("invalid_idea"):
-            verdict = data.get("one_line_verdict", "Not a viable business concept.")
-            missing = data.get("what_is_missing", "A revenue model and a paying customer.")
-            reply   = f"{verdict}\n\n**What's missing:** {missing}"
+            verdict  = data.get("one_line_verdict", "Not a viable business concept.")
+            missing  = data.get("what_is_missing", "")
+            fixes    = data.get("how_to_fix", [])
+            severity = data.get("severity", "BROKEN")
+            reply    = verdict
+            if missing:
+                reply += f"\n\n**What's missing:** {missing}"
             return {"success": True, "type": "invalid", "reply": reply, "data": data}
+
         reply = _generate_operator_reply(data, last_user_msg)
         return {"success": True, "type": "analysis", "reply": reply, "data": data}
+
     except Exception as e:
         return {"success": False, "type": "chat", "reply": f"Analysis failed: {str(e)}", "data": None}
 
@@ -2622,7 +2950,24 @@ async def health():
     return {
         "status":        "ok",
         "models_loaded": MODELS_LOADED,
-        "version":       "2.0 — 4-layer hybrid architecture",
+        "version":       "3.0 — conversation intelligence + 3-tier L0 + how_to_fix engine",
+    }
+
+
+@api.get("/rejection-patterns")
+async def rejection_patterns():
+    """Returns session-level rejection pattern statistics for analysis."""
+    if not _REJECTION_LOG:
+        return {"total": 0, "patterns": [], "by_severity": {}, "by_type": {}}
+    from collections import Counter
+    by_type     = Counter(r['type']     for r in _REJECTION_LOG)
+    by_severity = Counter(r['severity'] for r in _REJECTION_LOG)
+    recent = _REJECTION_LOG[-10:][::-1]
+    return {
+        "total":       len(_REJECTION_LOG),
+        "by_severity": dict(by_severity),
+        "by_type":     dict(by_type),
+        "recent":      [{"type": r['type'], "severity": r['severity'], "snippet": r['snippet']} for r in recent],
     }
 
 
