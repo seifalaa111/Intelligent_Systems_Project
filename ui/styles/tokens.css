@@ -1,0 +1,78 @@
+/* MIDAN Sensory Tokens — single source of truth.
+   Every value in main.css must resolve to one of these. No ad-hoc colors,
+   spacings, durations, or shadows.
+
+   Source: project_midan_sensory_system.md */
+
+:root {
+  /* ── Colors (14) ─────────────────────────────────────────────── */
+  --canvas:          #F6F5F1;
+  --surface:         #FFFFFF;
+  --hairline:        #E2DFD9;
+  --text-primary:    #0A0905;
+  --text-secondary:  #7A7874;
+  --text-tertiary:   #B5B2AC;
+  --accent:          #2A5CE6;
+  --accent-weak:     #8BAAF2;
+  --accent-tint:     #EEF2FD;
+  --risk:            #D4401A;
+  --risk-tint:       #FDF0EC;
+  --estimate:        #D97706;
+  --estimate-tint:   #FEF3E2;
+  --cta-bg:          #0A0905;
+
+  /* ── Spacing (10) ────────────────────────────────────────────── */
+  --sp-1:   4px;
+  --sp-2:   8px;
+  --sp-3:  12px;
+  --sp-4:  16px;
+  --sp-6:  24px;
+  --sp-8:  32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+  --sp-16: 64px;
+  --sp-20: 80px;
+  --sp-30: 120px;
+
+  /* ── Radius (5) ──────────────────────────────────────────────── */
+  --r-1:  4px;
+  --r-2:  8px;
+  --r-3: 12px;
+  --r-4: 14px;
+  --r-5: 16px;
+
+  /* ── Shadows (6) ─────────────────────────────────────────────── */
+  --sh-none:         none;
+  --sh-mid:          0 2px 12px rgba(10,9,5,0.06), 0 1px 2px rgba(10,9,5,0.04);
+  --sh-fore:         0 8px 40px rgba(10,9,5,0.10), 0 1px 4px rgba(10,9,5,0.06);
+  --sh-interactive:  0 12px 48px rgba(10,9,5,0.13), 0 2px 6px rgba(10,9,5,0.07);
+  --sh-dominant:     0 2px 12px rgba(10,9,5,0.14), 0 1px 3px rgba(10,9,5,0.08);
+  --sh-hover:        0 16px 60px rgba(10,9,5,0.17), 0 2px 8px rgba(10,9,5,0.08);
+
+  /* ── Timing (rhythm grid, 80ms) ──────────────────────────────── */
+  --t-1u:   80ms;
+  --t-2u:  160ms;
+  --t-3u:  240ms;
+  --t-4u:  320ms;
+  --t-5u:  400ms;
+  --t-6u:  480ms;
+  --t-7u:  560ms;
+  --t-8u:  640ms;
+  --t-10u: 800ms;
+  --t-ambient: 12000ms;
+
+  /* ── Easing (5) ──────────────────────────────────────────────── */
+  --ez-micro: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ez-entry: cubic-bezier(0.22, 1, 0.36, 1);
+  --ez-exit:  cubic-bezier(0.55, 0, 1, 0.45);
+  --ez-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ── Typography ──────────────────────────────────────────────── */
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+
+  /* ── Caret glow tiers ────────────────────────────────────────── */
+  --caret-glow-0: 0 0 0 rgba(42,92,230,0);
+  --caret-glow-1: 0 0  8px rgba(42,92,230,0.25);
+  --caret-glow-2: 0 0 16px rgba(42,92,230,0.40);
+  --caret-glow-3: 0 0 24px rgba(42,92,230,0.55);
+}

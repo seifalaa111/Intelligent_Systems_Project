@@ -23,3 +23,7 @@ Thumbs.db
 # Debug output
 diagnostic_output.txt
 verify_output.txt
+
+# Runtime logs
+*.log
+
