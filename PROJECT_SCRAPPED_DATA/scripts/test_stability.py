@@ -7,6 +7,7 @@ Target 10 structurally diverse startups (SaaS, FinTech, Hardware/Media / Failure
 import os
 import json
 from collections import defaultdict
+from pathlib import Path
 from rich.console import Console
 
 console = Console()
@@ -93,3 +94,34 @@ def run_stability():
 
 if __name__ == "__main__":
     run_stability()
+
+
+def test_run_stability_smoke(tmp_path, monkeypatch):
+    workdir = tmp_path / "workspace"
+    structured = workdir / "data" / "structured"
+    structured.mkdir(parents=True, exist_ok=True)
+
+    def fake_system(cmd):
+        output_path = cmd.split("--output ", 1)[1].split(" > ", 1)[0].strip()
+        target = workdir / output_path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "startups": [
+                {
+                    "startup_name": "Slack",
+                    "primary_industry": "Enterprise Software",
+                    "business_model": "SaaS",
+                    "source_url": "https://example.com/slack",
+                }
+            ]
+        }
+        with open(target, "w", encoding="utf-8") as handle:
+            json.dump(payload, handle)
+        return 0
+
+    monkeypatch.chdir(workdir)
+    monkeypatch.setattr(os, "system", fake_system)
+
+    run_stability()
+    remaining = list(structured.glob("run_*.json"))
+    assert remaining == []
