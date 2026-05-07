@@ -1,29 +1,50 @@
-﻿data/raw/*.csv
+# ── Large binary data files ──────────────────────────────────────────────────
+data/raw/*.csv
 data/ml_matrix/*.csv
 data/sarima/*.csv
 data/agent_context/**/*.json
+
+# Trained model binaries (large; regenerate via MIDAN_Pipeline.py)
 models/*.pkl
 models/**/*.pkl
+
+# ── Python runtime ────────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
+*.pyc
+.pytest_cache/
+
+# ── Environment and secrets ───────────────────────────────────────────────────
 .env
+.env.local
 venv/
+.venv/
+
+# ── Streamlit / server runtime artifacts ─────────────────────────────────────
 .streamlit/
-.DS_Store
-Thumbs.db
-
-# Jupyter
-.ipynb_checkpoints/
-
-# IDE
-.idea/
-.vscode/
-*.swp
-
-# Debug output
-diagnostic_output.txt
-verify_output.txt
-
-# Runtime logs
+streamlit_out.txt
+streamlit_err.txt
+uvicorn_out.txt
+uvicorn_err.txt
+server.log
 *.log
 
+# ── Backup and temporary files ────────────────────────────────────────────────
+*.bak
+*.tmp
+midan_resp.json
+
+# ── IDE and system ────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.swp
+.claude/
+
+# ── Jupyter ───────────────────────────────────────────────────────────────────
+.ipynb_checkpoints/
+
+# ── Debug output ──────────────────────────────────────────────────────────────
+diagnostic_output.txt
+verify_output.txt
