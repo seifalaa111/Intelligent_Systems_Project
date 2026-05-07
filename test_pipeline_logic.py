@@ -5,6 +5,8 @@ import warnings
 warnings.filterwarnings('ignore')
 import numpy as np
 import pickle, json, os, pytest
+from api import agent_a1_parse as prod_agent_a1_parse
+from api import enhanced_regime as prod_enhanced_regime
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 MODELS_DIR = os.path.join(SCRIPT_DIR, "models")
@@ -88,47 +90,14 @@ VALID_REGIMES = {
 
 
 def agent_a1_parse(idea_text):
-    t = idea_text.lower()
-    sector, sector_found = None, False
-    for sec, kws in SECTOR_KEYWORDS.items():
-        if any(k in t for k in kws):
-            sector, sector_found = sec, True
-            break
-    if not sector_found:
-        sector = 'fintech'
-    country, country_found = None, False
-    for code, kws in COUNTRY_KEYWORDS.items():
-        if any(k in t for k in kws):
-            country, country_found = code, True
-            break
-    if not country_found:
-        country = 'EG'
-    return sector, country, sector_found, country_found
+    return prod_agent_a1_parse(idea_text)
 
 
 def enhanced_regime(svm_regime, svm_conf, inflation, gdp_growth,
                     macro_friction, velocity_yoy):
-    if gdp_growth > 3.5 and inflation < 8 and velocity_yoy > 0.15:
-        margin = min((gdp_growth - 3.5) / 4.0,
-                     (8 - inflation) / 8.0,
-                     (velocity_yoy - 0.15) / 0.25)
-        conf = float(np.clip(0.65 + margin * 0.30, 0.60, 0.95))
-        return 'GROWTH_MARKET', conf
-    if gdp_growth > 2.0 and inflation < 10 and macro_friction < 10:
-        margin = min((gdp_growth - 2.0) / 4.0,
-                     (10 - inflation) / 10.0,
-                     (10 - macro_friction) / 15.0)
-        conf = float(np.clip(0.60 + margin * 0.30, 0.55, 0.90))
-        return 'EMERGING_MARKET', conf
-    if gdp_growth < 0 or (inflation > 50 and macro_friction > 50):
-        severity = max(abs(min(gdp_growth, 0)) / 3.0, 0.0)
-        conf = float(np.clip(0.65 + severity * 0.25, 0.60, 0.92))
-        return 'CONTRACTING_MARKET', conf
-    if macro_friction > 30 or inflation > 25:
-        pain = max((macro_friction - 30) / 40, (inflation - 25) / 30, 0)
-        conf = float(np.clip(0.60 + pain * 0.30, 0.55, 0.92))
-        return 'HIGH_FRICTION_MARKET', conf
-    return svm_regime, svm_conf
+    return prod_enhanced_regime(
+        svm_regime, svm_conf, inflation, gdp_growth, macro_friction, velocity_yoy
+    )
 
 
 # ── TEST 1: Agent A1 Parsing ────────────────────────────────

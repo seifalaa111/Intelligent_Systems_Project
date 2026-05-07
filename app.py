@@ -2,6 +2,7 @@ import streamlit as st
 import plotly.graph_objects as go
 import numpy as np
 import pickle, json, os, time, warnings, requests
+import asyncio
 from textwrap import dedent
 from dotenv import load_dotenv
 
@@ -523,6 +524,35 @@ def run_inference(sector: str, country: str, logs: list):
         'proba': dict(zip(le.classes_, proba)),
     }
 
+
+def tier_from_score(score: float) -> str:
+    if score >= 0.76:
+        return "Strong"
+    if score >= 0.60:
+        return "Moderate"
+    if score >= 0.44:
+        return "Mixed"
+    return "Weak"
+
+
+def call_backend_chat(messages: list[dict], context: dict) -> str:
+    import api as api_backend
+
+    req = api_backend.ChatRequest(
+        context=context,
+        messages=[api_backend.ChatMessage(**m) for m in messages],
+    )
+
+    try:
+        response = asyncio.run(api_backend.chat_interaction(req))
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        try:
+            response = loop.run_until_complete(api_backend.chat_interaction(req))
+        finally:
+            loop.close()
+    return response.get("reply", "").strip()
+
 # ── SIDEBAR ──────────────────────────────────────────────────
 with st.sidebar:
     st.markdown(f"""
@@ -671,10 +701,25 @@ if run and MODELS_LOADED:
         st.session_state.logs    = logs
         st.session_state.sector  = sector_key
         st.session_state.country = country_code
+        signal_tier = tier_from_score(result['tas'])
         st.session_state.chat_context = {
-            "sector": sector_key, "country": country_code,
-            "regime": result['regime'], "tas": result['tas'],
-            "implication": result['implication'], "idea": idea
+            "sector": sector_key,
+            "country": country_code,
+            "regime": result['regime'],
+            "tas_score": int(result['tas'] * 100),
+            "signal_tier": signal_tier,
+            "strategic_interpretation": result['implication'],
+            "main_risk": "",
+            "dominant_risk": "execution",
+            "idea_features": {
+                "business_model": "",
+                "target_segment": "",
+                "stage": "idea",
+                "differentiation_score": 3,
+                "competitive_intensity": "medium",
+                "regulatory_risk": "medium",
+            },
+            "idea": idea or "",
         }
         st.session_state.chat_history = [{"role": "assistant", "content": result['implication']}]
     except Exception as e:
@@ -1098,27 +1143,12 @@ if prompt := st.chat_input("Ask MIDAN about pivot strategies, risks, or validati
     st.session_state.chat_history.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.write(prompt)
-        
+
     ctx = st.session_state.chat_context
-    sys_prompt = dedent(f"""
-        You are the MIDAN AI Startup Advisor, an honest and extremely helpful VC partner.
-        Context: Sector {ctx.get('sector')} in {ctx.get('country')}. Regime: {ctx.get('regime')} (Score: {ctx.get('tas')}).
-        Original Read: {ctx.get('implication')}
-        Keep your advice highly specific, brutal but actionable. Keep responses under 4 sentences. Ask the founder targeted questions.
-    """).strip()
-    
-    groq_msgs = [{"role": "system", "content": sys_prompt}]
-    for m in st.session_state.chat_history:
-        groq_msgs.append({"role": m["role"], "content": m["content"]})
-        
     try:
-        _groq_key = os.environ.get("GROQ_API_KEY", "")
-        if not GROQ_CLIENT or not _groq_key or _groq_key == "dummy":
-            raise ValueError("Groq API not configured.")
-        resp = GROQ_CLIENT.chat.completions.create(
-            messages=groq_msgs, model="llama-3.1-8b-instant", temperature=0.5, max_tokens=250
-        )
-        reply = resp.choices[0].message.content.strip()
+        reply = call_backend_chat(st.session_state.chat_history, ctx)
+        if not reply:
+            raise ValueError("Empty reply from backend chat.")
         st.session_state.chat_history.append({"role": "assistant", "content": reply})
         with st.chat_message("assistant"):
             st.write(reply)
