@@ -1,0 +1,1644 @@
+{
+  "metadata": {
+    "generated_at": "2026-04-17T21:15:43.367610+00:00",
+    "pipeline_version": "2.0.0-phase2",
+    "total_entries": 40,
+    "sources_used": [
+      "website",
+      "insight"
+    ],
+    "schema_fields": [
+      "startup_name",
+      "primary_industry",
+      "secondary_industry",
+      "business_model",
+      "target_user",
+      "target_segment",
+      "value_proposition",
+      "pain_points",
+      "adoption_barriers",
+      "user_complaints",
+      "success_drivers",
+      "failure_reasons",
+      "differentiation",
+      "switching_cost",
+      "competition_density",
+      "signal_evidence",
+      "confidence_score",
+      "retention_proxy",
+      "onboarding_friction",
+      "monetization_strength",
+      "competition_intensity",
+      "funding_stage",
+      "market_context",
+      "system_patterns",
+      "pattern_confidence_score",
+      "source_type",
+      "source_url"
+    ],
+    "extracted_on": "2026-04-17T23:15:43.367630"
+  },
+  "startups": [
+    {
+      "startup_name": "Notion",
+      "primary_industry": "Enterprise Software",
+      "secondary_industry": "",
+      "business_model": "SaaS",
+      "target_user": "any work that repeats",
+      "target_segment": "B2B + B2C",
+      "value_proposition": "PAGE: /] The AI workspace that works for you.",
+      "pain_points": [
+        "Completes complex, multi-step tasks using context from Notion, your connected apps, and the web. Notion Agent Automat",
+        "→ \"Agents get created in three minutes between meetings, then hours of manual operational work disappear.",
+        "Verify any page Create teamspaces that can't be seen or discovered by anyone except those you add. Great for sensitive information like company",
+        "Teamspaces (open & closed) Create teamspaces that can't be seen or discovered by anyone except those you add.",
+        "ytics Designate membership admins who can add and remove members from the workspace and groups, but can't access other security & billing settings."
+      ],
+      "adoption_barriers": [],
+      "user_complaints": [],
+      "success_drivers": [
+        "ontact Sales Everything in Business, and: When using Notion AI, our LLM providers utilize zero data retention for Enterprise plan workspaces Zero data retention with LLM providers Access the Notion...",
+        "g Notion AI, our LLM providers utilize zero data retention for Enterprise plan workspaces Zero data retention with LLM providers Access the Notion SCIM API to provision and manage users and groups.",
+        "rch mode Beta Limited Trial Limited Trial When using Notion AI, our LLM providers utilize zero data retention for Enterprise plan workspaces Data retention 30 day retention 30 day retention 30 day...",
+        "using Notion AI, our LLM providers utilize zero data retention for Enterprise plan workspaces Data retention 30 day retention 30 day retention 30 day retention Zero data retention Does work for you.",
+        "our LLM providers utilize zero data retention for Enterprise plan workspaces Data retention 30 day retention 30 day retention 30 day retention Zero data retention Does work for you."
+      ],
+      "failure_reasons": [],
+      "differentiation": "A tool unlike anything we have seen before. Play Uh-oh! It looks like your ad blocker is preventing the video from playing.",
+      "switching_cost": "",
+      "competition_density": "",
+      "signal_evidence": {},
+      "confidence_score": 0.4,
+      "retention_proxy": "",
+      "onboarding_friction": "",
+      "monetization_strength": "",
+      "competition_intensity": "",
+      "funding_stage": "",
+      "market_context": "",
+      "source_type": "insight",
+      "source_url": "https://www.notion.so",
+      "_sources": [
+        "insight"
+      ],
+      "system_patterns": [],
+      "pattern_confidence_score": 0.0
+    },
+    {
+      "startup_name": "Slack",
+      "primary_industry": "Enterprise Software",
+      "secondary_industry": "Communication",
+      "business_model": "SaaS",
+      "target_user": "you do",
+      "target_segment": "B2C",
+      "value_proposition": "PAGE: /] Slack | AI Work Platform & Productivity Tools Skip to main content All your people and AI agents working together.",
+      "pain_points": [
+        "Careers at Slack offer all kinds of opportunities and a simpler, more pleasant, more productive working life."
+      ],
+      "adoption_barriers": [],
+      "user_complaints": [],
+      "success_drivers": [],
+      "failure_reasons": [],
+      "differentiation": "\" Guillermo Rauch, CEO, Vercel The most innovative companies run their business in Slack. How OpenAI Connects with Customers and Expands ChatGPT with Slack Slack helps Bo",
+      "switching_cost": "",
+      "competition_density": "",
+      "signal_evidence": {
+        "retention_proxy": [
+          "Internal survey of weekly active Slack users in the US, UK, CA, and AU. Total n = 2,410. 5 G2 Winter 2026 market reports for work ma",
+          "Slack Skip to main content 200k+ paid customers 77 of the Fortune 100 use Slack 150+ countries have daily active users in Slack Building the digital-first ecosystem for work Connect your conversations with the to"
+        ]
+      },
+      "confidence_score": 0.56,
+      "retention_proxy": "high",
+      "onboarding_friction": "",
+      "monetization_strength": "",
+      "competition_intensity": "",
+      "funding_stage": "",
+      "market_context": "",
+      "source_type": "insight",
+      "source_url": "https://slack.com",
+      "_sources": [
+        "insight"
+      ],
+      "system_patterns": [],
+      "pattern_confidence_score": 0.0
+    },
+    {
+      "startup_name": "Linear",
+      "primary_industry": "Enterprise Software",
+      "secondary_industry": "",
+      "business_model": "",
+      "target_user": "planning and building products",
+      "target_segment": "B2B",
+      "value_proposition": "Purpose-built for planning and building products with AI agents.",
+      "pain_points": [
+        "om GraphQL API 61039 MKT-1028 Launch page assets Design ENG-2187 Prevent duplicate ride requests on poor."
+      ],
+      "adoption_barriers": [
+        "Complex or opaque pricing -- requires sales contact",
+        "Data migration required from existing tools",
+        "Learning curve -- onboarding/training needed"
+      ],
+      "user_complaints": [],
+      "success_drivers": [],
+      "failure_reasons": [],
+      "differentiation": "",
+      "switching_cost": "high",
+      "competition_density": "",
+      "signal_evidence": {
+        "switching_cost": [
+          "Linear Agent (beta) Linear Agent automations (beta) Triage Intelligence Issue discussion summaries Integrations Integrations Support integrations Microsoft Teams integration Multiple tenants Salesforce integrat",
+          "riage Intelligence Linear Agent automations (beta) Linear Insights Linear Asks Zendesk and Intercom integrations Get started Get started Contact sales Enterprise Custom Annual billing only All Business features"
+        ],
+        "onboarding_friction": [
+          "2025 Aug 2025 Nov 2025 Cursor Codex No Agent Projects UI refresh At risk By romain · 1 day ago iOS implementation is mostly complete, but Android updates are still work in progress Risk of timeline slip if remaini",
+          "Get started Contact sales Open app Download [PAGE: /about] About - Linear Skip to content → Building tools for the next era o"
+        ]
+      },
+      "confidence_score": 0.72,
+      "retention_proxy": "",
+      "onboarding_friction": "high",
+      "monetization_strength": "",
+      "competition_intensity": "",
+      "funding_stage": "",
+      "market_context": "",
+      "source_type": "website",
+      "source_url": "https://linear.app",
+      "_sources": [
+        "website"
+      ],
+      "system_patterns": [],
+      "pattern_confidence_score": 0.0
+    },
+    {
+      "startup_name": "Figma",
+      "primary_industry": "Design",
+      "secondary_industry": "",
+      "business_model": "",
+      "target_user": "",
+      "target_segment": "B2B",
+      "value_proposition": "Figma Make anything possible, all in Figma Make anything possible, all in Figma Make anything possible, all in Figma ​ Get started Slide 1 of 8 1 of 8 Figma lets you turn big ideas into real products.",
+      "pain_points": [
+        "Transforms Design complex shapes or simple patterns more efficiently. Dev Mode View annotations and measurements Developers c",
+        "igma Draw Figma Sites Dev Mode FigJam Figma Slides Figma Buzz Prices in USD Plans Starter Free Free limited access to Figma products Select plan Why choose Starter? Why choose Starter? Includes:...",
+        "ee limited access to Figma products Select plan Why choose Starter? Why choose Starter? Includes: Unlimited drafts UI kits and templates 150 AI credits/day, up to 500 AI credits/mo Professional...",
+        "choose Professional? Choose Professional if you: Are a professional or part of a small team Need unlimited files and projects for a single team Want advanced prototyping tools and easier dev handoff...",
+        "d projects for a single team Want advanced prototyping tools and easier dev handoff Key features: Unlimited files and projects Team-wide design libraries Advanced Dev Mode inspection and MCP Server..."
+      ],
+      "adoption_barriers": [],
+      "user_complaints": [],
+      "success_drivers": [
+        "FigJam Engagement features Use stamps, stickers, and emotes to keep participants engaged. Music player Play music wit",
+        "f you: Are a business designing for multiple products or brands Need enterprise-level security Want scalable design systems and simpler admin management Key features: Custom team workspaces Design...",
+        "Choose videos from the Figma Community Upload your own videos Responsive prototyping viewer Experience your designs on any screen size wit",
+        "Community templates Kickoff conversations with hundreds of pre-made templates. Variables Define color, number",
+        "ugins Use plugins to customize Dev Mode workflows, code gen, and mark/view designs as ready for dev Community plugins only VS Code extension Run Dev Mode directly in VS Code."
+      ],
+      "failure_reasons": [],
+      "differentiation": "Learn more Governance+ Manage your organization's unique security requirements with advanced access, sharing, and compliance tools.",
+      "switching_cost": "",
+      "competition_density": "",
+      "signal_evidence": {
+        "retention_proxy": [
+          "Exports Export your file as PNG, JPG, PDF, or CSV (sticky notes only for CSV). Unlimited file storage Unlimited cloud storage; access files from anywhere.",
+          "FigJam Engagement features Use stamps, stickers, and emotes to keep participants engaged. Music player Play music wit"
+        ]
+      },
+      "confidence_score": 0.56,
+      "retention_proxy": "high",
+      "onboarding_friction": "",
+      "monetization_strength": "",
+      "competition_intensity": "",
+      "funding_stage": "",
+      "market_context": "",
+      "source_type": "insight",
+      "source_url": "https://www.figma.com",
+      "_sources": [
+        "insight"
+      ],
+      "system_patterns": [],
+      "pattern_confidence_score": 0.0
+    },
+    {
+      "startup_name": "Vercel",
+      "primary_industry": "Enterprise Software",
+      "secondary_industry": "",
+      "business_model": "SaaS",
+      "target_user": "",
+      "target_segment": "B2B",
+      "value_proposition": "PAGE: /] Vercel: Build and deploy the best web experiences with the AI Cloud Skip to content Build and deploy on the AI Cloud.",
+      "pain_points": [
+        "0035 per CPU minute Custom Deployments Unlimited Deployments Environment Variables Instant Rollback Multi-tenant support Skew Protection - Rolling R",
+        "Releases - 1 project included Custom Team Seats Developer seat 1 $20 / month Custom Viewer seat - Unlimited Custom Billing seat - 1 Custom Vercel Toolbar Comments Layout Shift Tool Draft Mode...",
+        "ustom Vercel Toolbar Comments Layout Shift Tool Draft Mode Productivity Integrations Previewers - Unlimited Unlimited Accessibility Audit Flags Explorer 150 overrides / month 150 overrides / month...",
+        "el Toolbar Comments Layout Shift Tool Draft Mode Productivity Integrations Previewers - Unlimited Unlimited Accessibility Audit Flags Explorer 150 overrides / month 150 overrides / month then $250...",
+        "ited Accessibility Audit Flags Explorer 150 overrides / month 150 overrides / month then $250 for unlimited 150 overrides / month then $250 for unlimited Vercel Flags Beta 10K requests / month $0."
+      ],
+      "adoption_barriers": [],
+      "user_complaints": [],
+      "success_drivers": [
+        "20 per 1M events Custom Extended retention - 30 days 30 days Advanced metrics - Query engine - AI query prompting - Speed Insights 10,000 even",
+        "TypeScript v0 Build applications with AI CI/CD Helping teams ship 6× faster Content Delivery Fast, scalable, and reliable Fluid Compute Servers, in serverless form Workflow Long-running workflows at...",
+        "verless form Workflow Long-running workflows at scale Observability Trace every step Bot Management Scalable bot protection BotID Invisible CAPTCHA Platform Security DDoS Protection, Firewall Web...",
+        "ed $2 per 1M routed requests Custom Regional pricing Managed Infrastructure Vercel Compute Dynamic, scalable functions to power your framework of choice.",
+        "event Docs Vercel documentation Academy Linear courses to level up Knowledge Base Find help quickly Community Join the conversation Next."
+      ],
+      "failure_reasons": [],
+      "differentiation": "",
+      "switching_cost": "",
+      "competition_density": "",
+      "signal_evidence": {},
+      "confidence_score": 0.4,
+      "retention_proxy": "",
+      "onboarding_friction": "",
+      "monetization_strength": "",
+      "competition_intensity": "",
+      "funding_stage": "",
+      "market_context": "",
+      "source_type": "insight",
+      "source_url": "https://vercel.com",
+      "_sources": [
+        "insight"
+      ],
+      "system_patterns": [],
+      "pattern_confidence_score": 0.0
+    },
+    {
+      "startup_name": "Stripe",
+      "primary_industry": "Enterprise Software",
+      "secondary_industry": "Fintech",
+      "business_model": "SaaS",
+      "target_user": "",
+      "target_segment": "B2B",
+      "value_proposition": "PAGE: /] Stripe | Financial Infrastructure to Grow Your Revenue Global GDP running on Stripe: Financial infrastructure to grow your revenue.",
+      "pain_points": [
+        "Get tailored guidance from Stripe on implementation, complex integrations, or major migrations. View services Stripe-certified experts.",
+        "5% for manually entered cards + 1.5% for international cards + 1% if currency conversion is required Autofill you",
+        "Fighting rare dispute types may incur network fees Fee for countering disputes manually $15.00 fee charged when you submit evidence If you win, the fee is returned.",
+        "Get rich fraud insights for more efficient and accurate manual reviews. Fraud protection powered by billions of data points across the Stripe network.",
+        "00 Stripe Reader S700 Unlimited cellular data usage on enabled readers. Apps on Device data usage limited to 10 GB per reader per m"
+      ],
+      "adoption_barriers": [],
+      "user_complaints": [],
+      "success_drivers": [
+        "Access financial benefits, a focused community, and expert resources to help you grow your business. Apply now Stripe Atlas."
+      ],
+      "failure_reasons": [],
+      "differentiation": "l transaction for domestic cards Custom Design a custom package- available for businesses with large payments volume or unique business models.",
+      "switching_cost": "",
+      "competition_density": "",
+      "signal_evidence": {
+        "retention_proxy": [
+          "Increase revenue and reduce churn with Smart Retries and recovery workflow automations. Save engineering time with no-code tools or o",
+          "00 per month Learn more Automatically generate an invoice after a one-time purchase. 0.4% on transaction total $2."
+        ]
+      },
+      "confidence_score": 0.56,
+      "retention_proxy": "low",
+      "onboarding_friction": "",
+      "monetization_strength": "",
+      "competition_intensity": "",
+      "funding_stage": "",
+      "market_context": "",
+      "source_type": "insight",
+      "source_url": "https://stripe.com",
+      "_sources": [
+        "insight"
+      ],
+      "system_patterns": [],
+      "pattern_confidence_score": 0.0
+    },
+    {
+      "startup_name": "Airtable",
+      "primary_industry": "Enterprise Software",
+      "secondary_industry": "",
+      "business_model": "Freemium",
+      "target_user": "long-term success",
+      "target_segment": "B2B",
+      "value_proposition": "Apps & Agents - Airtable All your teams, all their workflows-connected in one workspace Build AI-powered workflows that unify data, maximize collaboration, and set your teams up for long-term success.",
+      "pain_points": [
+        "\"Airtable makes it easy to deliver AI insights to every team quickly and without complex builds.\" Angela Yanes Director of Product Operations, eBay Explore all customer stories Start build",
+        "tomatically synced across every workflow and every place that data appears, eliminating the need to manually update information.",
+        "perations platform - Airtable Used by more than 500,000 organizations around the world Legacy tools can't keep up with today's pace of change.",
+        "As part of the Enterprise Scale plan, an organization has the ability to create unlimited org units, workspaces and bases within their organization."
+      ],
+      "adoption_barriers": [],
+      "user_complaints": [],
+      "success_drivers": [
+        "Learn more The power of AI with the industrial-grade platform your business demands Scalable infrastructure HyperDB with record limits in the hundreds of millions Scale workflows to tens of th"
+      ],
+      "failure_reasons": [],
+      "differentiation": "",
+      "switching_cost": "",
+      "competition_density": "",
+      "signal_evidence": {},
+      "confidence_score": 0.4,
+      "retention_proxy": "",
+      "onboarding_friction": "",
+      "monetization_strength": "",
+      "competition_intensity": "",
+      "funding_stage": "",
+      "market_context": "",
+      "source_type": "insight",
+      "source_url": "https://www.airtable.com",
+      "_sources": [
+        "insight"
+      ],
+      "system_patterns": [],
+      "pattern_confidence_score": 0.0
+    },
+    {
+      "startup_name": "Calendly",
+      "primary_industry": "Enterprise Software",
+      "secondary_industry": "Communication",
+      "business_model": "Freemium",
+      "target_user": "individual users, and powerful enough to meet the needs of enterprise organizati",
+      "target_segment": "B2B",
+      "value_proposition": "Calendly makes scheduling simple Calendlyâs easy enough for individual users, and powerful enough to meet the needs of enterprise organizations â including 86% of the Fortune 500 companies.",
+      "pain_points": [
+        "When it came time to look at a more complex routing solution, we knew we were going to put Calendly at the top of our list.",
+        "professionals and small teams $10 /seat/mo Save 16% Try for free Free features, plus: Scheduling Unlimited event types Connect multiple calendars Connect Hubspot, Mailchimp Connect Stripe, Paypal...",
+        "Â /seat/mo Try for free Enterprise Contact us Contact sales Scheduling One-on-one meeting types 1 Unlimited Unlimited Unlimited Connect calendars 1 6 6 6 Unlimited meetings Customize your booking...",
+        "Try for free Enterprise Contact us Contact sales Scheduling One-on-one meeting types 1 Unlimited Unlimited Unlimited Connect calendars 1 6 6 6 Unlimited meetings Customize your booking link Mobile...",
+        "ree Enterprise Contact us Contact sales Scheduling One-on-one meeting types 1 Unlimited Unlimited Unlimited Connect calendars 1 6 6 6 Unlimited meetings Customize your booking link Mobile app &..."
+      ],
+      "adoption_barriers": [],
+      "user_complaints": [],
+      "success_drivers": [
+        "control and account oversight Security and legal reviews Business Support Help center and Calendly community access 24/7 Email support 24/7 Chat support Phone support Dedicated account support...",
+        "r meeting availability Multi-person meeting types Unlimited Unlimited Unlimited Round robin meeting distribution Unlimited Unlimited Share availability from contact profiles Book meetings on behalf...",
+        "cheduling activity Control your meeting availability Multi-person meeting types Round robin meeting distribution Share availability from contact profiles Book meetings on behalf of others Automate..."
+      ],
+      "failure_reasons": [],
+      "differentiation": "",
+      "switching_cost": "",
+      "competition_density": "",
+      "signal_evidence": {},
+      "confidence_score": 0.4,
+      "retention_proxy": "",
+      "onboarding_friction": "",
+      "monetization_strength": "",
+      "competition_intensity": "",
+      "funding_stage": "",
+      "market_context": "",
+      "source_type": "insight",
+      "source_url": "https://calendly.com",
+      "_sources": [
+        "insight"
+      ],
+      "system_patterns": [],
+      "pattern_confidence_score": 0.0
+    },
+    {
+      "startup_name": "Loom",
+      "primary_industry": "Enterprise Software",
+      "secondary_industry": "",
+      "business_model": "SaaS",
+      "target_user": "Mac and PC | Loom Skip to content Millions of people across 400,000 companies ch",
+      "target_segment": "B2B",
+      "value_proposition": "PC | Loom Skip to content Millions of people across 400,000 companies choose Loom Get Loom for free View more Learn more Open in new window Record now Your browser does not support the video tag.",
+      "pain_points": [
+        "Get started with video communication $0 Sign up Key Features 25 videos 5 minute screen recordings Unlimited meeting length NEW Transcriptions in 50+ languages Comments and emoji reactions See all...",
+        "rkspace Members & Videos Up to 50 Members Up to 25 videos/person 5 min per video recording length Unlimited screenshots Team Workspace Personal Library Shared Library Team Library Video Recording...",
+        "mbed) Intercom, Zendesk, Dropbox, GitLab, and more (embed) Business Move work forward faster with unlimited videos and basic editing $18 per user / month Try for free Everything in Starter, and...",
+        "h unlimited videos and basic editing $18 per user / month Try for free Everything in Starter, and Unlimited videos Unlimited recording time Basic waveform editing Remove Loom branding Upload and...",
+        "s and basic editing $18 per user / month Try for free Everything in Starter, and Unlimited videos Unlimited recording time Basic waveform editing Remove Loom branding Upload and download videos See..."
+      ],
+      "adoption_barriers": [],
+      "user_complaints": [],
+      "success_drivers": [
+        "provisioning (SCIM) User roles and management Activity log and content activity report Custom data retention policies Support Priority support Dedicated support Dedicated account manager Custom...",
+        "rship of content Included User roles and management Included Included Included Included Custom data retention policies Included Included Video download restriction Included Included Support Support...",
+        "ders Search Video uploads 1 all-company space + 3 additional spaces Video Analytics Viewer insights Engagement insights Exportable engagement insights Video Interaction Emoji reactions Video comments...",
+        "-company space + 3 additional spaces Video Analytics Viewer insights Engagement insights Exportable engagement insights Video Interaction Emoji reactions Video comments Video transcriptions Closed...",
+        "ers Search Video uploads Unlimited spaces + advanced admin controls Video Analytics Viewer insights Engagement insights Exportable engagement insights Video Interaction Emoji reactions Video comments..."
+      ],
+      "failure_reasons": [],
+      "differentiation": "",
+      "switching_cost": "",
+      "competition_density": "",
+      "signal_evidence": {
+        "retention_proxy": [
+          "ders Search Video uploads 1 all-company space + 3 additional spaces Video Analytics Viewer insights Engagement insights Exportable engagement insights Video Interaction Emoji reactions Video comments Video tran",
+          "David Okuinev Co-CEO , Typeform My new daily email habit. Begin writing an email. Get to the second paragraph and think 'what a time suck."
+        ]
+      },
+      "confidence_score": 0.56,
+      "retention_proxy": "high",
+      "onboarding_friction": "",
+      "monetization_strength": "",
+      "competition_intensity": "",
+      "funding_stage": "",
+      "market_context": "",
+      "source_type": "insight",
+      "source_url": "https://www.loom.com",
+      "_sources": [
+        "insight"
+      ],
+      "system_patterns": [],
+      "pattern_confidence_score": 0.0
+    },
+    {
+      "startup_name": "Dazo",
+      "primary_industry": "Consumer",
+      "secondary_industry": "",
+      "business_model": "",
+      "target_user": "Startup Founders 90% of startups fail",
+      "target_segment": "B2B",
+      "value_proposition": "Dazo India's first curated food demand platform Startup Cemetery Ad Don't be the average security professional that spends 4,300 hours annually to maintain compliance.",
+      "pain_points": [
+        "and shut down? Two of the main reasons the company decided to shut shop were fierce competition and lack of funding.",
+        "o Shuts Down Operations BusinessStandard : Bengaluru-based food-tech startup Dazo shuts down due to lack of funding Crunchbase : Dazo"
+      ],
+      "adoption_barriers": [],
+      "user_complaints": [],
+      "success_drivers": [],
+      "failure_reasons": [
+        "s the company decided to shut shop were fierce competition and lack of funding"
+      ],
+      "differentiation": "",
+      "switching_cost": "",
+      "competition_density": "",
+      "signal_evidence": {},
+      "confidence_score": 0.4,
+      "retention_proxy": "",
+      "onboarding_friction": "",
+      "monetization_strength": "",
+      "competition_intensity": "",
+      "funding_stage": "Acquired",
+      "market_context": "",
+      "source_type": "insight",
+      "source_url": "https://www.failory.com/cemetery/dazo",
+      "_sources": [
+        "insight"
+      ],
+      "system_patterns": [],
+      "pattern_confidence_score": 0.0
+    },
+    {
+      "startup_name": "Yik Yak",
+      "primary_industry": "Consumer",
+      "secondary_industry": "Media",
+      "business_model": "",
+      "target_user": "Startup Founders 90% of startups fail",
+      "target_segment": "B2B",
+      "value_proposition": "Yik Yak Anonymous location-based social network Startup Cemetery Ad Don't be the average security professional that spends 4,300 hours annually to maintain compliance.",
+      "pain_points": [
+        "The common way to deal with it is automatic or even better - manual moderation. For example, Reddit has volunteer moderators on most communities on the site (subreddit"
+      ],
+      "adoption_barriers": [],
+      "user_complaints": [],
+      "success_drivers": [
+        "e interesting question is why Yik Yak shrunk in popularity so rapidly after it had shown an obvious product-market fit.",
+        "d to manage moderation and increased digital security which ultimately made users lose interest and engagement in the platform.",
+        "The choice which one to use, however, would mostly depend on which app is most popular in your area/community.",
+        "This makes it more useful for people that move and travel a lot rather than for members of a local community like a school or college.",
+        "The changes included new \"community guardrails\" to prohibit \"bullying messages,\" threats. ‍"
+      ],
+      "failure_reasons": [],
+      "differentiation": "Each user had Yakarma, which quantified the success of their posts, not unlike Reddit's karma system. Yik Yak enjoyed a lot of popularity especially in schools and college campuses throughout the US",
+      "switching_cost": "",
+      "competition_density": "",
+      "signal_evidence": {},
+      "confidence_score": 0.4,
+      "retention_proxy": "",
+      "onboarding_friction": "",
+      "monetization_strength": "",
+      "competition_intensity": "",
+      "funding_stage": "Acquired",
+      "market_context": "",
+      "source_type": "insight",
+      "source_url": "https://www.failory.com/cemetery/yik-yak",
+      "_sources": [
+        "insight"
+      ],
+      "system_patterns": [],
+      "pattern_confidence_score": 0.0
+    },
+    {
+      "startup_name": "Sharingear",
+      "primary_industry": "",
+      "secondary_industry": "",
+      "business_model": "Marketplace",
+      "target_user": "musicians to rent their instruments Startup Cemetery Ad Don't be the average sec",
+      "target_segment": "B2B",
+      "value_proposition": "Sharingear Marketplace for musicians to rent their instruments Startup Cemetery Ad Don't be the average security professional that spends 4,300 hours annually to maintain compliance.",
+      "pain_points": [
+        "Second, there was a lack of a good product-market fit. Musicians might have told the founder that Sharingear was a great and fu"
+      ],
+      "adoption_barriers": [],
+      "user_complaints": [],
+      "success_drivers": [
+        "Second, there was a lack of a good product-market fit. Musicians might have told the founder that Sharingear was a great and functional product but cash-"
+      ],
+      "failure_reasons": [],
+      "differentiation": "",
+      "switching_cost": "",
+      "competition_density": "",
+      "signal_evidence": {},
+      "confidence_score": 0.4,
+      "retention_proxy": "",
+      "onboarding_friction": "",
+      "monetization_strength": "",
+      "competition_intensity": "",
+      "funding_stage": "",
+      "market_context": "",
+      "source_type": "insight",
+      "source_url": "https://www.failory.com/cemetery/sharingear",
+      "_sources": [
+        "insight"
+      ],
+      "system_patterns": [],
+      "pattern_confidence_score": 0.0
+    },
+    {
+      "startup_name": "ScaleFactor",
+      "primary_industry": "Fintech",
+      "secondary_industry": "Enterprise Software",
+      "business_model": "Fintech",
+      "target_user": "SMEs Startup Cemetery Ad Don't be the average security professional that spends",
+      "target_segment": "B2B",
+      "value_proposition": "ScaleFactor Finance and accounting software for SMEs Startup Cemetery Ad Don't be the average security professional that spends 4,300 hours annually to maintain compliance.",
+      "pain_points": [
+        "Laying a carefully thought out down-to-earth slow-and-steady business plan will simply fail to attract any startup funding simply because such compan",
+        "me invests in such a company, a lot of other investors crowd together because of the simple fear of missing out.",
+        "Category: Finances Country: United States Started: 2014 BUSINESS FAILURE Outcome: Shut Down Cause: Poor Product Closed: 2020 FOUNDERS & EMPLOYEES Number of Founders: 1 Name of Founders: Kurt Rathmann...",
+        "You should know they've flushed it down the toilet with poor product and poor service,\" - Lindsey Reinders, source Why do VCs throw millions in obviously bad co"
+      ],
+      "adoption_barriers": [],
+      "user_complaints": [],
+      "success_drivers": [
+        "After all, ScaleFactor raised money like a tech startup, so they needed to develop a scalable tech product rather than to refine and grow their service business."
+      ],
+      "failure_reasons": [],
+      "differentiation": "ople concluding that in the world of startups it's easier to make money by selling dreams to VCs rather than by selling innovative products to customers.",
+      "switching_cost": "",
+      "competition_density": "",
+      "signal_evidence": {},
+      "confidence_score": 0.4,
+      "retention_proxy": "",
+      "onboarding_friction": "",
+      "monetization_strength": "",
+      "competition_intensity": "",
+      "funding_stage": "Pre Seed",
+      "market_context": "the solution you are trying to build",
+      "source_type": "insight",
+      "source_url": "https://www.failory.com/cemetery/scalefactor",
+      "_sources": [
+        "insight"
+      ],
+      "system_patterns": [],
+      "pattern_confidence_score": 0.0
+    },
+    {
+      "startup_name": "Rafter",
+      "primary_industry": "Edtech",
+      "secondary_industry": "",
+      "business_model": "Edtech",
+      "target_user": "schools Startup Cemetery Ad Don't be the average security professional that spen",
+      "target_segment": "B2B",
+      "value_proposition": "Rafter Textbook and course material provider for schools Startup Cemetery Ad Don't be the average security professional that spends 4,300 hours annually to maintain compliance.",
+      "pain_points": [],
+      "adoption_barriers": [],
+      "user_complaints": [],
+      "success_drivers": [],
+      "failure_reasons": [],
+      "differentiation": "",
+      "switching_cost": "",
+      "competition_density": "",
+      "signal_evidence": {},
+      "confidence_score": 0.4,
+      "retention_proxy": "",
+      "onboarding_friction": "",
+      "monetization_strength": "",
+      "competition_intensity": "",
+      "funding_stage": "Acquired",
+      "market_context": "",
+      "source_type": "insight",
+      "source_url": "https://www.failory.com/cemetery/rafter",
+      "_sources": [
+        "insight"
+      ],
+      "system_patterns": [],
+      "pattern_confidence_score": 0.0
+    },
+    {
+      "startup_name": "Toys R Us",
+      "primary_industry": "Marketing",
+      "secondary_industry": "Consumer",
+      "business_model": "E-Commerce",
+      "target_user": "Startup Founders 90% of startups fail",
+      "target_segment": "B2B",
+      "value_proposition": "Toys R Us Toy, baby, and clothing retail store Startup Cemetery Ad Don't be the average security professional that spends 4,300 hours annually to maintain compliance.",
+      "pain_points": [
+        "Another factor that contributed to Toys R Us's decline was its slow adoption of digital marketing and customer loyalty programs.",
+        "As a result of the lack of revenue available to reinvest in their stores and operations, the shopping experience for customers",
+        "Customers who continued to shop at Toys R Us stores complained of poor merchandising, lack of employees to help them, and just a general decline in the quality of the shopping experience, so ma",
+        "This limited the company's ability to retain customers and collect valuable data on buying habits, making it har"
+      ],
+      "adoption_barriers": [],
+      "user_complaints": [],
+      "success_drivers": [],
+      "failure_reasons": [
+        "With Toys R Us? As we touched on above, Toys R Us began dealing with a series of struggles, mainly related to market competition, towards the end of t"
+      ],
+      "differentiation": "In 1957, he started a separate company focused solely on toys, thus leading to the founding of the first Toys R Us. Over the next few decades, Lazarus was able to dominate the toy sales market by negotiating lucrative contracts",
+      "switching_cost": "",
+      "competition_density": "",
+      "signal_evidence": {},
+      "confidence_score": 0.4,
+      "retention_proxy": "",
+      "onboarding_friction": "",
+      "monetization_strength": "",
+      "competition_intensity": "",
+      "funding_stage": "Acquired",
+      "market_context": "traditionally heavily reliant on holiday season sales for profits, and more and more parents were giving their children video games and other electronics instead of toys at Christmas",
+      "source_type": "insight",
+      "source_url": "https://www.failory.com/cemetery/toys-r-us",
+      "_sources": [
+        "insight"
+      ],
+      "system_patterns": [],
+      "pattern_confidence_score": 0.0
+    },
+    {
+      "startup_name": "Houseparty",
+      "primary_industry": "Communication",
+      "secondary_industry": "",
+      "business_model": "",
+      "target_user": "Startup Founders 90% of startups fail",
+      "target_segment": "B2B",
+      "value_proposition": "Houseparty Video-based social media app Startup Cemetery Ad Don't be the average security professional that spends 4,300 hours annually to maintain compliance.",
+      "pain_points": [
+        "Rapid growth was difficult to sustain at the start so to tackle scaling challenges, the founders moved engineering from Israel",
+        "But it was too little too late - growth of the app was slowing and funding was running out, and the company ended up selling to Epic Games that year for $35 mi",
+        "‍ Who Bought Houseparty? Epic Games bought Houseparty in 2019, as the company's growth was slowing and funding was running out, for $35 million.",
+        "egory: Social Media Country: United States Started: 2011 BUSINESS FAILURE Outcome: Shut Down Cause: Lack of Focus Closed: 2021 FOUNDERS & EMPLOYEES Number of Founders: 4 Name of Founders: Ben Rubin,...",
+        "Down? Several reasons contributed to Houseparty shutting down, including the end of the pandemic, a lack of funding, and Epic Games focusing on other areas."
+      ],
+      "adoption_barriers": [],
+      "user_complaints": [],
+      "success_drivers": [
+        "\" Epic Games went on to explain that it could no longer give the app or its community the attention they deserved, which shows that its focus was on other areas, specifically the Epic G"
+      ],
+      "failure_reasons": [
+        "s behind the sale",
+        "for Houseparty shutting down"
+      ],
+      "differentiation": "Unlike other video conferencing apps that boomed in popularity during the pandemic, such as Zoom, Houseparty was not intended",
+      "switching_cost": "",
+      "competition_density": "",
+      "signal_evidence": {},
+      "confidence_score": 0.4,
+      "retention_proxy": "",
+      "onboarding_friction": "",
+      "monetization_strength": "",
+      "competition_intensity": "",
+      "funding_stage": "Seed",
+      "market_context": "",
+      "source_type": "insight",
+      "source_url": "https://www.failory.com/cemetery/houseparty",
+      "_sources": [
+        "insight"
+      ],
+      "system_patterns": [],
+      "pattern_confidence_score": 0.0
+    },
+    {
+      "startup_name": "Zirtual",
+      "primary_industry": "",
+      "secondary_industry": "",
+      "business_model": "",
+      "target_user": "busy professionals Startup Cemetery Ad Don't be the average security professiona",
+      "target_segment": "B2B",
+      "value_proposition": "Zirtual Dedicated virtual assistants for busy professionals Startup Cemetery Ad Don't be the average security professional that spends 4,300 hours annually to maintain compliance.",
+      "pain_points": [],
+      "adoption_barriers": [],
+      "user_complaints": [],
+      "success_drivers": [
+        "ing emails, making arrangements for travel but also did research and were recruited to build social engagement."
+      ],
+      "failure_reasons": [],
+      "differentiation": "",
+      "switching_cost": "",
+      "competition_density": "",
+      "signal_evidence": {},
+      "confidence_score": 0.4,
+      "retention_proxy": "",
+      "onboarding_friction": "",
+      "monetization_strength": "",
+      "competition_intensity": "",
+      "funding_stage": "Acquired",
+      "market_context": "",
+      "source_type": "insight",
+      "source_url": "https://www.failory.com/cemetery/zirtual",
+      "_sources": [
+        "insight"
+      ],
+      "system_patterns": [],
+      "pattern_confidence_score": 0.0
+    },
+    {
+      "startup_name": "Yogome",
+      "primary_industry": "Edtech",
+      "secondary_industry": "Enterprise Software",
+      "business_model": "Edtech",
+      "target_user": "Kids Startup Cemetery Ad Don't be the average security professional that spends",
+      "target_segment": "B2B",
+      "value_proposition": "Yogome Educational Mobile Games for Kids Startup Cemetery Ad Don't be the average security professional that spends 4,300 hours annually to maintain compliance.",
+      "pain_points": [
+        "It is not difficult to see, however, how some of the more desperate and morally flexible founders would be tempted to n",
+        "However, due diligence is costly, and bearing in mind that almost all startups fail because of lack of product-market fit rather than fraud, it makes sense for VCs not to over-invest in searching for..."
+      ],
+      "adoption_barriers": [],
+      "user_complaints": [],
+      "success_drivers": [
+        "ever, due diligence is costly, and bearing in mind that almost all startups fail because of lack of product-market fit rather than fraud, it makes sense for VCs not to over-invest in searching for..."
+      ],
+      "failure_reasons": [],
+      "differentiation": "A lot of people would argue that this is not a bug in the system, but rather a logical outcome of the innovative startup environment.",
+      "switching_cost": "",
+      "competition_density": "",
+      "signal_evidence": {},
+      "confidence_score": 0.4,
+      "retention_proxy": "",
+      "onboarding_friction": "",
+      "monetization_strength": "",
+      "competition_intensity": "",
+      "funding_stage": "Pre Seed",
+      "market_context": "",
+      "source_type": "insight",
+      "source_url": "https://www.failory.com/cemetery/yogome",
+      "_sources": [
+        "insight"
+      ],
+      "system_patterns": [],
+      "pattern_confidence_score": 0.0
+    },
+    {
+      "startup_name": "Zulily",
+      "primary_industry": "",
+      "secondary_industry": "",
+      "business_model": "E-Commerce",
+      "target_user": "Startup Founders 90% of startups fail",
+      "target_segment": "B2B",
+      "value_proposition": "Zulily Online retailer that offered daily deals Startup Cemetery Ad Don't be the average security professional that spends 4,300 hours annually to maintain compliance.",
+      "pain_points": [
+        "Why did Zulily fail and shut down? The main culprit for the downfall of the popularity of Zulily is poor marketing and user-attention strategies, compounded by significant financial issues that...",
+        "rices, there would often be longer than expected delivery times to customers which also earned them poor reviews.",
+        "The financial distress became too overwhelming to continue operations, resulting in the shutdown of the business."
+      ],
+      "adoption_barriers": [],
+      "user_complaints": [],
+      "success_drivers": [
+        "‍ Go on Reading Inc : How Zulily's Unique Distribution Model Broke Down Proactive Content : The Overlooked Reason for zulily's Slide Crunchbase : Zulily"
+      ],
+      "failure_reasons": [],
+      "differentiation": "‍ Go on Reading Inc : How Zulily's Unique Distribution Model Broke Down Proactive Content : The Overlooked Reason for zulily's Slide Crunchbase : Zulily",
+      "switching_cost": "",
+      "competition_density": "",
+      "signal_evidence": {},
+      "confidence_score": 0.4,
+      "retention_proxy": "",
+      "onboarding_friction": "",
+      "monetization_strength": "",
+      "competition_intensity": "",
+      "funding_stage": "",
+      "market_context": "",
+      "source_type": "insight",
+      "source_url": "https://www.failory.com/cemetery/zulily",
+      "_sources": [
+        "insight"
+      ],
+      "system_patterns": [],
+      "pattern_confidence_score": 0.0
+    },
+    {
+      "startup_name": "Netscape",
+      "primary_industry": "Enterprise Software",
+      "secondary_industry": "",
+      "business_model": "",
+      "target_user": "Startup Founders 90% of startups fail",
+      "target_segment": "B2B",
+      "value_proposition": "Netscape Developed enterprise software solutions Startup Cemetery Ad Don't be the average security professional that spends 4,300 hours annually to maintain compliance.",
+      "pain_points": [
+        "egory: Productivity Country: United States Started: 1994 BUSINESS FAILURE Outcome: Shut Down Cause: Poor Product Closed: 2008 FOUNDERS & EMPLOYEES Number of Founders: 3 Name of Founders: James Clark,..."
+      ],
+      "adoption_barriers": [],
+      "user_complaints": [],
+      "success_drivers": [],
+      "failure_reasons": [
+        "Lesson: the Rise and Fall of the Internet's First Start-up Quora : Why did Netscape lose ground to IE? Crunchbase : Netscape"
+      ],
+      "differentiation": "Having built a highly innovative product and having no real competition back in 1995, the company was evaluated at $3 billion since the first day it wen",
+      "switching_cost": "",
+      "competition_density": "",
+      "signal_evidence": {},
+      "confidence_score": 0.4,
+      "retention_proxy": "",
+      "onboarding_friction": "",
+      "monetization_strength": "",
+      "competition_intensity": "",
+      "funding_stage": "Ipo",
+      "market_context": "",
+      "source_type": "insight",
+      "source_url": "https://www.failory.com/cemetery/netscape",
+      "_sources": [
+        "insight"
+      ],
+      "system_patterns": [],
+      "pattern_confidence_score": 0.0
+    },
+    {
+      "startup_name": "Desti",
+      "primary_industry": "Enterprise Software",
+      "secondary_industry": "",
+      "business_model": "",
+      "target_user": "Startup Founders 90% of startups fail",
+      "target_segment": "B2B",
+      "value_proposition": "Desti Online travel guide app Startup Cemetery Ad Don't be the average security professional that spends 4,300 hours annually to maintain compliance.",
+      "pain_points": [],
+      "adoption_barriers": [],
+      "user_complaints": [],
+      "success_drivers": [],
+      "failure_reasons": [],
+      "differentiation": "",
+      "switching_cost": "",
+      "competition_density": "",
+      "signal_evidence": {},
+      "confidence_score": 0.4,
+      "retention_proxy": "",
+      "onboarding_friction": "",
+      "monetization_strength": "",
+      "competition_intensity": "",
+      "funding_stage": "Series A",
+      "market_context": "",
+      "source_type": "insight",
+      "source_url": "https://www.failory.com/cemetery/desti",
+      "_sources": [
+        "insight"
+      ],
+      "system_patterns": [],
+      "pattern_confidence_score": 0.0
+    },
+    {
+      "startup_name": "Secret",
+      "primary_industry": "Media",
+      "secondary_industry": "",
+      "business_model": "",
+      "target_user": "Startup Founders 90% of startups fail",
+      "target_segment": "B2B",
+      "value_proposition": "Secret Online platform to share personal secrets Startup Cemetery Ad Don't be the average security professional that spends 4,300 hours annually to maintain compliance.",
+      "pain_points": [],
+      "adoption_barriers": [],
+      "user_complaints": [],
+      "success_drivers": [],
+      "failure_reasons": [],
+      "differentiation": "",
+      "switching_cost": "",
+      "competition_density": "",
+      "signal_evidence": {},
+      "confidence_score": 0.4,
+      "retention_proxy": "",
+      "onboarding_friction": "",
+      "monetization_strength": "",
+      "competition_intensity": "",
+      "funding_stage": "",
+      "market_context": "100 million- because it provided an outlet to those that didn't want to be bound",
+      "source_type": "insight",
+      "source_url": "https://www.failory.com/cemetery/secret",
+      "_sources": [
+        "insight"
+      ],
+      "system_patterns": [],
+      "pattern_confidence_score": 0.0
+    },
+    {
+      "startup_name": "Daqri",
+      "primary_industry": "",
+      "secondary_industry": "",
+      "business_model": "",
+      "target_user": "Startup Founders 90% of startups fail",
+      "target_segment": "B2B",
+      "value_proposition": "Daqri Augmented Reality Experiences Startup Cemetery Ad Don't be the average security professional that spends 4,300 hours annually to maintain compliance.",
+      "pain_points": [
+        "Software & Hardware Country: United States Started: 2010 BUSINESS FAILURE Outcome: Acquired Cause: Lack of Funds Closed: 2019 FOUNDERS & EMPLOYEES Number of Founders: 3 Name of Founders: Brian...",
+        "‍ Lack of Product-Market Fit While the equipment Daqri was building was certainly an impressive piece of tech"
+      ],
+      "adoption_barriers": [],
+      "user_complaints": [],
+      "success_drivers": [
+        "‍ Lack of Product-Market Fit While the equipment Daqri was building was certainly an impressive piece of tech, it wasn't clear t",
+        "he most common reason for startup failure , and the reason why validating your idea and achieving a product-market fit is the most important thing for an early-stage startup regardless if you are...",
+        "ndustry, it's a virtual certainty that spending a lot of money on promotions is a huge waste before product-market fit.",
+        "ure for a startup that still hasn't managed to become a self-sustaining business and hasn't found a product-market fit."
+      ],
+      "failure_reasons": [
+        "Ran Out Of Cash: The AR startup ran out of money despite managing to raise $275 million from two private equity rounds led by Tarsadia Investments."
+      ],
+      "differentiation": "The fate of Daqri wasn't unique. Other extremely well-funded AR startups like Osterhout Design Group and Meta, which raised $73 million from venture ca",
+      "switching_cost": "",
+      "competition_density": "",
+      "signal_evidence": {},
+      "confidence_score": 0.4,
+      "retention_proxy": "",
+      "onboarding_friction": "",
+      "monetization_strength": "",
+      "competition_intensity": "",
+      "funding_stage": "Pre Seed",
+      "market_context": "5 million when it attracted the attention of Tarsadia",
+      "source_type": "insight",
+      "source_url": "https://www.failory.com/cemetery/daqri",
+      "_sources": [
+        "insight"
+      ],
+      "system_patterns": [],
+      "pattern_confidence_score": 0.0
+    },
+    {
+      "startup_name": "Tink Labs",
+      "primary_industry": "",
+      "secondary_industry": "",
+      "business_model": "Fintech",
+      "target_user": "Hotel Chains Startup Cemetery Ad Don't be the average security professional that",
+      "target_segment": "B2B",
+      "value_proposition": "Tink Labs Smartphone Supplier for Hotel Chains Startup Cemetery Ad Don't be the average security professional that spends 4,300 hours annually to maintain compliance.",
+      "pain_points": [
+        "Having too much money to throw in growth could make it more difficult to judge if you have good product-market fit.",
+        "Consequently, if your business plan is to grow slowly, steadily, and sustainably, you risk that another more aggressive company will overtake you.",
+        "All of this growth would be in vain if the startup can't successfully switch to profitability. Having too much money to throw in growth could make it more d"
+      ],
+      "adoption_barriers": [],
+      "user_complaints": [],
+      "success_drivers": [
+        "In the first few years, it seemed that the startup had found a great product-market fit - Tink Labs was proliferating.",
+        ") and low marginal costs (serving additional users is cheap) mean that the first business that hits product-market fit and manages to capture the market usually becomes a monopolist.",
+        "Having too much money to throw in growth could make it more difficult to judge if you have good product-market fit.",
+        "\" Loss of PMF While in 2012, the company's primary offering seemed to have good product-market fit, this didn't stay true for long.",
+        "Strong network effects (value grows with each additional user) and low marginal costs (serving additional users is cheap)"
+      ],
+      "failure_reasons": [],
+      "differentiation": "The reason is that the genuinely innovative startups are usually fighting in winner-takes-all markets. Strong network effects (value grows with each additional use",
+      "switching_cost": "",
+      "competition_density": "",
+      "signal_evidence": {},
+      "confidence_score": 0.4,
+      "retention_proxy": "",
+      "onboarding_friction": "",
+      "monetization_strength": "",
+      "competition_intensity": "",
+      "funding_stage": "",
+      "market_context": "",
+      "source_type": "insight",
+      "source_url": "https://www.failory.com/cemetery/tink-labs",
+      "_sources": [
+        "insight"
+      ],
+      "system_patterns": [],
+      "pattern_confidence_score": 0.0
+    },
+    {
+      "startup_name": "Zoomo",
+      "primary_industry": "Enterprise Software",
+      "secondary_industry": "",
+      "business_model": "Marketplace",
+      "target_user": "Startup Founders 90% of startups fail",
+      "target_segment": "B2B",
+      "value_proposition": "Zoomo P2P transactions of pre-owned cars Startup Cemetery Ad Don't be the average security professional that spends 4,300 hours annually to maintain compliance.",
+      "pain_points": [
+        "Why did Zoomo fail and shut down? What killed Zoomo wasn't lack of funding. In fact, the three Indian founders decided to close shop and return the money to investors"
+      ],
+      "adoption_barriers": [],
+      "user_complaints": [],
+      "success_drivers": [
+        "y and that they needed a more mature environment to be able to pull off a similar model and make it scalable."
+      ],
+      "failure_reasons": [],
+      "differentiation": "Unlike many car portals, Zoomo did not open up their marketplace to other car dealers. Instead, it decided to only list cars a",
+      "switching_cost": "",
+      "competition_density": "",
+      "signal_evidence": {},
+      "confidence_score": 0.4,
+      "retention_proxy": "",
+      "onboarding_friction": "",
+      "monetization_strength": "",
+      "competition_intensity": "",
+      "funding_stage": "Acquired",
+      "market_context": "relatively young in India and many of the people that would come to Zoomo's site would often be first time buyers or sellers who had close to no experience in the car transaction market",
+      "source_type": "insight",
+      "source_url": "https://www.failory.com/cemetery/zoomo",
+      "_sources": [
+        "insight"
+      ],
+      "system_patterns": [],
+      "pattern_confidence_score": 0.0
+    },
+    {
+      "startup_name": "Pixate",
+      "primary_industry": "Design",
+      "secondary_industry": "Enterprise Software",
+      "business_model": "",
+      "target_user": "mobile interaction design Startup Cemetery Ad Don't be the average security prof",
+      "target_segment": "B2B",
+      "value_proposition": "Pixate Platform for mobile interaction design Startup Cemetery Ad Don't be the average security professional that spends 4,300 hours annually to maintain compliance.",
+      "pain_points": [],
+      "adoption_barriers": [],
+      "user_complaints": [],
+      "success_drivers": [],
+      "failure_reasons": [],
+      "differentiation": "",
+      "switching_cost": "",
+      "competition_density": "",
+      "signal_evidence": {},
+      "confidence_score": 0.4,
+      "retention_proxy": "",
+      "onboarding_friction": "",
+      "monetization_strength": "",
+      "competition_intensity": "",
+      "funding_stage": "Acquired",
+      "market_context": "",
+      "source_type": "insight",
+      "source_url": "https://www.failory.com/cemetery/pixate",
+      "_sources": [
+        "insight"
+      ],
+      "system_patterns": [],
+      "pattern_confidence_score": 0.0
+    },
+    {
+      "startup_name": "Quirky",
+      "primary_industry": "",
+      "secondary_industry": "",
+      "business_model": "Hardware",
+      "target_user": "Startup Founders 90% of startups fail",
+      "target_segment": "B2C",
+      "value_proposition": "Quirky Community-led invention platform Startup Cemetery Ad Don't be the average security professional that spends 4,300 hours annually to maintain compliance.",
+      "pain_points": [
+        "After all, handling the entire production and marketing process is proven to be highly expensive. This brings us to the next big misstep.",
+        "The company had a confusing brand identity, which is a big problem for building brand loyalty and finding repeat customers.",
+        "‍ Quirky had branding trouble The lack of focus had another crucial effect. Quirky's website looked like a catalog for all kinds of random pr"
+      ],
+      "adoption_barriers": [],
+      "user_complaints": [],
+      "success_drivers": [
+        "ng an army of amateurs to approve hundreds of solutions that were often unscalable and lacked clear product-market fit unsurprisingly turned out to be a bad idea.",
+        "Having an army of amateurs to approve hundreds of solutions that were often unscalable and lacked clear product-market fit unsurprisingly turned out to be a bad idea.",
+        "Quirky Community-led invention platform Startup Cemetery Ad Don't be the average security professional that spends 4",
+        "The start-up was a community-based platform for inventors. Any amateur inventor could pitch their product ideas that were voted",
+        "Any amateur inventor could pitch their product ideas that were voted on by the community. The winning products were then designed, patented, manufactured, marketed, and sold by the company"
+      ],
+      "failure_reasons": [],
+      "differentiation": "",
+      "switching_cost": "",
+      "competition_density": "",
+      "signal_evidence": {},
+      "confidence_score": 0.4,
+      "retention_proxy": "",
+      "onboarding_friction": "",
+      "monetization_strength": "",
+      "competition_intensity": "",
+      "funding_stage": "",
+      "market_context": "",
+      "source_type": "insight",
+      "source_url": "https://www.failory.com/cemetery/quirky",
+      "_sources": [
+        "insight"
+      ],
+      "system_patterns": [],
+      "pattern_confidence_score": 0.0
+    },
+    {
+      "startup_name": "Vine",
+      "primary_industry": "Consumer",
+      "secondary_industry": "Media",
+      "business_model": "",
+      "target_user": "Startup Founders 90% of startups fail",
+      "target_segment": "B2B",
+      "value_proposition": "Vine Platform to share short looping video clips Startup Cemetery Ad Don't be the average security professional that spends 4,300 hours annually to maintain compliance.",
+      "pain_points": [
+        "It's difficult to have good leadership and a strong sense of direction and purpose in such circumstances.",
+        "ByteDance would probably fight to survive much harder if their app faces difficulties. This is made even more likely keeping in mind that in China business and government interests a",
+        "Monetization problems : Vine was unwilling to test monetization options, resulting in a lack of revenue for the company.",
+        "Vine's executive churn, lack of direction, and leadership problems: For those wondering When did Vine die?, the platform officially",
+        "You can't share your opinion on a subject in 6 seconds, but you might be able to do so in a minute. Second, a"
+      ],
+      "adoption_barriers": [],
+      "user_complaints": [],
+      "success_drivers": [
+        "Making things even more interesting, Vine was the first mover on the market and was out-competed nonetheless.",
+        "orted peak of ~200 million monthly active users globally Over 1 billion video loops per day at peak engagement Near-zero direct revenue reported during its lifetime No native ads platform launched..."
+      ],
+      "failure_reasons": [
+        "s behind Vine's failure: ‍ 1"
+      ],
+      "differentiation": "So how did this happen? ‍ Entertainment Media Platform vs Social Media Platform: Despite a similar short video format, unlike Vine, TikTok understands that it's not in direct competition with Instagram.",
+      "switching_cost": "",
+      "competition_density": "",
+      "signal_evidence": {},
+      "confidence_score": 0.4,
+      "retention_proxy": "",
+      "onboarding_friction": "",
+      "monetization_strength": "",
+      "competition_intensity": "",
+      "funding_stage": "Acquired",
+      "market_context": "",
+      "source_type": "insight",
+      "source_url": "https://www.failory.com/cemetery/vine",
+      "_sources": [
+        "insight"
+      ],
+      "system_patterns": [],
+      "pattern_confidence_score": 0.0
+    },
+    {
+      "startup_name": "HiGear",
+      "primary_industry": "",
+      "secondary_industry": "",
+      "business_model": "",
+      "target_user": "luxury and sports cars Startup Cemetery Ad Don't be the average security profess",
+      "target_segment": "B2B",
+      "value_proposition": "HiGear Private car-sharing club for luxury and sports cars Startup Cemetery Ad Don't be the average security professional that spends 4,300 hours annually to maintain compliance.",
+      "pain_points": [],
+      "adoption_barriers": [],
+      "user_complaints": [],
+      "success_drivers": [],
+      "failure_reasons": [
+        "that HiGear lists as having prompted them to stop the business was when a criminal gang stole four cars that had a combined worth of $400,000"
+      ],
+      "differentiation": "",
+      "switching_cost": "",
+      "competition_density": "",
+      "signal_evidence": {},
+      "confidence_score": 0.4,
+      "retention_proxy": "",
+      "onboarding_friction": "",
+      "monetization_strength": "",
+      "competition_intensity": "",
+      "funding_stage": "Acquired",
+      "market_context": "",
+      "source_type": "insight",
+      "source_url": "https://www.failory.com/cemetery/higear",
+      "_sources": [
+        "insight"
+      ],
+      "system_patterns": [],
+      "pattern_confidence_score": 0.0
+    },
+    {
+      "startup_name": "Musical.ly",
+      "primary_industry": "Media",
+      "secondary_industry": "Consumer",
+      "business_model": "",
+      "target_user": "Startup Founders 90% of startups fail",
+      "target_segment": "B2B",
+      "value_proposition": "Video-based social network Startup Cemetery Ad Don't be the average security professional that spends 4,300 hours annually to maintain compliance.",
+      "pain_points": [
+        "ly was the preferred platform of many social video content influencers, and the company manually verified popular users and awarded their profiles with crowns to show they had been verified.",
+        "With the limited funding they had left, Zhu and Yang had to make some crucial decisions about Musical.",
+        "ly was easy to merge rather than maintain was its limited long-term monetization strategy. While the app excelled at user growth and engagement, it never dev"
+      ],
+      "adoption_barriers": [],
+      "user_complaints": [],
+      "success_drivers": [
+        "With the new injection of funding and continued organic growth, Musical.ly reached 40+ million users by the end of 2015.",
+        "While the app excelled at user growth and engagement, it never developed a robust advertising or creator monetization system of its own, making it far m",
+        "ly and TikTok is a natural fit given the shared mission of both experiences - to create a community where everyone can be a creator."
+      ],
+      "failure_reasons": [
+        "of doing anything wrong",
+        "why ByteDance decided to shut down Musical"
+      ],
+      "differentiation": "",
+      "switching_cost": "",
+      "competition_density": "",
+      "signal_evidence": {},
+      "confidence_score": 0.4,
+      "retention_proxy": "",
+      "onboarding_friction": "",
+      "monetization_strength": "",
+      "competition_intensity": "",
+      "funding_stage": "Seed",
+      "market_context": "an impressive $550 million",
+      "source_type": "insight",
+      "source_url": "https://www.failory.com/cemetery/musical-ly",
+      "_sources": [
+        "insight"
+      ],
+      "system_patterns": [],
+      "pattern_confidence_score": 0.0
+    },
+    {
+      "startup_name": "Katerra",
+      "primary_industry": "Enterprise Software",
+      "secondary_industry": "",
+      "business_model": "",
+      "target_user": "Startup Founders 90% of startups fail",
+      "target_segment": "B2B",
+      "value_proposition": "Katerra Transforming Construction Through Innovation Startup Cemetery Ad Don't be the average security professional that spends 4,300 hours annually to maintain compliance.",
+      "pain_points": [
+        "Lack of focus is a great way to introduce a lot of complexity to your business while at the same time creating very little actual value.",
+        "Besides trying to do too much, Katerra might have also underestimated the complexity of the problem they were trying to solve.",
+        "Construction is extremely complex. Design, engineering, assembly, legal framework, local codes and guidelines, personalization prefer",
+        "oftware & Hardware Country: United States Started: 2015 BUSINESS FAILURE Outcome: Bankruptcy Cause: Lack of Focus Closed: 2021 FOUNDERS & EMPLOYEES Number of Founders: 3 Name of Founders: Fritz H.",
+        "There was a lack of focus, boiling the ocean vs. addressing a couple of key low-hanging fruit opportunities successfull"
+      ],
+      "adoption_barriers": [],
+      "user_complaints": [],
+      "success_drivers": [
+        "\" - Margaret Whelan, founder, and CEO of Whelan Advisory ​ Achieving product-market fit is the single most important task for any innovative startup, and focusing on a single issue increa",
+        "Real added value proven by an idea and product validation followed by reaching product-market fit are essential steps for any successful startup, and even two billion dollars cannot save a product",
+        "The main ones were not having product-market fit and a viable path to profitability. The company also blamed the soaring construction costs and pand",
+        "terra emphasized very heavily on growth, disruption, and innovation, without having a clear path to profitability."
+      ],
+      "failure_reasons": [
+        "for Katerra's downfall was the clash of the initial idea with the real world",
+        "Lesson: the company's failure can make future projects a bit wiser to the challenges that the construction industry presents"
+      ],
+      "differentiation": "- the work required to integrate all these aspects is immense and the interplay between these facets of the business is unique for each project.",
+      "switching_cost": "",
+      "competition_density": "",
+      "signal_evidence": {},
+      "confidence_score": 0.4,
+      "retention_proxy": "",
+      "onboarding_friction": "",
+      "monetization_strength": "",
+      "competition_intensity": "",
+      "funding_stage": "Pre Seed",
+      "market_context": "the past 5 years",
+      "source_type": "insight",
+      "source_url": "https://www.failory.com/cemetery/katerra",
+      "_sources": [
+        "insight"
+      ],
+      "system_patterns": [],
+      "pattern_confidence_score": 0.0
+    },
+    {
+      "startup_name": "Glitch",
+      "primary_industry": "Enterprise Software",
+      "secondary_industry": "",
+      "business_model": "",
+      "target_user": "Startup Founders 90% of startups fail",
+      "target_segment": "B2B",
+      "value_proposition": "Glitch Social MMO Browser Game Startup Cemetery Ad Don't be the average security professional that spends 4,300 hours annually to maintain compliance.",
+      "pain_points": [
+        "at Tiny Speck had failed to find a buyer for the game who was willing to keep it running, as it was expensive to run.",
+        "s of the users and employees would have just delayed the inevitable end and would have made it more painful as a whole.",
+        "company had bet heavily on Adobe's Flash technology, which was quickly becoming dated and was very poorly adapted to mobile - the direction most online games of this nature were going.",
+        "As a whole, the game made a poor job of onboarding new players, which is a fatal flaw for a totally innovative and unfamiliar produc"
+      ],
+      "adoption_barriers": [],
+      "user_complaints": [],
+      "success_drivers": [
+        "Slack (and by extension Glitch) is one of the projects that we explore in our Product-Market Fit e-book , so if you want to dive deeper and see how some great companies managed to find the startup",
+        "It's very hard to find sustainable growth with bad customer retention. Glitch was a very innovative game, but this was also a major reason it faced problems attracting a"
+      ],
+      "failure_reasons": [
+        "to perform the crafting was the ability to shape the shared online world - for example by growing plants and trees or by cooking food",
+        "Lesson: from the Glitch to Slack story is the importance of avoiding the sunk cost fallacy"
+      ],
+      "differentiation": "\" ‍ Glitch was an innovative project mainly because it mixed massive multiplayer online (commonly known as MMO) gameplay in a casual browser game.",
+      "switching_cost": "",
+      "competition_density": "",
+      "signal_evidence": {
+        "monetization_strength": [
+          "of the fastest-growing business software in history, having reached 60k daily active users and 15k paying customers just 10 weeks after exiting closed beta.",
+          "Farmville averages $1 per player), and in order to be profitable the game needs a substantial player number - the Tiny Speck team was aiming at 200,000 players."
+        ]
+      },
+      "confidence_score": 0.56,
+      "retention_proxy": "",
+      "onboarding_friction": "",
+      "monetization_strength": "strong",
+      "competition_intensity": "",
+      "funding_stage": "Seed",
+      "market_context": "",
+      "source_type": "insight",
+      "source_url": "https://www.failory.com/cemetery/glitch",
+      "_sources": [
+        "insight"
+      ],
+      "system_patterns": [],
+      "pattern_confidence_score": 0.0
+    },
+    {
+      "startup_name": "HotelsAroundYou",
+      "primary_industry": "",
+      "secondary_industry": "",
+      "business_model": "",
+      "target_user": "Startup Founders 90% of startups fail",
+      "target_segment": "B2B",
+      "value_proposition": "HotelsAroundYou Booking of same-day hotel rooms Startup Cemetery Ad Don't be the average security professional that spends 4,300 hours annually to maintain compliance.",
+      "pain_points": [],
+      "adoption_barriers": [],
+      "user_complaints": [],
+      "success_drivers": [],
+      "failure_reasons": [],
+      "differentiation": "",
+      "switching_cost": "",
+      "competition_density": "",
+      "signal_evidence": {},
+      "confidence_score": 0.4,
+      "retention_proxy": "",
+      "onboarding_friction": "",
+      "monetization_strength": "",
+      "competition_intensity": "",
+      "funding_stage": "",
+      "market_context": "",
+      "source_type": "insight",
+      "source_url": "https://www.failory.com/cemetery/hotelsaroundyou",
+      "_sources": [
+        "insight"
+      ],
+      "system_patterns": [],
+      "pattern_confidence_score": 0.0
+    },
+    {
+      "startup_name": "Justin.tv",
+      "primary_industry": "Media",
+      "secondary_industry": "Consumer",
+      "business_model": "E-Commerce",
+      "target_user": "Startup Founders 90% of startups fail",
+      "target_segment": "B2B",
+      "value_proposition": "Online video streaming platform Startup Cemetery Ad Don't be the average security professional that spends 4,300 hours annually to maintain compliance.",
+      "pain_points": [
+        "content, dangerous behavior, and copyright violations in real time became increasingly complex and expensive, reinforcing the company's decision to focus on Twitch, where content was easier to...",
+        "cing illegal content, dangerous behavior, and copyright violations in real time became increasingly complex and expensive, reinforcing the company's decision to focus on Twitch, where content was...",
+        "tv was not held liable in any way for the young man's death, so we can't say that this sad and unfortunate incident had any notable impact on what happened to Justin."
+      ],
+      "adoption_barriers": [],
+      "user_complaints": [],
+      "success_drivers": [
+        "We have policies in place to discourage the distribution of distressing content and our community monitors the site accordingly.",
+        "This content was flagged by our community, reviewed and removed according to our terms of service.\" Justin.",
+        "tv's broadcasting channels were formed in partnerships with other media companies, such as Fox Corporation, and featured branded content from these compan"
+      ],
+      "failure_reasons": [
+        "Regulation: tv had to hire a team of lawyers to combat their various legal problems. As Justin.tv began taking down more and more illegal live streams, its traffic also began to nosedive.",
+        "s was that there were no copyright issues associated with video game streaming content"
+      ],
+      "differentiation": "Because it was so unique at the time, Justin.tv received instant media attention, which helped contribute to its early success.",
+      "switching_cost": "",
+      "competition_density": "",
+      "signal_evidence": {},
+      "confidence_score": 0.4,
+      "retention_proxy": "",
+      "onboarding_friction": "",
+      "monetization_strength": "",
+      "competition_intensity": "",
+      "funding_stage": "Acquired",
+      "market_context": "",
+      "source_type": "insight",
+      "source_url": "https://www.failory.com/cemetery/justin-tv",
+      "_sources": [
+        "insight"
+      ],
+      "system_patterns": [],
+      "pattern_confidence_score": 0.0
+    },
+    {
+      "startup_name": "HubHaus",
+      "primary_industry": "Real Estate",
+      "secondary_industry": "Enterprise Software",
+      "business_model": "",
+      "target_user": "co-living spaces Startup Cemetery Ad Don't be the average security professional",
+      "target_segment": "B2B",
+      "value_proposition": "HubHaus Platform for co-living spaces Startup Cemetery Ad Don't be the average security professional that spends 4,300 hours annually to maintain compliance.",
+      "pain_points": [
+        "The difficulty is that very few people can organize 5+ acquaintances and friends to move into the same property,",
+        "The reality is that the product-market fit will likely slowly return once the pandemic is finally over, so the startups that managed to outlast it are likely t",
+        "forgive failure if you are truthful, while even a single uncovered lie can destroy any trust you've slowly built.",
+        "What was HubHaus? Rent in California is expensive, which is very prohibitive for young professionals who want to move to the state on their own to ch",
+        "‍ Lesson from HubHaus: Graceful Failures are Important The death of a company can be painful for all involved stakeholders, but it doesn't have to be."
+      ],
+      "adoption_barriers": [],
+      "user_complaints": [],
+      "success_drivers": [
+        "What makes the case even more interesting is that HubHaus had product-market fit , at least before the pandemic hit.",
+        "they had product-market fit), co-living startups like HubHaus, Bungalow, and Common were growing successfully.",
+        "d-off lockdowns, which changed the environment in the niche fundamentally and utterly destroyed the product-market fit those companies had.",
+        "The reality is that the product-market fit will likely slowly return once the pandemic is finally over, so the startups that managed to outlas",
+        "You'd often have to do this in your search for product-market fit in the early startup stages, but you need to preserve this ability for as long as possible in case"
+      ],
+      "failure_reasons": [
+        "s for this: First, a lot of people started working remotely during Covid, and it was much more economical for them to move back home and work from the",
+        "for this was the WeWork IPO fiasco , which made fundraising much harder for startups in related niches, like co-working and co-living",
+        "Lesson: HubHaus: Graceful Failures are Important The death of a company can be painful for all involved stakeholders, but it doesn't have to be"
+      ],
+      "differentiation": "Your biggest competitive advantage as a startup is flexibility, don't be in a hurry to lose it while growing. Communicate truthfully: Last but not least,",
+      "switching_cost": "",
+      "competition_density": "",
+      "signal_evidence": {},
+      "confidence_score": 0.4,
+      "retention_proxy": "",
+      "onboarding_friction": "",
+      "monetization_strength": "",
+      "competition_intensity": "",
+      "funding_stage": "Series A",
+      "market_context": "",
+      "source_type": "insight",
+      "source_url": "https://www.failory.com/cemetery/hubhaus",
+      "_sources": [
+        "insight"
+      ],
+      "system_patterns": [],
+      "pattern_confidence_score": 0.0
+    },
+    {
+      "startup_name": "RoomsTonite",
+      "primary_industry": "",
+      "secondary_industry": "",
+      "business_model": "",
+      "target_user": "Startup Founders 90% of startups fail",
+      "target_segment": "B2B",
+      "value_proposition": "RoomsTonite Last-minute hotel booking provider Startup Cemetery Ad Don't be the average security professional that spends 4,300 hours annually to maintain compliance.",
+      "pain_points": [
+        "FORMATION Category: Travel Country: India Started: 2014 BUSINESS FAILURE Outcome: Bankruptcy Cause: Lack of Funds Closed: 2017 FOUNDERS & EMPLOYEES Number of Founders: 1 Name of Founders: Suresh John..."
+      ],
+      "adoption_barriers": [],
+      "user_complaints": [],
+      "success_drivers": [],
+      "failure_reasons": [],
+      "differentiation": "",
+      "switching_cost": "",
+      "competition_density": "",
+      "signal_evidence": {},
+      "confidence_score": 0.4,
+      "retention_proxy": "",
+      "onboarding_friction": "",
+      "monetization_strength": "",
+      "competition_intensity": "",
+      "funding_stage": "",
+      "market_context": "",
+      "source_type": "insight",
+      "source_url": "https://www.failory.com/cemetery/roomstonite",
+      "_sources": [
+        "insight"
+      ],
+      "system_patterns": [],
+      "pattern_confidence_score": 0.0
+    },
+    {
+      "startup_name": "Xinja",
+      "primary_industry": "Fintech",
+      "secondary_industry": "",
+      "business_model": "Fintech",
+      "target_user": "Startup Founders 90% of startups fail",
+      "target_segment": "B2B",
+      "value_proposition": "Xinja Australia's first licensed neobank Startup Cemetery Ad Don't be the average security professional that spends 4,300 hours annually to maintain compliance.",
+      "pain_points": [
+        "The startup blamed its failure mainly on the coronavirus pandemic and the \"increasingly difficult capital-raising environment\", as the CEO Eric Wilson pointed out in an email to customers."
+      ],
+      "adoption_barriers": [],
+      "user_complaints": [],
+      "success_drivers": [
+        "ng on the back of their impressive fundraising efforts, Xinja lived on and continued its search for product-market fit .",
+        "Startups often fail at the validation phase in their struggle to find product-market fit. It could be argued, however, that Xinja stumbled on the efficiency phase, in which startups try to",
+        "s amount of cash spent on ads and marketing mentioned above, was another clear sign that the budget distribution was irrational."
+      ],
+      "failure_reasons": [
+        "for Xinja? Xinja stepped down from the neobank scene in December 2020, retuning its banking license, freezing the customers' accounts, and returning a",
+        "s for its demise"
+      ],
+      "differentiation": "Since both investors and customers were generally attracted to this innovative field, Xinja managed to raise a total of A$204.",
+      "switching_cost": "",
+      "competition_density": "",
+      "signal_evidence": {},
+      "confidence_score": 0.4,
+      "retention_proxy": "",
+      "onboarding_friction": "",
+      "monetization_strength": "",
+      "competition_intensity": "",
+      "funding_stage": "Acquired",
+      "market_context": "",
+      "source_type": "insight",
+      "source_url": "https://www.failory.com/cemetery/xinja",
+      "_sources": [
+        "insight"
+      ],
+      "system_patterns": [],
+      "pattern_confidence_score": 0.0
+    },
+    {
+      "startup_name": "Atrium",
+      "primary_industry": "Media",
+      "secondary_industry": "",
+      "business_model": "SaaS",
+      "target_user": "startups Startup Cemetery Ad Don't be the average security professional that spe",
+      "target_segment": "B2B",
+      "value_proposition": "Atrium Modern law firm for startups Startup Cemetery Ad Don't be the average security professional that spends 4,300 hours annually to maintain compliance.",
+      "pain_points": [
+        "This approach creates less complexity, and complexity is a killer of startups. The subscription model was also not working in Atrium's",
+        "Software & Hardware Country: United States Started: 2017 BUSINESS FAILURE Outcome: Shut Down Cause: Lack of PMF Closed: 2020 FOUNDERS & EMPLOYEES Number of Founders: 4 Name of Founders: Augie Rakow,...",
+        "The first one is: \"Adding more money to a situation of lack of product-market fit rarely works.\" To get perspective, let's start with the fact this is not the fir",
+        "Still, it ultimately failed to fix the lack of product-market fit, so the executives decided to end the struggle."
+      ],
+      "adoption_barriers": [],
+      "user_complaints": [],
+      "success_drivers": [
+        "The first one is: \"Adding more money to a situation of lack of product-market fit rarely works.\" To get perspective, let's start with the fact this is not the first time a tech firm",
+        "n go to in these articles: all the money in the world wouldn't be able to save a startup that lacks product-market fit .",
+        "Still, it ultimately failed to fix the lack of product-market fit, so the executives decided to end the struggle.",
+        "a close understanding of the needs of each client is critical, and one-on-one relationships are not scalable.",
+        "Of course, the idea is to streamline the process and make it scalable (to make a product out of a service industry)."
+      ],
+      "failure_reasons": [],
+      "differentiation": "Unlike most law firms that charge their clients hourly, Atrium's business model was based on monthly subscriptions that starte",
+      "switching_cost": "",
+      "competition_density": "",
+      "signal_evidence": {},
+      "confidence_score": 0.4,
+      "retention_proxy": "",
+      "onboarding_friction": "",
+      "monetization_strength": "",
+      "competition_intensity": "",
+      "funding_stage": "",
+      "market_context": "highly relationship-driven",
+      "source_type": "insight",
+      "source_url": "https://www.failory.com/cemetery/atrium",
+      "_sources": [
+        "insight"
+      ],
+      "system_patterns": [],
+      "pattern_confidence_score": 0.0
+    },
+    {
+      "startup_name": "PepperTap",
+      "primary_industry": "",
+      "secondary_industry": "",
+      "business_model": "E-Commerce",
+      "target_user": "Startup Founders 90% of startups fail",
+      "target_segment": "B2B",
+      "value_proposition": "PepperTap Large and fast grocery delivery service Startup Cemetery Ad Don't be the average security professional that spends 4,300 hours annually to maintain compliance.",
+      "pain_points": [
+        "Startups all over the world faced a slowdown in VC activities, and PepperTap had to bow down to the situation.",
+        "N Category: Food & Beverage Country: India Started: 2014 BUSINESS FAILURE Outcome: Shut Down Cause: Poor Product Closed: 2016 FOUNDERS & EMPLOYEES Number of Founders: 2 Name of Founders: Milind...",
+        "The service helps in solving the problems of long queues in the market, limited parking spaces and manipulative intermediaries."
+      ],
+      "adoption_barriers": [],
+      "user_complaints": [],
+      "success_drivers": [],
+      "failure_reasons": [],
+      "differentiation": "",
+      "switching_cost": "",
+      "competition_density": "",
+      "signal_evidence": {},
+      "confidence_score": 0.4,
+      "retention_proxy": "",
+      "onboarding_friction": "",
+      "monetization_strength": "",
+      "competition_intensity": "",
+      "funding_stage": "",
+      "market_context": "still unprepared for this type of service factored in as a reason that caused them to suspend their operations",
+      "source_type": "insight",
+      "source_url": "https://www.failory.com/cemetery/peppertap",
+      "_sources": [
+        "insight"
+      ],
+      "system_patterns": [],
+      "pattern_confidence_score": 0.0
+    },
+    {
+      "startup_name": "Quibi",
+      "primary_industry": "Media",
+      "secondary_industry": "Consumer",
+      "business_model": "",
+      "target_user": "Startup Founders 90% of startups fail",
+      "target_segment": "B2B + B2C",
+      "value_proposition": "Quibi Short-form streaming platform Startup Cemetery Ad Don't be the average security professional that spends 4,300 hours annually to maintain compliance.",
+      "pain_points": [
+        "Naturally, this approach doesn't give great results, and could easily turn an OK movie into a frustrating watching experience.",
+        "This prevented organic virality, limited audience growth, and made it difficult for content to reach potential subscribers outside the platform.",
+        "A great example is the expensive Superbowl ad that Quibi launched before it was even available. Another is its Oscars ad.",
+        "eloping content for Quibi to develop it with both portrait and landscape in mind, adding a layer of complexity.",
+        "tures Quibi's failure to understand and connect to its target audience was just as apparent in its (lack of) features as it was in its marketing."
+      ],
+      "adoption_barriers": [],
+      "user_complaints": [],
+      "success_drivers": [
+        "biggest startup mistake is to build something nobody needs, and 34% of startups fail due to lack of product-market fit .",
+        "iscent of the ad campaigns of traditional brick and mortar businesses rather than the social-heavy, virality-based, low CAC campaigns of B2C tech startups.",
+        "ely advertise their content, but the service prevented the content from spreading naturally through virality.",
+        "This prevented organic virality, limited audience growth, and made it difficult for content to reach potential subscribers outsi"
+      ],
+      "failure_reasons": [],
+      "differentiation": "Unlike TikTok or YouTube, Quibi did not allow viewers to easily clip, share, or embed moments from shows on social media.",
+      "switching_cost": "",
+      "competition_density": "",
+      "signal_evidence": {},
+      "confidence_score": 0.4,
+      "retention_proxy": "",
+      "onboarding_friction": "",
+      "monetization_strength": "",
+      "competition_intensity": "",
+      "funding_stage": "Pre Seed",
+      "market_context": "",
+      "source_type": "insight",
+      "source_url": "https://www.failory.com/cemetery/quibi",
+      "_sources": [
+        "insight"
+      ],
+      "system_patterns": [],
+      "pattern_confidence_score": 0.0
+    }
+  ]
+}

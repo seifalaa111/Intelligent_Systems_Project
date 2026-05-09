@@ -1,0 +1,106 @@
+{
+  "description": "Seed list of target startups for Phase 1 data collection",
+  "version": "1.0",
+  "targets": [
+    {
+      "name": "Notion",
+      "url": "https://www.notion.so",
+      "category": "productivity"
+    },
+    {
+      "name": "Slack",
+      "url": "https://slack.com",
+      "category": "communication"
+    },
+    {
+      "name": "Linear",
+      "url": "https://linear.app",
+      "category": "project_management"
+    },
+    {
+      "name": "Figma",
+      "url": "https://www.figma.com",
+      "category": "design"
+    },
+    {
+      "name": "Vercel",
+      "url": "https://vercel.com",
+      "category": "devtools"
+    },
+    {
+      "name": "Stripe",
+      "url": "https://stripe.com",
+      "category": "fintech"
+    },
+    {
+      "name": "Airtable",
+      "url": "https://www.airtable.com",
+      "category": "productivity"
+    },
+    {
+      "name": "Canva",
+      "url": "https://www.canva.com",
+      "category": "design"
+    },
+    {
+      "name": "Calendly",
+      "url": "https://calendly.com",
+      "category": "scheduling"
+    },
+    {
+      "name": "Loom",
+      "url": "https://www.loom.com",
+      "category": "communication"
+    },
+    {
+      "name": "Miro",
+      "url": "https://miro.com",
+      "category": "collaboration"
+    },
+    {
+      "name": "Retool",
+      "url": "https://retool.com",
+      "category": "devtools"
+    },
+    {
+      "name": "Webflow",
+      "url": "https://webflow.com",
+      "category": "design"
+    },
+    {
+      "name": "Supabase",
+      "url": "https://supabase.com",
+      "category": "devtools"
+    },
+    {
+      "name": "Plaid",
+      "url": "https://plaid.com",
+      "category": "fintech"
+    },
+    {
+      "name": "Intercom",
+      "url": "https://www.intercom.com",
+      "category": "customer_support"
+    },
+    {
+      "name": "Zapier",
+      "url": "https://zapier.com",
+      "category": "automation"
+    },
+    {
+      "name": "Typeform",
+      "url": "https://www.typeform.com",
+      "category": "forms"
+    },
+    {
+      "name": "PostHog",
+      "url": "https://posthog.com",
+      "category": "analytics"
+    },
+    {
+      "name": "Deel",
+      "url": "https://www.deel.com",
+      "category": "hr"
+    }
+  ]
+}

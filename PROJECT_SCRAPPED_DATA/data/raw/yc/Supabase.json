@@ -1,0 +1,14 @@
+{
+  "startup_name": "Supabase",
+  "source_type": "yc",
+  "source_url": "https://www.ycombinator.com/companies/supabase",
+  "raw_content": "Supabase is an open source Firebase alternative providing a Postgres database, authentication, instant APIs, real-time subscriptions, and storage.",
+  "collected_at": "2026-04-17T21:35:04.341735+00:00",
+  "metadata": {
+    "batch": "S20",
+    "industry": "Devtools",
+    "status": "Active",
+    "website": "https://supabase.com",
+    "data_source": "yc_seed"
+  }
+}

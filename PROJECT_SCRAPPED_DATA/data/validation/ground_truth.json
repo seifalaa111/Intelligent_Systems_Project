@@ -1,0 +1,457 @@
+[
+  {
+    "startup_name": "Slack",
+    "signals": [
+      {
+        "signal": "primary_industry",
+        "value": "Enterprise Software",
+        "justification": "Provides organizational communication channels for entire companies."
+      },
+      {
+        "signal": "business_model",
+        "value": "SaaS",
+        "justification": "Subscription-based software model."
+      },
+      {
+        "signal": "retention_proxy",
+        "value": "high",
+        "justification": "Deeply embedded into daily employee workflows."
+      },
+      {
+        "signal": "competition_intensity",
+        "value": "high",
+        "justification": "Directly fights Microsoft Teams and Discord in saturated market."
+      }
+    ]
+  },
+  {
+    "startup_name": "Stripe",
+    "signals": [
+      {
+        "signal": "primary_industry",
+        "value": "Fintech",
+        "justification": "Provides core financial transaction infrastructure."
+      },
+      {
+        "signal": "monetization_strength",
+        "value": "strong",
+        "justification": "Takes a direct cut from every transaction processed, scaling with client growth."
+      },
+      {
+        "signal": "onboarding_friction",
+        "value": "low",
+        "justification": "Developer-first API is famously easy to integrate with a few lines of code."
+      }
+    ]
+  },
+  {
+    "startup_name": "Figma",
+    "signals": [
+      {
+        "signal": "primary_industry",
+        "value": "Design",
+        "justification": "Standard UI/UX design tool."
+      },
+      {
+        "signal": "retention_proxy",
+        "value": "high",
+        "justification": "High network effect; if the entire design team is on it, nobody leaves."
+      },
+      {
+        "signal": "competition_intensity",
+        "value": "moderate",
+        "justification": "Effectively defeated Sketch/InVision, main competitor is Adobe."
+      }
+    ]
+  },
+  {
+    "startup_name": "Vercel",
+    "signals": [
+      {
+        "signal": "primary_industry",
+        "value": "Devtools",
+        "justification": "Deployment and frontend infrastructure platform."
+      },
+      {
+        "signal": "onboarding_friction",
+        "value": "low",
+        "justification": "One-click deployment from GitHub natively."
+      }
+    ]
+  },
+  {
+    "startup_name": "Linear",
+    "signals": [
+      {
+        "signal": "business_model",
+        "value": "SaaS",
+        "justification": "Standard subscription project management."
+      },
+      {
+        "signal": "competition_intensity",
+        "value": "high",
+        "justification": "Directly competing in the Jira, Asana, Monday.com saturated market."
+      }
+    ]
+  },
+  {
+    "startup_name": "Notion",
+    "signals": [
+      {
+        "signal": "target_segment",
+        "value": "B2B + B2C",
+        "justification": "Used heavily by individuals for notes and companies for wikis."
+      },
+      {
+        "signal": "retention_proxy",
+        "value": "high",
+        "justification": "All company knowledge is locked inside."
+      }
+    ]
+  },
+  {
+    "startup_name": "Supabase",
+    "signals": [
+      {
+        "signal": "primary_industry",
+        "value": "Devtools",
+        "justification": "Open-source Firebase alternative providing backend services."
+      },
+      {
+        "signal": "onboarding_friction",
+        "value": "low",
+        "justification": "Instant Postgres provisioning."
+      }
+    ]
+  },
+  {
+    "startup_name": "Zapier",
+    "signals": [
+      {
+        "signal": "retention_proxy",
+        "value": "high",
+        "justification": "Automations run silently in the background powering critical tasks; turning it off breaks systems."
+      }
+    ]
+  },
+  {
+    "startup_name": "Loom",
+    "signals": [
+      {
+        "signal": "onboarding_friction",
+        "value": "low",
+        "justification": "Installs as a chrome extension; record instantly."
+      },
+      {
+        "signal": "competition_intensity",
+        "value": "high",
+        "justification": "Can be easily replicated; Zoom, Slack natively added video clips."
+      }
+    ]
+  },
+  {
+    "startup_name": "Airtable",
+    "signals": [
+      {
+        "signal": "primary_industry",
+        "value": "Productivity",
+        "justification": "Database spreadsheet tool."
+      },
+      {
+        "signal": "monetization_strength",
+        "value": "strong",
+        "justification": "Direct seat licenses and enterprise API limits enforce heavy monetization."
+      }
+    ]
+  },
+  {
+    "startup_name": "Quibi",
+    "signals": [
+      {
+        "signal": "primary_industry",
+        "value": "Media",
+        "justification": "Streaming service for short-form video."
+      },
+      {
+        "signal": "retention_proxy",
+        "value": "low",
+        "justification": "Failed to gain continuous usage or habit loop."
+      },
+      {
+        "signal": "failure_reasons",
+        "value": "No Product Market Fit",
+        "justification": "Launched a mobile-only streaming app during the pandemic lockdowns when people were at home."
+      }
+    ]
+  },
+  {
+    "startup_name": "Atrium",
+    "signals": [
+      {
+        "signal": "failure_reasons",
+        "value": "Poor Unit Economics",
+        "justification": "Law firm masquerading as tech company; margins were terrible."
+      },
+      {
+        "signal": "business_model",
+        "value": "Service",
+        "justification": "Provided manual legal services despite raising SaaS-level venture capital."
+      }
+    ]
+  },
+  {
+    "startup_name": "Fast",
+    "signals": [
+      {
+        "signal": "business_model",
+        "value": "Fintech",
+        "justification": "One-click checkout button."
+      },
+      {
+        "signal": "competition_intensity",
+        "value": "high",
+        "justification": "Stripe, Apple Pay, Shopify, and Bolt absolutely dominated them."
+      },
+      {
+        "signal": "failure_reasons",
+        "value": "Burn Rate",
+        "justification": "Burned 10M a month while generating less than 1M in revenue annually."
+      }
+    ]
+  },
+  {
+    "startup_name": "ScaleFactor",
+    "signals": [
+      {
+        "signal": "business_model",
+        "value": "SaaS",
+        "justification": "Marketed as automated AI accounting software."
+      },
+      {
+        "signal": "failure_reasons",
+        "value": "Fake Tech",
+        "justification": "The AI was actually humans doing accounting manually behind the scenes."
+      }
+    ]
+  },
+  {
+    "startup_name": "Zume",
+    "signals": [
+      {
+        "signal": "primary_industry",
+        "value": "Hardware",
+        "justification": "Robotic pizza-making company."
+      },
+      {
+        "signal": "failure_reasons",
+        "value": "Tech Debt",
+        "justification": "The robots were unreliable and constantly resulted in melted cheese slipping."
+      }
+    ]
+  },
+  {
+    "startup_name": "Jawbone",
+    "signals": [
+      {
+        "signal": "primary_industry",
+        "value": "Hardware",
+        "justification": "Fitness trackers and speakers."
+      },
+      {
+        "signal": "competition_intensity",
+        "value": "high",
+        "justification": "Crushed by Fitbit and Apple Watch."
+      },
+      {
+        "signal": "failure_reasons",
+        "value": "Hardware Failure",
+        "justification": "Inventory sitting dead; unable to compete on margins."
+      }
+    ]
+  },
+  {
+    "startup_name": "Essential",
+    "signals": [
+      {
+        "signal": "primary_industry",
+        "value": "Hardware",
+        "justification": "Smartphone creation."
+      },
+      {
+        "signal": "competition_intensity",
+        "value": "high",
+        "justification": "Apple and Samsung duopoly is impenetrable for new mobile OS platforms."
+      }
+    ]
+  },
+  {
+    "startup_name": "Theranos",
+    "signals": [
+      {
+        "signal": "primary_industry",
+        "value": "Healthtech",
+        "justification": "Blood testing via a single drop."
+      },
+      {
+        "signal": "failure_reasons",
+        "value": "Fraud",
+        "justification": "The technology completely did not work and executives lied about capabilities."
+      }
+    ]
+  },
+  {
+    "startup_name": "Yik Yak",
+    "signals": [
+      {
+        "signal": "primary_industry",
+        "value": "Social",
+        "justification": "Anonymous local messaging app."
+      },
+      {
+        "signal": "retention_proxy",
+        "value": "low",
+        "justification": "Once anonymity was stripped and cyberbullying grew, userbase collapsed safely."
+      },
+      {
+        "signal": "failure_reasons",
+        "value": "Toxicity",
+        "justification": "Platform entirely revolved around cyberbullying."
+      }
+    ]
+  },
+  {
+    "startup_name": "Katerra",
+    "signals": [
+      {
+        "signal": "business_model",
+        "value": "Hardware",
+        "justification": "Off-site construction and building."
+      },
+      {
+        "signal": "failure_reasons",
+        "value": "Poor Unit Economics",
+        "justification": "Extremely high factory costs with minimal actual efficiency gains."
+      }
+    ]
+  },
+  {
+    "startup_name": "Canva",
+    "signals": [
+      {
+        "signal": "primary_industry",
+        "value": "Design",
+        "justification": "Democratized graphic design via templates."
+      },
+      {
+        "signal": "monetization_strength",
+        "value": "strong",
+        "justification": "High conversion rate to pro tiers for basic teams."
+      }
+    ]
+  },
+  {
+    "startup_name": "Calendly",
+    "signals": [
+      {
+        "signal": "primary_industry",
+        "value": "Scheduling",
+        "justification": "Appointment automation."
+      },
+      {
+        "signal": "onboarding_friction",
+        "value": "low",
+        "justification": "One-click google calendar sync."
+      }
+    ]
+  },
+  {
+    "startup_name": "Miro",
+    "signals": [
+      {
+        "signal": "competition_intensity",
+        "value": "high",
+        "justification": "Competes with FigJam, Mural, Microsoft Whiteboard."
+      }
+    ]
+  },
+  {
+    "startup_name": "Retool",
+    "signals": [
+      {
+        "signal": "target_segment",
+        "value": "B2B",
+        "justification": "Internal tool builder only useful for developers in corporate."
+      }
+    ]
+  },
+  {
+    "startup_name": "Webflow",
+    "signals": [
+      {
+        "signal": "primary_industry",
+        "value": "Design",
+        "justification": "Visual dev tool for sites."
+      }
+    ]
+  },
+  {
+    "startup_name": "Plaid",
+    "signals": [
+      {
+        "signal": "business_model",
+        "value": "B2B API",
+        "justification": "Connects routing to banks."
+      }
+    ]
+  },
+  {
+    "startup_name": "Intercom",
+    "signals": [
+      {
+        "signal": "retention_proxy",
+        "value": "high",
+        "justification": "Embedded chat widget is hard to replace without breaking UX."
+      }
+    ]
+  },
+  {
+    "startup_name": "PostHog",
+    "signals": [
+      {
+        "signal": "onboarding_friction",
+        "value": "low",
+        "justification": "Open source analytics installs with one script tag."
+      }
+    ]
+  },
+  {
+    "startup_name": "Daqri",
+    "signals": [
+      {
+        "signal": "primary_industry",
+        "value": "Hardware",
+        "justification": "AR helmets."
+      },
+      {
+        "signal": "failure_reasons",
+        "value": "No Market Demand",
+        "justification": "Enterprise industrial workers did not want AR helmets."
+      }
+    ]
+  },
+  {
+    "startup_name": "HiGear",
+    "signals": [
+      {
+        "signal": "primary_industry",
+        "value": "Marketplace",
+        "justification": "Luxury car rental."
+      },
+      {
+        "signal": "failure_reasons",
+        "value": "Fraud",
+        "justification": "Criminals used stolen credentials to steal the expensive cars."
+      }
+    ]
+  }
+]

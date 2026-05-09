@@ -1,0 +1,39 @@
+﻿data/raw/*.csv
+data/ml_matrix/*.csv
+data/sarima/*.csv
+data/agent_context/**/*.json
+models/*.pkl
+models/**/*.pkl
+__pycache__/
+*.py[cod]
+.env
+venv/
+.streamlit/
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Debug output
+diagnostic_output.txt
+verify_output.txt
+
+# Runtime logs (prediction log, server logs)
+logs/
+server.log
+uvicorn_err.txt
+uvicorn_out.txt
+streamlit_err.txt
+streamlit_out.txt
+
+# Backup files
+*.bak
+
+# Claude internal files
+.claude/

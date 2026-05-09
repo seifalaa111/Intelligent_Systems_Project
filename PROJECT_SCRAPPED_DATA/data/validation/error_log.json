@@ -1,0 +1,128 @@
+[
+  {
+    "startup": "Slack",
+    "signal": "competition_intensity",
+    "expected": "high",
+    "predicted": "",
+    "justification": "Directly fights Microsoft Teams and Discord in saturated market."
+  },
+  {
+    "startup": "Figma",
+    "signal": "competition_intensity",
+    "expected": "moderate",
+    "predicted": "",
+    "justification": "Effectively defeated Sketch/InVision, main competitor is Adobe."
+  },
+  {
+    "startup": "Vercel",
+    "signal": "primary_industry",
+    "expected": "devtools",
+    "predicted": "enterprise software",
+    "justification": "Deployment and frontend infrastructure platform."
+  },
+  {
+    "startup": "Vercel",
+    "signal": "onboarding_friction",
+    "expected": "low",
+    "predicted": "",
+    "justification": "One-click deployment from GitHub natively."
+  },
+  {
+    "startup": "Linear",
+    "signal": "business_model",
+    "expected": "saas",
+    "predicted": "",
+    "justification": "Standard subscription project management."
+  },
+  {
+    "startup": "Linear",
+    "signal": "competition_intensity",
+    "expected": "high",
+    "predicted": "",
+    "justification": "Directly competing in the Jira, Asana, Monday.com saturated market."
+  },
+  {
+    "startup": "Notion",
+    "signal": "retention_proxy",
+    "expected": "high",
+    "predicted": "",
+    "justification": "All company knowledge is locked inside."
+  },
+  {
+    "startup": "Quibi",
+    "signal": "retention_proxy",
+    "expected": "low",
+    "predicted": "",
+    "justification": "Failed to gain continuous usage or habit loop."
+  },
+  {
+    "startup": "Quibi",
+    "signal": "failure_reasons",
+    "expected": "no product market fit",
+    "predicted": "",
+    "justification": "Launched a mobile-only streaming app during the pandemic lockdowns when people were at home."
+  },
+  {
+    "startup": "Atrium",
+    "signal": "failure_reasons",
+    "expected": "poor unit economics",
+    "predicted": "",
+    "justification": "Law firm masquerading as tech company; margins were terrible."
+  },
+  {
+    "startup": "Atrium",
+    "signal": "business_model",
+    "expected": "service",
+    "predicted": "saas",
+    "justification": "Provided manual legal services despite raising SaaS-level venture capital."
+  },
+  {
+    "startup": "ScaleFactor",
+    "signal": "business_model",
+    "expected": "saas",
+    "predicted": "fintech",
+    "justification": "Marketed as automated AI accounting software."
+  },
+  {
+    "startup": "ScaleFactor",
+    "signal": "failure_reasons",
+    "expected": "fake tech",
+    "predicted": "",
+    "justification": "The AI was actually humans doing accounting manually behind the scenes."
+  },
+  {
+    "startup": "Yik Yak",
+    "signal": "primary_industry",
+    "expected": "social",
+    "predicted": "consumer",
+    "justification": "Anonymous local messaging app."
+  },
+  {
+    "startup": "Yik Yak",
+    "signal": "retention_proxy",
+    "expected": "low",
+    "predicted": "",
+    "justification": "Once anonymity was stripped and cyberbullying grew, userbase collapsed safely."
+  },
+  {
+    "startup": "Yik Yak",
+    "signal": "failure_reasons",
+    "expected": "toxicity",
+    "predicted": "",
+    "justification": "Platform entirely revolved around cyberbullying."
+  },
+  {
+    "startup": "Katerra",
+    "signal": "business_model",
+    "expected": "hardware",
+    "predicted": "",
+    "justification": "Off-site construction and building."
+  },
+  {
+    "startup": "Katerra",
+    "signal": "failure_reasons",
+    "expected": "poor unit economics",
+    "predicted": "for katerra's downfall was the clash of the initial idea with the real world | lesson: the company's failure can make future projects a bit wiser to the challenges that the construction industry presents",
+    "justification": "Extremely high factory costs with minimal actual efficiency gains."
+  }
+]

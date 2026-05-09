@@ -1,0 +1,14 @@
+{
+  "startup_name": "PostHog",
+  "source_type": "yc",
+  "source_url": "https://www.ycombinator.com/companies/posthog",
+  "raw_content": "PostHog is an open-source product analytics platform. It provides event tracking, session recording, feature flags, and A/B testing.",
+  "collected_at": "2026-04-17T21:35:14.078212+00:00",
+  "metadata": {
+    "batch": "W20",
+    "industry": "Devtools",
+    "status": "Active",
+    "website": "https://posthog.com",
+    "data_source": "yc_seed"
+  }
+}

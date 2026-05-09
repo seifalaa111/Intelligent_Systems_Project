@@ -1,0 +1,27 @@
+# MIDAN Data Pipeline -- Phase 2 Dependencies
+
+# Core
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+lxml>=5.0.0
+
+# Validation
+pydantic>=2.5.0
+
+# Environment
+python-dotenv>=1.0.0
+
+# Retry/resilience
+tenacity>=8.2.0
+
+# CLI & logging
+rich>=13.7.0
+
+# Async (for future scaling)
+aiohttp>=3.9.0
+
+# Phase 2 -- Reddit
+praw>=7.7.0
+
+# Phase 2 -- Local LLM (optional)
+# ollama is accessed via HTTP API, no pip package needed
