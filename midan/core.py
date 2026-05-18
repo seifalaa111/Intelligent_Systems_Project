@@ -3,7 +3,7 @@ midan.core — schemas, constants, ML model loaders, utilities.
 
 This module is the foundation imported by every other midan submodule.
 It owns:
-  • imports / Groq client init / pickle + JSON loaders
+  • imports / Gemini client init / pickle + JSON loaders
   • all loaded ML artifacts (svm, scaler, pca, lgb, le, sarima_results, fcm_centers, …)
   • L2 freshness functions
   • all static reference tables (SECTOR_*, COUNTRY_*, hint lists, keyword maps)
@@ -45,9 +45,9 @@ import pickle, json, os, re, warnings, requests
 from textwrap import dedent
 from dotenv import load_dotenv
 
-# All tunable constants live in midan.config. Importing them here makes them
-# available to every submodule via the existing `from midan.core import *`
-# wildcard imports, so no submodule needs to declare these locally.
+# we keep all tunable constants in midan.config and import them here so
+# every submodule can reach them via the existing `from midan.core import *`
+# wildcard — no submodule needs to declare these locally.
 from midan.config import (
     RESPONSE_SCHEMA_VERSION,
     L3_REASONING_VERSION,
@@ -73,6 +73,7 @@ from midan.config import (
     # ── Explicit RAG ──────────────────────────────────────────────────────
     RAG_K_NEIGHBORS,
     ARIMA_RAG_AMPLIFY_THRESHOLD, ARIMA_RAG_DAMPEN_THRESHOLD,
+    RAG_TIE_VOTE_ENABLED,
     # ── Novelty detection ─────────────────────────────────────────────────
     NOVELTY_THRESHOLD,
     # ── SHAP integrity + drift + retrain ──────────────────────────────────
@@ -92,11 +93,10 @@ import uuid as _uuid
 _CORE_LOG = _logging.getLogger("midan.core")
 
 # ── Structured request logging ──────────────────────────────────────────────
-# One logger root: `midan`. Sub-loggers: midan.{layer}. The decision logger
-# emits a single structured line per processed request, keyed off a request
-# correlation id. Output format is intentionally simple (key=value); no
-# external systems, no Prometheus, no S3 — that is out of scope per the
-# Step 4 charter.
+# we use one logger root (`midan`) with sub-loggers per layer. The decision logger
+# emits a single structured line per request, keyed off a correlation id.
+# we chose simple key=value output on purpose — no Prometheus, no S3 —
+# external systems are out of scope per the Step 4 charter.
 
 _DECISION_LOG = _logging.getLogger("midan.decision")
 
@@ -154,7 +154,7 @@ def log_decision(request_id: str, raw: dict, *, endpoint: str = "?") -> None:
             (raw or {}).get("regime", "n/a"),
         )
     except Exception as _log_err:
-        # Logging itself must NEVER break the request path.
+        # we guard here so logging itself can NEVER break the request path.
         _DECISION_LOG.warning(
             "[DECISION] log_decision failed (%s: %r) — request_id=%s",
             type(_log_err).__name__, _log_err, request_id,
@@ -168,24 +168,17 @@ def log_failure(request_id: str, *, endpoint: str, kind: str, detail: str) -> No
         request_id, endpoint, kind, detail,
     )
 
-try:
-    from groq import Groq
-    GROQ_CLIENT = Groq(api_key=os.environ.get("GROQ_API_KEY", "dummy"))
-except Exception as _groq_err:
-    GROQ_CLIENT = None
-    _CORE_LOG.warning(
-        "[CORE] Groq client init failed (%s: %r) — LLM paths will use heuristic fallback",
-        type(_groq_err).__name__, _groq_err,
-    )
+from openai import OpenAI as _OpenAI
 
-# Single source of truth for the LLM model used across the system. The L4
-# engine remains the decision authority; the LLM is only used for
-# conversation, explanation, and report generation. Any swap (provider, model
-# version) happens here and propagates to every call site.
-GROQ_MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")
+LLM_CLIENT = _OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=os.getenv("OPENROUTER_API_KEY", ""),
+)
+_LLM_MODEL = "meta-llama/llama-3.3-70b-instruct"
+_CORE_LOG.info("[CORE] OpenRouter client initialized — model: %s", _LLM_MODEL)
 
 # ── LOAD MODELS ──────────────────────────────────────────────
-# Models live in the project root, one level above the midan/ package.
+# we point to the project root because models live one level above the midan/ package.
 MODELS_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "models",
@@ -228,9 +221,9 @@ try:
     sarima_results = _json('sarima_results.json')
     comps_data     = _json('competitors_context.json', {})
     sents_data     = _json('sentiment_context.json', [])
-    # ── L2 fuzzy clustering (FCM): wired at runtime as a parallel signal
-    # to the SVM hard classification. fcm_centers.pkl is shape (3, 2) — 3
-    # regime cluster centers in PCA space. cluster_names maps the indices
+    # ── L2 fuzzy clustering (FCM): we wire this at runtime as a parallel signal
+    # alongside the SVM hard classification. fcm_centers.pkl is shape (3, 2) — 3
+    # regime cluster centers in PCA space. we use cluster_names to map indices
     # to regime labels (CONTRACTING_MARKET / HIGH_FRICTION_MARKET / EMERGING_MARKET).
     fcm_centers   = _pkl('fcm_centers.pkl')
     cluster_names = _json('cluster_names.json', {})
@@ -240,9 +233,9 @@ except Exception as e:
     MODEL_ERROR   = str(e)
 
 # ── New RAG / IS / drift artifacts (fail-soft via _pkl_optional) ──────────────
-# These are generated by training notebook cells T1–T4. If not yet generated,
-# every consumer degrades to a safe neutral default — the system never crashes
-# on missing artifacts. Degradation behavior per artifact:
+# we generate these in training notebook cells T1–T4. If not yet present,
+# every consumer degrades to a safe neutral default — we never crash on missing artifacts.
+# Degradation behavior per artifact:
 #   shap_cluster_means  absent → shap_cosine returns 0.5 (neutral)
 #   rag_index           absent → RAG skipped, rag_skipped_reason="artifact_unavailable"
 #   drift_baseline      absent → drift detection returns False, no alert
@@ -254,16 +247,15 @@ rag_labels         = _json('rag_labels.json', [])
 drift_baseline     = _json('drift_baseline.json', {})
 regime_anchors_pca = _pkl_optional('regime_anchors_pca.pkl')
 
-# Canonical feature ordering. All new modules that build vectors from
-# shap_dict or construct training matrices must use this order.
-# This is the same ordering as FEATURES — the explicit alias prevents
-# accidental reordering in downstream vector construction.
+# we define canonical feature ordering here — all modules building vectors from
+# shap_dict or constructing training matrices must use this order.
+# we alias it explicitly (same order as FEATURES) to prevent accidental reordering
+# in downstream vector construction.
 FEATURE_ORDER = ['inflation', 'gdp_growth', 'macro_friction', 'capital_concentration', 'velocity_yoy']
 
 # ── Training-only artifacts NOT loaded at runtime ─────────────────────────────
-# Listed here so the dead-component audit has a clear answer rather than a
-# silently-orphaned file. If you add runtime use for any of these, move it
-# above into the load block.
+# we list these here so the dead-component audit has a clear answer instead of orphaned files.
+# If we add runtime use for any of these, we move it up into the load block.
 TRAINING_ONLY_ARTIFACTS = {
     'fcm_centroids.pkl': "8-cluster 5D centroids — used during training for "
                           "sector-archetype analysis; no runtime consumer.",
@@ -278,10 +270,10 @@ TRAINING_ONLY_ARTIFACTS = {
 }
 
 # ── L2 data-freshness metadata ────────────────────────────────────────────────
-# Surfaced in every analysis response so consumers know what is observed,
-# what is static, and what is stale. The constants STATIC_MACRO_TABLE_AS_OF,
-# SARIMA_STALENESS_DAYS and SARIMA_STALENESS_PENALTY are owned by midan.config
-# and imported at the top of this module — edit them there.
+# we surface this in every analysis response so consumers can see what is observed,
+# what is static, and what is stale. We own STATIC_MACRO_TABLE_AS_OF,
+# SARIMA_STALENESS_DAYS, and SARIMA_STALENESS_PENALTY in midan.config —
+# edit them there, not here.
 
 def _sarima_last_date() -> str:
     """Earliest last_date across loaded SARIMA models — represents global staleness."""
@@ -322,10 +314,10 @@ def compute_l2_freshness() -> dict:
     sarima_as_of = _sarima_last_date()
     sarima_age   = _days_since(sarima_as_of)
     macro_age    = _days_since(STATIC_MACRO_TABLE_AS_OF)
-    # Toggle-aware: if the operator has switched off the staleness penalty,
-    # the freshness envelope reports the SARIMA age but does NOT raise the
-    # runtime_staleness_flag — downstream consumers (pipeline, response)
-    # will then leave regime confidence un-penalized.
+    # we check the toggle here — if the operator switched off the staleness penalty,
+    # we report the SARIMA age in the freshness envelope but do NOT raise
+    # runtime_staleness_flag, so downstream consumers (pipeline, response)
+    # leave regime confidence un-penalized.
     is_stale     = bool(sarima_age is not None and sarima_age > SARIMA_STALENESS_DAYS)
     runtime_stale = bool(is_stale and ENABLE_STALENESS_PENALTY)
     train_drift = any(
@@ -690,14 +682,14 @@ class ProjectionRequest(BaseModel):
 # ═══════════════════════════════════════════════════════════════
 # RESPONSE PAYLOAD SCHEMA — strict contract enforced at every endpoint
 #
-# Every response across /analyze, /interact, /project conforms to this
-# schema. Core fields are required (never omitted). Missing data is
-# explicit `null`/`unknown`/empty-list with an explanation string —
-# never silently dropped. There is NO endpoint-specific reinterpretation
+# we require every response across /analyze, /interact, /project to conform to
+# this schema. Core fields are required (never omitted). We represent missing data
+# explicitly as `null`/`unknown`/empty-list with an explanation string —
+# we never silently drop fields. We allow NO endpoint-specific reinterpretation
 # of core fields; only optional extension fields (reply, type, projection,
 # etc.) vary by endpoint, and they are also typed.
 #
-# DO NOT relax these schemas. If validation fails at construction time,
+# we do NOT relax these schemas. If validation fails at construction time,
 # the endpoint must surface a 500 with an explicit error — silent
 # auto-correction is forbidden.
 # ═══════════════════════════════════════════════════════════════
@@ -814,6 +806,7 @@ class ResponsePayload(BaseModel):
     quality:             Optional[Dict[str, Any]] = None
     data:                Optional[Dict[str, Any]] = None
     raw_pipeline_output: Optional[Dict[str, Any]] = None  # full process_idea result for debug
+    is_fallback:         Optional[bool] = None            # True when LLM was unavailable and heuristic was used
 
 
 class SchemaViolationError(Exception):
@@ -822,10 +815,10 @@ class SchemaViolationError(Exception):
 
 
 # ── PAYLOAD CONSTRUCTION ────────────────────────────────────────────────────
-# `build_response_payload` is the single mapper from raw pipeline outputs to
+# we use `build_response_payload` as the single mapper from raw pipeline outputs to
 
 
 
-# Export everything defined in this module — including underscore-prefixed
+# we export everything defined in this module — including underscore-prefixed
 # helpers — so other midan submodules can wildcard-import the full surface.
 __all__ = [name for name in list(globals().keys()) if not name.startswith('__')]

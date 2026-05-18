@@ -19,10 +19,10 @@ from midan.l1_parser import UNKNOWN_VALUE  # foundational sentinel  # noqa: F401
 # This is the PRIMARY driver of output variability across different ideas.
 # ═══════════════════════════════════════════════════════════════
 
-# (regime, business_model, target_segment) → base fit score
-# Different combinations produce meaningfully different base scores.
+# we key this table by (regime, business_model, target_segment) to get a base fit score.
+# different combinations produce meaningfully different base scores.
 _FIT_TABLE: Dict[tuple, float] = {
-    # GROWTH MARKET — aggressive expansion is rewarded
+    # GROWTH MARKET — we reward aggressive expansion here
     ('GROWTH_MARKET', 'saas',         'b2b'):   0.91,
     ('GROWTH_MARKET', 'subscription', 'b2b'):   0.90,
     ('GROWTH_MARKET', 'marketplace',  'b2c'):   0.87,
@@ -34,7 +34,7 @@ _FIT_TABLE: Dict[tuple, float] = {
     ('GROWTH_MARKET', 'hardware',     'mixed'): 0.72,
     ('GROWTH_MARKET', 'other',        'mixed'): 0.70,
 
-    # EMERGING MARKET — subscription/SaaS most resilient; B2C needs patience
+    # EMERGING MARKET — we've found subscription/SaaS most resilient here; B2C needs patience
     ('EMERGING_MARKET', 'saas',         'b2b'):   0.84,
     ('EMERGING_MARKET', 'subscription', 'b2b'):   0.82,
     ('EMERGING_MARKET', 'marketplace',  'mixed'): 0.77,
@@ -46,7 +46,7 @@ _FIT_TABLE: Dict[tuple, float] = {
     ('EMERGING_MARKET', 'service',      'b2c'):   0.55,
     ('EMERGING_MARKET', 'other',        'mixed'): 0.58,
 
-    # HIGH FRICTION — only cost-saving B2B tools survive
+    # HIGH FRICTION — we give meaningful scores only to cost-saving B2B tools; the rest struggle to survive
     ('HIGH_FRICTION_MARKET', 'saas',         'b2b'):   0.72,
     ('HIGH_FRICTION_MARKET', 'subscription', 'b2b'):   0.68,
     ('HIGH_FRICTION_MARKET', 'commission',   'b2b'):   0.54,
@@ -56,7 +56,7 @@ _FIT_TABLE: Dict[tuple, float] = {
     ('HIGH_FRICTION_MARKET', 'subscription', 'b2c'):   0.38,
     ('HIGH_FRICTION_MARKET', 'other',        'b2c'):   0.32,
 
-    # CONTRACTING — survival mode; only essential B2B cost-cutters viable
+    # CONTRACTING — we're in survival mode; we only give viable scores to essential B2B cost-cutters
     ('CONTRACTING_MARKET', 'saas',         'b2b'):   0.58,
     ('CONTRACTING_MARKET', 'service',      'b2b'):   0.52,
     ('CONTRACTING_MARKET', 'subscription', 'b2b'):   0.50,
@@ -73,27 +73,27 @@ _REGIME_DEFAULTS: Dict[str, float] = {
 }
 
 # ── BM-CONDITIONAL WEIGHT PROFILES ────────────────────────────────────────────
-# Different business model types have structurally different success drivers.
+# we use different weight profiles per BM type because success drivers are structurally different.
 # A marketplace lives or dies on liquidity — competition is lethal (winner-takes-all).
 # SaaS/Subscription succeeds through differentiation and switching cost creation.
 # Commission/Fintech: regulatory risk is existential, not just a drag.
 # Service: competition matters less; scalability is the binding constraint.
 # Hardware: stage is the dominant penalty — capital requirements are brutal early.
 #
-# Applying uniform weights to all BM types produces meaningless signals.
-# This table encodes domain knowledge about what actually drives each model.
+# we found that applying uniform weights to all BM types produces meaningless signals,
+# so this table encodes our domain knowledge about what actually drives each model.
 _BM_PROFILE: Dict[str, dict] = {
     'marketplace': {
-        'diff_scale':    0.07,   # differentiation matters LESS — supply/demand fit matters more
-        'ready_scale':   0.08,   # market readiness matters MORE — need existing demand, not pioneers
+        'diff_scale':    0.07,   # we weight differentiation LESS for marketplaces — supply/demand fit matters more
+        'ready_scale':   0.08,   # we weight market readiness MORE — we need existing demand, not pioneers
         'stage_deltas':  {'idea': -0.14, 'validation': -0.06, 'mvp': +0.10, 'growth': +0.20},
-        'comp_deltas':   {'low': +0.10, 'medium': 0.0, 'high': -0.16},  # winner-takes-all: competition lethal
+        'comp_deltas':   {'low': +0.10, 'medium': 0.0, 'high': -0.16},  # we penalize competition hard here — winner-takes-all dynamics make it lethal
         'dominant_risk': 'liquidity',
         'key_signal':    'market_readiness',
         'moat_source':   'network effects and supply lock-in',
     },
     'saas': {
-        'diff_scale':    0.13,   # differentiation matters MORE — switching costs = moat
+        'diff_scale':    0.13,   # we weight differentiation MORE for SaaS — switching costs are the moat
         'ready_scale':   0.04,
         'stage_deltas':  {'idea': -0.07, 'validation': -0.01, 'mvp': +0.08, 'growth': +0.15},
         'comp_deltas':   {'low': +0.07, 'medium': 0.0, 'high': -0.08},
@@ -103,7 +103,7 @@ _BM_PROFILE: Dict[str, dict] = {
     },
     'subscription': {
         'diff_scale':    0.10,
-        'ready_scale':   0.06,   # readiness drives recurring willingness-to-pay
+        'ready_scale':   0.06,   # we weight readiness because it directly drives recurring willingness-to-pay
         'stage_deltas':  {'idea': -0.08, 'validation': -0.02, 'mvp': +0.07, 'growth': +0.14},
         'comp_deltas':   {'low': +0.05, 'medium': 0.0, 'high': -0.07},
         'dominant_risk': 'churn',
@@ -115,15 +115,15 @@ _BM_PROFILE: Dict[str, dict] = {
         'ready_scale':   0.05,
         'stage_deltas':  {'idea': -0.10, 'validation': -0.03, 'mvp': +0.07, 'growth': +0.15},
         'comp_deltas':   {'low': +0.06, 'medium': 0.0, 'high': -0.11},
-        'dominant_risk': 'regulatory',  # commission models attract regulatory scrutiny
+        'dominant_risk': 'regulatory',  # we flag regulatory as dominant because commission models attract scrutiny
         'key_signal':    'regulatory_risk',
         'moat_source':   'regulatory licensing once obtained',
     },
     'service': {
         'diff_scale':    0.09,
         'ready_scale':   0.04,
-        'stage_deltas':  {'idea': -0.05, 'validation': +0.01, 'mvp': +0.06, 'growth': +0.12},  # services monetize earlier
-        'comp_deltas':   {'low': +0.04, 'medium': 0.0, 'high': -0.05},   # competition less relevant for services
+        'stage_deltas':  {'idea': -0.05, 'validation': +0.01, 'mvp': +0.06, 'growth': +0.12},  # we give services a gentler early-stage penalty because they monetize earlier
+        'comp_deltas':   {'low': +0.04, 'medium': 0.0, 'high': -0.05},   # we use smaller competition deltas for services — competition matters less here
         'dominant_risk': 'scalability',
         'key_signal':    'differentiation_score',
         'moat_source':   'proprietary methodology and key person relationships',
@@ -131,7 +131,7 @@ _BM_PROFILE: Dict[str, dict] = {
     'hardware': {
         'diff_scale':    0.12,
         'ready_scale':   0.05,
-        'stage_deltas':  {'idea': -0.15, 'validation': -0.07, 'mvp': +0.06, 'growth': +0.17},  # capital-intensive
+        'stage_deltas':  {'idea': -0.15, 'validation': -0.07, 'mvp': +0.06, 'growth': +0.17},  # we apply a heavier early-stage penalty here because hardware is capital-intensive
         'comp_deltas':   {'low': +0.07, 'medium': 0.0, 'high': -0.10},
         'dominant_risk': 'capital',
         'key_signal':    'differentiation_score',
@@ -148,16 +148,16 @@ _BM_PROFILE: Dict[str, dict] = {
     },
 }
 
-# Per-sector regulatory sensitivity — fintech and healthtech are in a different league
+# we track per-sector regulatory sensitivity separately — fintech and healthtech are in a different league
 _SECTOR_REG_PROFILE: Dict[str, dict] = {
     'fintech': {
-        'reg_deltas':  {'low': +0.03, 'medium': -0.05, 'high': -0.18},  # CBE licensing = existential
-        'b2b_bonus':    0.05,   # B2B fintech less exposed to consumer protection
-        'trust_factor': True,   # regulatory risk is also trust barrier — double exposure
+        'reg_deltas':  {'low': +0.03, 'medium': -0.05, 'high': -0.18},  # we apply a steep penalty at high — CBE licensing is existential for fintech
+        'b2b_bonus':    0.05,   # we give B2B fintech a small relief — it's less exposed to consumer protection rules
+        'trust_factor': True,   # we flag this because regulatory risk doubles as a trust barrier — double exposure
     },
     'healthtech': {
-        'reg_deltas':  {'low': +0.04, 'medium': -0.06, 'high': -0.20},  # medical approval = long, expensive
-        'b2b_bonus':    0.07,   # hospital/clinic sales: clearer buyer, less consumer friction
+        'reg_deltas':  {'low': +0.04, 'medium': -0.06, 'high': -0.20},  # we penalize heavily at high — medical approval is long and expensive
+        'b2b_bonus':    0.07,   # we give a larger B2B bonus for healthtech — hospital/clinic sales have a clearer buyer and less consumer friction
         'trust_factor': True,
     },
     'ecommerce': {
@@ -216,7 +216,7 @@ def compute_idea_signal(idea_features: dict, regime: str, sector: str = 'other',
     reg   = idea_features.get('regulatory_risk',       'medium')
     ready = idea_features.get('market_readiness',      3)
 
-    # 1. Base fit from regime × model × segment table
+    # 1. we look up the base fit from the regime × model × segment table
     base = (
         _FIT_TABLE.get((regime, bm, seg))
         or _FIT_TABLE.get((regime, bm, 'mixed'))
@@ -224,33 +224,33 @@ def compute_idea_signal(idea_features: dict, regime: str, sector: str = 'other',
         or _REGIME_DEFAULTS.get(regime, 0.50)
     )
 
-    # 2. Load BM-specific profile (conditional weights)
+    # 2. we load the BM-specific profile to get conditional weights
     bm_profile     = _BM_PROFILE.get(bm, _BM_PROFILE['other'])
     sector_profile = _SECTOR_REG_PROFILE.get(sector, _SECTOR_REG_PROFILE['_default'])
 
-    # 3. Differentiation multiplier — scale varies by BM type
+    # 3. we compute the differentiation multiplier — scale varies by BM type
     diff_mult = 0.78 + (diff - 1) * bm_profile['diff_scale']
 
-    # 4. Stage delta — varies by BM (hardware/marketplace more stage-sensitive)
+    # 4. we apply the stage delta — varies by BM because hardware/marketplace are more stage-sensitive
     stage_delta = bm_profile['stage_deltas'].get(stage, 0.0)
 
-    # 5. Competitive drag — varies by BM (winner-takes-all models more sensitive)
+    # 5. we apply competitive drag — varies by BM because winner-takes-all models are more sensitive
     comp_delta = bm_profile['comp_deltas'].get(comp, 0.0)
 
-    # 6. Regulatory friction — varies by SECTOR (fintech/healthtech amplified)
+    # 6. we apply regulatory friction — varies by SECTOR because fintech/healthtech are amplified
     reg_delta = sector_profile['reg_deltas'].get(reg, 0.0)
 
-    # B2B segment partial relief in high-regulatory sectors
-    # (institutional buyers vs consumer protection exposure)
+    # we give B2B a partial relief in high-regulatory sectors
+    # because institutional buyers face less consumer-protection exposure
     if seg == 'b2b' and sector_profile['b2b_bonus'] > 0:
         b2b_relief = sector_profile['b2b_bonus'] * (0.4 if reg == 'high' else 0.6)
         reg_delta += b2b_relief
 
-    # 7. Market readiness — scale varies by BM
+    # 7. we apply market readiness delta — scale varies by BM
     ready_delta = (ready - 3) * bm_profile['ready_scale']
 
-    # 8. Compounded penalty: early-stage in hostile regime
-    # In CONTRACTING/HIGH_FRICTION, early ideas face amplified survival risk
+    # 8. we amplify the penalty for early-stage ideas in hostile regimes —
+    # in CONTRACTING/HIGH_FRICTION, early ideas face compounded survival risk
     if stage in ('idea', 'validation') and regime in ('CONTRACTING_MARKET', 'HIGH_FRICTION_MARKET'):
         stage_delta *= 1.35
 
@@ -311,13 +311,13 @@ def _signal_tier(score: float) -> str:
 # such in the response — it is NOT presented as observed market data.
 # ═══════════════════════════════════════════════════════════════
 
-# L3_REASONING_VERSION and L3_FIELD_CONFIDENCE_FLOOR are owned by midan.config
-# and reach this module via `from midan.core import *`.
+# we pull L3_REASONING_VERSION and L3_FIELD_CONFIDENCE_FLOOR from midan.config —
+# they reach this module via `from midan.core import *`.
 
 # ── Sector baseline mechanisms (HEURISTIC) ──────────────────────────────────
-# Minimal list of "what a typical idea in this sector usually does." Used by
-# the differentiation analyzer to compare against the incoming idea. These
-# are intentionally short — not a knowledge ontology.
+# we keep a minimal list of "what a typical idea in this sector usually does" and use it
+# in the differentiation analyzer to compare against the incoming idea. we kept these
+# intentionally short — this is not a knowledge ontology.
 _SECTOR_BASELINE_MECHANISMS: Dict[str, list] = {
     'fintech':    ['KYC verification', 'transaction ledger', 'payment rails', 'basic risk scoring'],
     'healthtech': ['appointment booking', 'patient records', 'provider directory'],
@@ -329,9 +329,9 @@ _SECTOR_BASELINE_MECHANISMS: Dict[str, list] = {
     'other':      ['core service delivery', 'customer onboarding'],
 }
 
-# Idea-text mechanism extraction. Each entry is a labeled mechanism with
-# a small list of distinguishing keywords. A match means the idea is
-# claiming this mechanism — useful for comparing against the baseline.
+# we extract mechanisms from the idea text using this keyword table. each entry is a labeled
+# mechanism with a small list of distinguishing keywords. a match means the idea is
+# claiming this mechanism — we use this to compare against the baseline.
 _MECHANISM_KEYWORDS: Dict[str, list] = {
     'AI/ML reasoning':        ['ai-powered', 'machine learning', 'ml model', 'predictive', 'deep learning', 'using ai'],
     'forecasting':            ['forecasting', 'demand forecasting', 'prediction', 'predict'],
@@ -347,8 +347,8 @@ _MECHANISM_KEYWORDS: Dict[str, list] = {
 }
 
 # ── Sector competition map (HEURISTIC, sector-baseline only) ────────────────
-# Direct = same mechanism players. Indirect = different mechanism, same job.
-# Substitutes = non-product solutions users currently use today.
+# we split competition into three classes: Direct = same mechanism players,
+# Indirect = different mechanism, same job, Substitutes = non-product solutions users currently use today.
 _SECTOR_COMPETITION_MAP: Dict[str, dict] = {
     'fintech': {
         'direct':      ['established fintech apps in this niche', 'neobank competitors', 'lending platforms'],
@@ -470,6 +470,7 @@ _BM_COST_STRUCTURE_TEMPLATES: Dict[str, dict] = {
 }
 
 # ── Unit economics qualitative proxies (assumption-tier with reasoning) ─────
+# we use qualitative proxies here rather than fabricating numbers — each tier comes with explicit reasoning
 _CAC_PROXY_RULES: Dict[tuple, tuple] = {
     ('saas', 'b2b'):         ('medium', 'B2B SaaS sales cycles are structured but require multi-stakeholder approval.'),
     ('saas', 'b2c'):         ('high',   'B2C SaaS competes against free alternatives; CAC absorbs that pressure.'),
@@ -558,23 +559,23 @@ def _analyze_differentiation(idea_text: str, values: dict, confidence: dict, sec
     if diff_score is not None:
         grounded_in.append('differentiation_score')
 
-    # what_is_new = mechanisms claimed in text that are NOT in the baseline
+    # we define what_is_new as mechanisms claimed in text that are NOT in the baseline
     what_is_new = [m for m in idea_mechanisms if m not in baseline]
-    # what_is_standard = baseline items that align with claimed mechanisms (semantic check is heuristic — keyword overlap)
+    # we define what_is_standard as baseline items that align with claimed mechanisms — we use keyword overlap as a heuristic check
     what_is_standard = [b for b in baseline if any(b.split()[0] in idea_text.lower() for _ in [0])]
-    # If text mentions baseline items by keyword overlap, surface them; else assume baseline is implicit
+    # we surface baseline items when text mentions them by keyword overlap; otherwise we treat the baseline as implicit
     text_lower = (idea_text or "").lower()
     what_is_standard = [b for b in baseline if any(tok in text_lower for tok in b.lower().split() if len(tok) > 4)]
     if not what_is_standard:
-        # Treat baseline as implicit when nothing matches — surface that explicitly.
+        # we treat the baseline as implicit when nothing matches — we surface that fact explicitly rather than silently assuming
         what_is_standard_note = "baseline mechanisms assumed implicitly (not stated in idea text)"
     else:
         what_is_standard_note = "baseline mechanisms aligned with idea text"
 
-    # what_is_missing = baseline items neither claimed nor mentioned
+    # we define what_is_missing as baseline items neither claimed nor mentioned
     what_is_missing = [b for b in baseline if b not in what_is_standard]
 
-    # Verdict tier — derived strictly from list sizes + L1 diff score, not a new scalar
+    # we derive the verdict tier strictly from list sizes and the L1 diff score — we do not introduce a new scalar
     if not idea_mechanisms and (diff_score is None or diff_score <= 2):
         verdict = "thin"
     elif len(what_is_new) >= 2 or (diff_score is not None and diff_score >= 4):
@@ -637,9 +638,9 @@ def _analyze_competition(idea_text: str, values: dict, confidence: dict, sector:
     indirect = [{"description": d, "source": "sector_baseline"} for d in s_map['indirect']]
     substitutes = [{"description": d, "source": "sector_baseline"} for d in s_map['substitutes']]
 
-    # Idea-inferred named competitors: scan idea_text for "like X", "similar to X",
-    # "compete with X", "alternative to X". Take the first 1–3 tokens after the
-    # marker — that's the named entity. Stop at any connector word.
+    # we scan idea_text for named competitors using phrase markers: "like X", "similar to X",
+    # "compete with X", "alternative to X". we take the first 1–3 tokens after the
+    # marker as the named entity and stop at any connector word.
     text = (idea_text or "")
     inferred = []
     _CONNECTORS = {'for', 'to', 'in', 'with', 'and', 'or', 'but', 'on', 'at', 'by'}
@@ -650,7 +651,7 @@ def _analyze_competition(idea_text: str, values: dict, confidence: dict, sector:
         tail = text[idx + len(marker):].split('.')[0].split(',')[0].strip()
         if not tail:
             continue
-        # Take up to the first connector word, max 4 tokens.
+        # we take up to the first connector word, capped at 4 tokens.
         name_tokens = []
         for tok in tail.split():
             stripped = tok.lower().strip('.,;:!?')
@@ -664,9 +665,9 @@ def _analyze_competition(idea_text: str, values: dict, confidence: dict, sector:
                 "source":      "idea_inferred",
                 "reasoning":   f"Mentioned in idea text via '{marker.strip()}' phrase.",
             })
-    direct = direct + inferred  # named competitors are direct by default
+    direct = direct + inferred  # we fold inferred named competitors into direct by default
 
-    # Pressure tier — strictly from L1 competitive_intensity if known
+    # we derive the pressure tier strictly from L1 competitive_intensity when known
     comp = values.get('competitive_intensity')
     comp_known = _l3_field_known(values, confidence, 'competitive_intensity')
     if comp_known:
@@ -722,7 +723,7 @@ def _analyze_business_model(values: dict, confidence: dict, sector: str) -> dict
         money_flow['who_pays'] = f"{seg.upper()} {money_flow['who_pays']}"
     cost = dict(_BM_COST_STRUCTURE_TEMPLATES.get(bm, _BM_COST_STRUCTURE_TEMPLATES['other']))
 
-    # Viability reasoning — references only the fields we have
+    # we build the viability reasoning string referencing only the fields we actually have
     viability_parts = [
         f"Money flow: {money_flow['who_pays']} pay for {money_flow['what_for']} on a "
         f"{money_flow['when']} basis."
@@ -793,7 +794,7 @@ def _analyze_unit_economics(values: dict, confidence: dict, sector: str) -> dict
 
 
 # ── ANALYZER 5: Signal interactions (explicit rule set) ─────────────────────
-# Each rule is gated on its involved L1 fields being non-UNKNOWN at
+# we gate each rule on its involved L1 fields being non-UNKNOWN at
 # confidence ≥ L3_FIELD_CONFIDENCE_FLOOR. Predicates take (values, regime).
 _SIGNAL_INTERACTION_RULES: list = [
     {
@@ -855,7 +856,7 @@ def _analyze_signal_interactions(values: dict, confidence: dict, regime: str) ->
     """
     fired: list = []
     for rule in _SIGNAL_INTERACTION_RULES:
-        # Confirm every involved L1 signal is usable. (regime is L2 — always present.)
+        # we confirm every involved L1 signal is usable before firing the rule. regime is L2 — always present.
         l1_signals = [s for s in rule['involved_signals'] if s != 'regime']
         if not all(_l3_field_known(values, confidence, f) for f in l1_signals):
             continue
@@ -944,6 +945,6 @@ def compute_l3_reasoning(
 
 
 
-# Export everything defined in this module — including underscore-prefixed
+# we export everything defined in this module — including underscore-prefixed
 # helpers — so other midan submodules can wildcard-import the full surface.
 __all__ = [name for name in list(globals().keys()) if not name.startswith('__')]

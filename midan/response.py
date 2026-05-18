@@ -11,6 +11,7 @@ from midan.l3_reasoning import _signal_tier  # noqa: F401
 from midan.l4_decision import _l4_top_risk_dim  # noqa: F401
 from midan.conversation import (  # noqa: F401
     _post_decision_route, _extract_components,
+    _smart_followup, _casual_response,
     _GENERIC_IDEA_TOKENS, _GENERIC_CUSTOMER_HINTS, _GENERIC_MECHANISM_HINTS,
     _EXPLICIT_MECHANISM_SIGNALS,
     _PROBLEM_SIGNALS, _SOLUTION_SIGNALS, _MARKET_GEO, _MARKET_CUSTOMER,
@@ -34,7 +35,7 @@ from midan.conversation import (  # noqa: F401
 #   4. counterpoint — why it could fail EVEN IF signals are good
 #   5. differentiation_insight — why this idea behaves differently
 #
-# LLM path: Groq JSON-structured prompt (temperature 0.35)
+# LLM path: Gemini JSON-structured prompt (temperature 0.35)
 # Fallback: rich conditional logic by BM type × regime × signals
 # ═══════════════════════════════════════════════════════════════
 
@@ -67,8 +68,8 @@ def _l4_reasoning_llm(
     top_shap      = max(shap_dict, key=shap_dict.get).replace('_', ' ')
     grounding     = _extract_idea_grounding(idea_text, sector, idea_features, country)
 
-    # Epistemic tone — conditional on mechanism pipeline evidence_quality.
-    # evidence_quality drives hedging level: strong=decisive, insufficient=hypothesis-only.
+    # we set the epistemic tone conditional on mechanism pipeline evidence_quality;
+    # evidence_quality drives hedging level: strong=decisive, insufficient=hypothesis-only
     _mech = mechanism_analysis or {}
     _ep   = _mech.get("epistemic_summary", {})
     _eq   = _ep.get("evidence_quality", "moderate")
@@ -96,7 +97,7 @@ def _l4_reasoning_llm(
     }
     _tone_instruction = _tone_map.get(_eq, _tone_map["moderate"])
 
-    # Mechanism context block — prepended to prompt outside dedent to avoid indentation issues.
+    # we prepend the mechanism context block outside dedent to avoid indentation issues
     _mech_lines = []
     if _mech:
         _obs  = _ep.get("observed_signals", [])
@@ -141,13 +142,13 @@ def _l4_reasoning_llm(
 
         Produce EXACTLY this JSON — 7 fields, no markdown, no extra text:
         {{
-          "strategic_interpretation": "2-3 sentences. The real situation — what this market condition actually means for THIS specific BM/segment combo. Lead with the non-obvious insight. Do NOT start with the regime name. Reference {top_shap} as the root cause.",
-          "key_driver": "1 sentence only. The single factor that determines whether this succeeds or fails. Be explicit — not 'execution' but what specific execution means here for {bm_label} in {regime_r}. Frame it as a test: 'If X does not happen by Y, this fails.'",
-          "main_risk": "1-2 sentences. The most likely specific failure mode given {diff_label} diff, {stage} stage, {reg} reg risk, and {comp} competition. State the failure clearly — not a risk category, the actual way this breaks.",
-          "counterpoint": "1-2 sentences. Challenge the CORE assumption that makes this idea feel viable. Not 'it is risky' — the specific belief the founder holds that is probably wrong. Start with 'The assumption here is...' or 'The founder believes...' then destroy it.",
-          "differentiation_insight": "1-2 sentences. Whether this idea is actually different from the baseline {bm_label} idea in {sector}/{country} — or honestly acknowledge it is not. Reference diff={diff}/5 and {moat_source}. Be honest, not encouraging.",
-          "what_matters_most": "ONE sentence. The single factor that will determine success or failure above all others for this exact BM+sector+stage combination. More specific than key_driver — this is the make-or-break variable.",
-          "counter_thesis": "1-2 sentences. The opposite position: why everything the founder is excited about is probably wrong. Example format: 'You think X is the challenge — it is not. The real problem is Y, and Y is harder to solve.' Be blunt. This must contradict the strategic_interpretation."
+          "strategic_interpretation": "2-3 sentences. Answer three things in sequence: (1) what is the non-obvious opportunity window here — not the surface pitch but what the market condition actually enables right now; (2) why is NOW the relevant timing for {bm_label} in {sector}/{country} — reference {top_shap} as the causal force; (3) what does success look like at 12 months for this specific segment/model combo. Do NOT start with the regime name. Do NOT summarize the idea back at the founder.",
+          "key_driver": "1 sentence only. Name the specific mechanism this model depends on — pick the closest match: supply density, trust layer, distribution channel, regulatory window, switching cost, data network effect, or geographic lock-in. Then state its test: 'If [named mechanism] does not reach [specific threshold] by [timeframe], this fails.' No abstractions. No 'execution quality' as an answer.",
+          "main_risk": "1-2 sentences. Write in failure scenario format ONLY: 'If [specific observable trigger] happens, [downstream consequence] follows, and the business ends up [specific dead position].' Name the trigger, the cascade, and the landing. Never name a risk category — name the mechanism of failure.",
+          "counterpoint": "1-2 sentences. Name the ONE belief that makes this idea feel defensible to the founder — then destroy it directly. Format: 'You are assuming [X] — but the evidence points to [Y].' Do not soften, do not offer balance. Find the specific thing the founder is wrong about and say it plainly.",
+          "differentiation_insight": "1-2 sentences. If diff={diff}/5 is 4 or 5: name the specific moat mechanism ({moat_source}) and explain why it is actually defensible in this market. If diff is 3 or below: state plainly why this is not differentiated — name what existing players already do that covers this ground — and what structural change would be required before differentiation is real. Do not use the word 'unique'. Do not encourage what is not defensible.",
+          "what_matters_most": "ONE sentence. The single variable — different from the mechanism in key_driver — that will determine whether this specific {bm_label}+{sector}+{stage} combination succeeds or collapses. Not a principle. A named, specific, observable variable.",
+          "counter_thesis": "1-2 sentences. Second-person bear case. Format: 'You think [what the founder believes is the challenge] — the real problem is [what actually kills this], and [why that is harder to solve than the founder believes].' This must directly contradict strategic_interpretation. Be blunt. No hedging."
         }}
 
         HARD RULES (violations will be rejected):
@@ -160,18 +161,23 @@ def _l4_reasoning_llm(
         - No starting any field with 'I'
         - what_matters_most and key_driver must be about DIFFERENT variables
         - main_risk must name the failure mechanism — not just a risk category
+        - If any sentence could apply unchanged to a different startup idea, rewrite it
     """).strip()
     prompt = (_mech_block + "\n\n" + _core_prompt) if _mech_block else _core_prompt
 
     try:
-        resp = GROQ_CLIENT.chat.completions.create(
+        response = LLM_CLIENT.chat.completions.create(
+            model=_LLM_MODEL,
             messages=[{"role": "user", "content": prompt}],
-            model="llama-3.1-8b-instant",
             temperature=0.30,
-            max_tokens=800,
-            response_format={"type": "json_object"},
+            max_tokens=4096,
         )
-        raw  = resp.choices[0].message.content.strip()
+        raw = response.choices[0].message.content.strip()
+        # Strip markdown code fences — Llama commonly wraps JSON in ```json ... ```
+        if raw.startswith('`'):
+            raw = re.sub(r'^```(?:json)?\s*\n?', '', raw)
+            raw = re.sub(r'\n?\s*```\s*$', '', raw)
+        raw = raw.strip()
         data = json.loads(raw)
         required = ['strategic_interpretation', 'key_driver', 'main_risk', 'counterpoint',
                     'differentiation_insight', 'what_matters_most', 'counter_thesis']
@@ -182,6 +188,89 @@ def _l4_reasoning_llm(
         logging.getLogger("midan.l4").warning(
             f"[L4] _l4_reasoning_llm failed ({type(llm_err).__name__}: {llm_err!r}) "
             f"— falling back to conditional logic"
+        )
+    return None
+
+
+def _generate_go_decision_llm(
+    tas: float,
+    decision_badge: str,
+    seg_label: str,
+    bm_label: str,
+    dominant_risk: str,
+    top_signal: str,
+    reg_risk: str,
+    stage: str,
+    regime: str,
+    sector: str,
+    country: str,
+    idea_text: str,
+    diff: int,
+) -> Optional[str]:
+    """
+    LLM-generated GO decision text. 4 sentences, idea-specific.
+    Returns None on failure — caller uses hardcoded fallback.
+    """
+    regime_r = regime.replace('_', ' ').title()
+    tas_pct  = int(tas * 100)
+
+    prompt = dedent(f"""
+        You are MIDAN — a senior operator making a final go/no-go call on a startup idea.
+        This is not analysis. This is a decision. Write like one.
+
+        Decision: {decision_badge}
+        Signal score: {tas_pct}/100 in a {regime_r} market
+        Dominant risk: {dominant_risk}
+        Regulatory risk: {reg_risk}
+        Key market signal: {top_signal}
+        Stage: {stage}
+        Differentiation: {diff}/5
+
+        Original founder idea:
+        "{idea_text}"
+
+        Idea profile:
+        - Business model: {bm_label}
+        - Target segment: {seg_label}
+        - Sector: {sector} in {country}
+
+        Write the decision action in EXACTLY 4 sentences. Output nothing else — no headers, no bullets, no markdown.
+
+        Sentence 1 — The command: State the core condition or command that matches {decision_badge}. What must happen (or must not happen) before anything else. Make it specific to this idea — not generic advice.
+
+        Sentence 2 — The milestone: Name ONE concrete validation step or build milestone specific to {bm_label} serving {seg_label} in {sector}/{country}. Make it time-bounded and falsifiable. Not 'get feedback' — name what specific evidence looks like.
+
+        Sentence 3 — The kill signal: The specific observable event that tells the founder this is not working. Format: 'If [specific, measurable thing] happens, stop.' Must be idea-specific — not 'if there is no traction'.
+
+        Sentence 4 — The funding sentence: If {decision_badge} contains 'GO' or 'CONDITIONAL': name 2-3 investors who actually back {sector} startups in {country} or the MENA/Africa region at {stage} stage — use real, specific fund or accelerator names relevant to this sector, not a generic list. If {decision_badge} contains 'NO-GO' or 'HIGH RISK': state what specific evidence would be required before raising is appropriate.
+
+        HARD RULES:
+        - Every sentence must be specific to the idea text — zero sentences can apply unchanged to a different startup
+        - Do not default to Flat6Labs, 500 MENA, Algebra Ventures as a template — only name them if genuinely relevant to {sector}
+        - Do not hedge — this is a decision, not a balanced analysis
+        - Do not start any sentence with 'I'
+        - Do not start with the decision badge text
+        - 4 sentences only — no more, no less
+    """).strip()
+
+    try:
+        response = LLM_CLIENT.chat.completions.create(
+            model=_LLM_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.30,
+            max_tokens=512,
+        )
+        text = response.choices[0].message.content.strip()
+        if text.startswith('`'):
+            text = re.sub(r'^```\w*\n?', '', text)
+            text = re.sub(r'\n?```\s*$', '', text)
+        text = text.strip()
+        if len(text) > 80:
+            return text
+    except Exception as go_err:
+        import logging
+        logging.getLogger("midan.l4").warning(
+            f"[L4] _generate_go_decision_llm failed ({type(go_err).__name__}: {go_err!r}) — using fallback"
         )
     return None
 
@@ -220,7 +309,7 @@ def _l4_reasoning_fallback(
     market_label = grounding['market_label']
     workflow_software = _is_workflow_software_idea((idea_text or '').lower(), seg)
 
-    # ── 1. Strategic Interpretation — structurally different by BM + regime ──
+    # ── 1. Strategic Interpretation — we generate this to be structurally different by BM + regime ──
     if bm == 'marketplace':
         if in_friction:
             si = (
@@ -289,7 +378,7 @@ def _l4_reasoning_fallback(
             f"The {top_shap} macro signal is the environmental constraint you cannot control."
         )
 
-    # ── 2. Key Driver — the one thing that determines success or failure ──
+    # ── 2. Key Driver — we pick the one thing that determines success or failure ──
     kd_map = {
         'liquidity': (
             f"Supply acquisition speed — not product quality, not marketing spend, not team size. "
@@ -332,7 +421,7 @@ def _l4_reasoning_fallback(
     }
     key_driver = kd_map.get(dominant_risk, kd_map['execution'])
 
-    # ── 3. Main Risk — specific failure mode from the signal profile ──
+    # ── 3. Main Risk — we derive the specific failure mode from the signal profile ──
     if dominant_risk == 'workflow':
         main_risk = (
             f"Workflow non-adoption inside {customer_label}. "
@@ -384,7 +473,7 @@ def _l4_reasoning_fallback(
             f"{'The ' + regime_r + ' macro environment amplifies this — ' + ('buyers are price-sensitive and less tolerant of unproven tools.' if in_friction else 'you need to move faster than the market attracts competitors.') if True else ''}"
         )
 
-    # ── 4. Counterpoint — aggressively challenge the comfortable interpretation ──
+    # ── 4. Counterpoint — we aggressively challenge the comfortable interpretation ──
     if workflow_software and seg == 'b2b':
         counterpoint = (
             f"The assumption here is that better predictions automatically create willingness-to-pay. They do not. "
@@ -418,7 +507,7 @@ def _l4_reasoning_fallback(
             f"The founders who survive Weak signals are the ones who stopped spending before the runway ended, not the ones who pushed through."
         )
 
-    # ── 5. Differentiation Insight — why this idea behaves differently ──
+    # ── 5. Differentiation Insight — we explain why this idea behaves differently ──
     bm_baselines = {
         'marketplace': f"Most {sector} ideas in {country} default to marketplace models because the informal market already exists",
         'saas':        f"SaaS in {sector}/{country} typically fails because founders build for global scale and price for local spending power",
@@ -453,7 +542,7 @@ def _l4_reasoning_fallback(
 
     differentiation_insight = f"{baseline}. This one {diff_ending}"
 
-    # ── 6. What Matters Most — the single make-or-break variable ──
+    # ── 6. What Matters Most — we identify the single make-or-break variable ──
     _wmm_map = {
         ('marketplace', 'idea'):      f"Whether you can manually broker the first 50 transactions in {country} without any product — if that does not happen, the platform never gets liquidity data to automate from.",
         ('marketplace', 'validation'):f"Supply-side density within 60 days — if active suppliers do not reach critical mass before demand loses patience, the chicken-and-egg problem kills the model.",
@@ -474,7 +563,7 @@ def _l4_reasoning_fallback(
             f"Whether {customer_label} in {market_label} will let the product drive the next real ordering or planning cycle — if it never reaches that operational moment, the software never becomes budget-critical."
         )
     elif wmm_key not in _wmm_map:
-        # Generic fallback by dominant_risk
+        # we fall back to dominant_risk-specific text when the BM+stage key isn't in the map
         wmm_fallback = {
             'liquidity':       f"Whether the supply side shows up without you manually recruiting every participant — if it requires your personal effort, it will not scale.",
             'differentiation': f"Whether {seg_label} customers choose you over the default alternative in a blind test — if the answer is no, the differentiation is in your head, not in the market.",
@@ -489,7 +578,7 @@ def _l4_reasoning_fallback(
     else:
         what_matters_most = _wmm_map[wmm_key]
 
-    # ── 7. Counter-Thesis — challenges the CORE assumption of the idea ──
+    # ── 7. Counter-Thesis — we challenge the CORE assumption embedded in the idea ──
     _ct_sector_map = {
         'fintech':    f"You think this is a product problem. In {country}, fintech is a trust problem — and trust is built through regulated institutions, not better UX. A superior product without a banking license or institutional partnership will not reach adoption at scale.",
         'healthtech': f"You think the friction is distribution. In {country}, the real friction is institutional procurement — hospitals and clinics buy from relationships, not from pitches, and the decision cycle is 9-18 months regardless of how good the product is.",
@@ -570,8 +659,8 @@ def _apply_epistemic_calibration(synthesis: dict, mechanism_analysis: dict) -> d
 
         result = dict(synthesis)
 
-        # Fix #2: Weave epistemic_disclosure INTO strategic_interpretation prose.
-        # Users anchor on the first sentence of synthesis — the disclosure must be there.
+        # Fix #2: we weave epistemic_disclosure INTO strategic_interpretation prose;
+        # users anchor on the first sentence of synthesis — the disclosure must be there
         if disclosure and eq in ("weak", "insufficient", "moderate"):
             prefix = {
                 "insufficient": "Structural signal coverage is too low for mechanism-level conclusions. ",
@@ -580,7 +669,7 @@ def _apply_epistemic_calibration(synthesis: dict, mechanism_analysis: dict) -> d
             }.get(eq, "")
             result["strategic_interpretation"] = prefix + result.get("strategic_interpretation", "")
 
-        # Fix #6: Surface market structure ambiguity in synthesis explicitly.
+        # Fix #6: we surface market structure ambiguity in synthesis explicitly
         if ms_category == "ambiguous" or (ms_alt and ms_confidence < 0.50):
             ambiguity_note = (
                 f" Market structure classification is ambiguous "
@@ -589,8 +678,8 @@ def _apply_epistemic_calibration(synthesis: dict, mechanism_analysis: dict) -> d
             )
             result["strategic_interpretation"] = result.get("strategic_interpretation", "") + ambiguity_note
 
-        # Fix #3: Bound differentiation_insight by best mechanism's implication_ceiling.
-        # Claims in synthesis must not exceed what the mechanism evidence supports.
+        # Fix #3: we bound differentiation_insight by the best mechanism's implication_ceiling;
+        # claims in synthesis must not exceed what the mechanism evidence supports
         if mechanisms:
             adv = [m for m in mechanisms if m.get("category") == "advantage_mechanism"]
             best = max(adv or mechanisms, key=lambda m: m.get("effective_weight", 0.0))
@@ -608,26 +697,26 @@ def _apply_epistemic_calibration(synthesis: dict, mechanism_analysis: dict) -> d
             if ceiling_note:
                 result["differentiation_insight"] = result.get("differentiation_insight", "") + ceiling_note
 
-        # Fix #1: Add calibration prefix to key_driver under elevated uncertainty.
+        # Fix #1: we add a calibration prefix to key_driver when uncertainty is elevated
         if uncertainty >= 0.20:
             result["key_driver"] = (
                 f"[mechanism_uncertainty={uncertainty:.2f} — treat as directional, not conclusive] "
                 + result.get("key_driver", "")
             )
 
-        # Fix #5: Surface tension_coverage_state as a top-level synthesis field.
-        # "No tensions detected" must NOT imply the space is tension-free.
+        # Fix #5: we surface tension_coverage_state as a top-level synthesis field;
+        # "no tensions detected" must NOT imply the space is tension-free
         if tension_cov:
             result["tension_coverage_state"] = tension_cov
 
-        # Fix #6 (cont.): Add mechanism_coverage_state field.
+        # Fix #6 (cont.): we add a mechanism_coverage_state field for completeness
         n_mechs = len(mechanisms)
         mode    = mechanism_analysis.get("extraction_mode", "unknown")
         result["mechanism_coverage_state"] = (
             f"{n_mechs} mechanism(s) extracted in {mode} mode."
         )
 
-        # Surface consistency errors in counterpoint — they must not be hidden.
+        # we surface consistency errors in counterpoint — they must not be hidden
         error_flags = [f for f in cons_flags if f.get("severity") == "error"]
         if error_flags:
             flag_desc = "; ".join(
@@ -663,21 +752,16 @@ def _generate_l4_reasoning(
     bm_label   = bm.upper()
     seg_label  = idea_features.get('target_segment', 'b2c').upper()
 
-    result = None
-    groq_key = os.environ.get("GROQ_API_KEY", "")
-    if GROQ_CLIENT and groq_key and groq_key != "dummy":
-        result = _l4_reasoning_llm(
-            sector, country, regime, conf, sarima_trend,
-            idea_features, idea_signal_data, shap_dict, tas, signal_tier,
-            a2_comps, a4_sentiment, idea_text, diff_label, bm_label, seg_label,
-            mechanism_analysis=mechanism_analysis,
-        )
-        if result:
-            logs.append("[L4] Strategic reasoning: LLM path succeeded")
-        else:
-            logs.append("[L4] LLM reasoning failed — using conditional fallback")
+    result = _l4_reasoning_llm(
+        sector, country, regime, conf, sarima_trend,
+        idea_features, idea_signal_data, shap_dict, tas, signal_tier,
+        a2_comps, a4_sentiment, idea_text, diff_label, bm_label, seg_label,
+        mechanism_analysis=mechanism_analysis,
+    )
+    if result:
+        logs.append("[L4] Strategic reasoning: LLM path succeeded")
     else:
-        logs.append("[L4] No LLM key — using conditional fallback reasoning")
+        logs.append("[L4] LLM reasoning failed — using conditional fallback")
 
     if not result:
         result = _l4_reasoning_fallback(
@@ -686,7 +770,7 @@ def _generate_l4_reasoning(
             diff_label, bm_label, seg_label,
         )
 
-    # Guarantee all 7 fields exist (LLM may have returned only 5)
+    # we guarantee all 7 fields exist — LLM may have returned only 5
     for f in ('what_matters_most', 'counter_thesis'):
         if not result.get(f):
             fb = _l4_reasoning_fallback(
@@ -696,8 +780,8 @@ def _generate_l4_reasoning(
             )
             result[f] = fb.get(f, '')
 
-    # Apply epistemic calibration — both LLM and fallback paths go through this.
-    # This is the guarantee that synthesis language aligns with mechanism evidence quality.
+    # we apply epistemic calibration to both LLM and fallback paths;
+    # this is how we guarantee synthesis language aligns with mechanism evidence quality
     result = _apply_epistemic_calibration(result, mechanism_analysis)
 
     return result
@@ -711,42 +795,39 @@ IDEA_DIMENSIONS = ['problem_clarity', 'solution_fit', 'differentiation', 'busine
 
 
 def agent_a0_evaluate_idea(idea_text: str, sector: str, country: str) -> dict:
-    groq_key = os.environ.get("GROQ_API_KEY", "")
-    if GROQ_CLIENT and groq_key and groq_key != "dummy":
-        try:
-            prompt = dedent(f"""
-                You are a VC analyst evaluating a startup idea. Score each dimension 0-10.
+    try:
+        prompt = dedent(f"""
+            You are a VC analyst evaluating a startup idea. Score each dimension 0-10.
 
-                Idea: "{idea_text}"
-                Sector: {sector} | Country: {country}
+            Idea: "{idea_text}"
+            Sector: {sector} | Country: {country}
 
-                CRITICAL: If the text is a greeting, random words, or clearly not a startup idea,
-                score every dimension exactly 0 with reason "Not a valid startup idea."
-                Otherwise score honestly — different ideas MUST get different scores.
+            CRITICAL: If the text is a greeting, random words, or clearly not a startup idea,
+            score every dimension exactly 0 with reason "Not a valid startup idea."
+            Otherwise score honestly — different ideas MUST get different scores.
 
-                Respond in EXACTLY this JSON (no other text):
-                {{"problem_clarity":{{"score":7,"reason":"..."}},"solution_fit":{{"score":6,"reason":"..."}},"differentiation":{{"score":5,"reason":"..."}},"business_model":{{"score":8,"reason":"..."}},"scalability":{{"score":6,"reason":"..."}}}}
-            """).strip()
-            resp = GROQ_CLIENT.chat.completions.create(
-                messages=[{"role": "user", "content": prompt}],
-                model="llama-3.1-8b-instant", temperature=0.2, max_tokens=400
-            )
-            raw = resp.choices[0].message.content.strip()
-            if '```' in raw:
-                raw = raw.split('```')[1]
-                if raw.startswith('json'): raw = raw[4:]
-            data = json.loads(raw)
-            scores  = {d: max(0, min(10, int(data.get(d, {}).get('score', 5)))) for d in IDEA_DIMENSIONS}
-            reasons = {d: data.get(d, {}).get('reason', '') for d in IDEA_DIMENSIONS}
-            return {'scores': scores, 'reasons': reasons, 'idea_score': int(sum(scores.values()) / len(scores) * 10)}
-        except Exception as llm_err:
-            import logging
-            logging.getLogger("midan.a0").warning(
-                f"[A0] agent_a0_evaluate_idea LLM failed ({type(llm_err).__name__}: {llm_err!r}) "
-                f"— falling back to keyword heuristics"
-            )
+            Respond in EXACTLY this JSON (no other text):
+            {{"problem_clarity":{{"score":7,"reason":"..."}},"solution_fit":{{"score":6,"reason":"..."}},"differentiation":{{"score":5,"reason":"..."}},"business_model":{{"score":8,"reason":"..."}},"scalability":{{"score":6,"reason":"..."}}}}
+        """).strip()
+        response = LLM_CLIENT.chat.completions.create(
+            model=_LLM_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.2,
+            max_tokens=2048,
+        )
+        raw = response.choices[0].message.content.strip()
+        data = json.loads(raw)
+        scores  = {d: max(0, min(10, int(data.get(d, {}).get('score', 5)))) for d in IDEA_DIMENSIONS}
+        reasons = {d: data.get(d, {}).get('reason', '') for d in IDEA_DIMENSIONS}
+        return {'scores': scores, 'reasons': reasons, 'idea_score': int(sum(scores.values()) / len(scores) * 10)}
+    except Exception as llm_err:
+        import logging
+        logging.getLogger("midan.a0").warning(
+            f"[A0] agent_a0_evaluate_idea LLM failed ({type(llm_err).__name__}: {llm_err!r}) "
+            f"— falling back to keyword heuristics"
+        )
 
-    # Keyword heuristic fallback
+    # we fall back to keyword heuristics when LLM is unavailable
     t = idea_text.lower()
     scores = {}
     reasons = {}
@@ -805,10 +886,10 @@ def _generate_explanation_layer(
     in_fric  = regime in ('HIGH_FRICTION_MARKET', 'CONTRACTING_MARKET')
     in_grow  = regime in ('GROWTH_MARKET', 'EMERGING_MARKET')
 
-    # ── Dimension explanations ──────────────────────────────────────────────────
+    # ── we generate per-dimension explanations ──────────────────────────────────────────────────
     dim_exp = {}
 
-    # problem_clarity
+    # problem_clarity: we branch explanation by score tier
     pc = scores.get('problem_clarity', 5)
     if pc >= 8:
         pc_why     = f"The problem is well-articulated for a specific segment with clear pain signal."
@@ -824,7 +905,7 @@ def _generate_explanation_layer(
         pc_improve = f"Rewrite the idea starting with: '[Specific customer] struggles with [specific problem] [frequency/urgency] because [root cause], and today they solve it by [workaround that costs them X].' Then describe your solution."
     dim_exp['problem_clarity'] = {'why': pc_why, 'missing': pc_missing, 'improve': pc_improve, 'score': pc}
 
-    # solution_fit
+    # solution_fit: we branch explanation by score tier
     sf = scores.get('solution_fit', 5)
     if sf >= 8:
         sf_why     = f"The solution directly addresses the stated problem with a clear mechanism."
@@ -840,7 +921,7 @@ def _generate_explanation_layer(
         sf_improve = f"Describe the product as a series of user actions: what does the user do first, what does the system do, what does the user receive? That sequence IS the product."
     dim_exp['solution_fit'] = {'why': sf_why, 'missing': sf_missing, 'improve': sf_improve, 'score': sf}
 
-    # differentiation
+    # differentiation: we branch explanation by score tier
     dif = scores.get('differentiation', 5)
     if dif >= 8:
         dif_why     = f"A clear and specific differentiating mechanism exists — one that requires meaningful effort or structural advantage to replicate."
@@ -856,7 +937,7 @@ def _generate_explanation_layer(
         dif_improve = f"Before building anything, conduct 20 interviews with current [competitor] users and ask what would make them switch. Build only what that research reveals."
     dim_exp['differentiation'] = {'why': dif_why, 'missing': dif_missing, 'improve': dif_improve, 'score': dif}
 
-    # business_model
+    # business_model: we branch explanation by score tier
     bms = scores.get('business_model', 5)
     if bms >= 8:
         bm_why     = f"The revenue mechanism is clear and matched to the value delivered — pricing logic follows from customer outcome."
@@ -872,7 +953,7 @@ def _generate_explanation_layer(
         bm_improve = f"Run a pre-sell experiment: offer the product (before it exists) for a specific price to 10 target customers. Paying customers validate the model. Non-payment tells you something critical before you burn development time."
     dim_exp['business_model'] = {'why': bm_why, 'missing': bm_missing, 'improve': bm_improve, 'score': bms}
 
-    # scalability
+    # scalability: we branch explanation by score tier
     sc = scores.get('scalability', 5)
     if sc >= 8:
         sc_why     = f"The model has identifiable scale levers — revenue can grow without proportional cost growth."
@@ -888,10 +969,10 @@ def _generate_explanation_layer(
         sc_improve = f"Ask: 'What has to be true about the product for it to serve 100x current customers with 5x current staff?' The gap between current state and that answer is the scale architecture work."
     dim_exp['scalability'] = {'why': sc_why, 'missing': sc_missing, 'improve': sc_improve, 'score': sc}
 
-    # ── Signal explanations (macro SHAP + idea breakdown) ─────────────────────
+    # ── we generate signal explanations for both macro SHAP signals and the idea breakdown ─────────────────────
     sig_exp = {}
 
-    # Macro SHAP signals
+    # we write out macro SHAP signal descriptions
     _shap_descriptions = {
         'velocity_yoy': {
             'what_it_means': "Year-over-year deal velocity in this sector — how fast investment and transaction activity is growing or shrinking.",
@@ -935,7 +1016,7 @@ def _generate_explanation_layer(
             'reliability':   desc.get('reliability', "Medium reliability."),
         }
 
-    # Idea signal breakdown labels
+    # we define idea signal breakdown labels for the explanation layer
     _idea_signal_labels = {
         'model_regime_fit':   ('Baseline Model-Regime Fit', "How well your business model type (e.g., marketplace, SaaS) structurally fits the current market regime. This is the foundation before any idea-specific adjustments."),
         'differentiation':    ('Differentiation Effect',    "The positive or negative adjustment based on how differentiated your idea is. Higher differentiation creates pricing power and moat potential — lower scores penalize the baseline."),
@@ -957,9 +1038,9 @@ def _generate_explanation_layer(
     }
 
 
-# the strict ResponsePayload contract. It MUST handle every outcome type
-# explicitly. Missing data is filled with `unknown`/`null` plus an explanation
-# string — never silently dropped, never silently defaulted.
+# we enforce the strict ResponsePayload contract here; every outcome type must be handled
+# explicitly; missing data is filled with `unknown`/`null` plus an explanation string —
+# never silently dropped, never silently defaulted
 #
 # Outcome types:
 #   1. PRE_ANALYSIS         — no pipeline ran (greeting, casual, partial idea)
@@ -970,6 +1051,15 @@ def _generate_explanation_layer(
 #                              CONFLICTING_SIGNALS}
 
 _BUILDER_LOG = __import__('logging').getLogger("midan.payload_builder")
+_TRACE_LOG   = __import__('logging').getLogger("midan.trace")
+if not _TRACE_LOG.handlers:
+    import logging as _logging_r, pathlib as _pathlib_r
+    _trace_path_r = _pathlib_r.Path(__file__).parent.parent / "trace.log"
+    _trace_fh_r = _logging_r.FileHandler(str(_trace_path_r), mode="a", encoding="utf-8")
+    _trace_fh_r.setFormatter(_logging_r.Formatter("%(asctime)s %(levelname)s %(message)s"))
+    _TRACE_LOG.addHandler(_trace_fh_r)
+    _TRACE_LOG.setLevel(_logging_r.DEBUG)
+    _TRACE_LOG.propagate = False
 
 
 def _unknown_quality_dimension(basis: str) -> dict:
@@ -1048,7 +1138,7 @@ def _build_payload_rejected(raw: dict, reply: Optional[str] = None,
         f"no analysis pipeline ran."
     )
     return {
-        "success":            False,
+        "success":            True,
         "schema_version":     RESPONSE_SCHEMA_VERSION,
         "decision_state":     "REJECTED",
         "decision_strength":  {"tier": "uncertain", "basis": basis},
@@ -1090,7 +1180,7 @@ def _build_payload_clarification_required(raw: dict, reply: Optional[str] = None
     )
     clar = raw.get("clarification") or {}
     return {
-        "success":            False,
+        "success":            True,
         "schema_version":     RESPONSE_SCHEMA_VERSION,
         "decision_state":     "CLARIFICATION_REQUIRED",
         "decision_strength":  {"tier": "uncertain", "basis": basis},
@@ -1145,7 +1235,7 @@ def _build_payload_decided(raw: dict, reply: Optional[str] = None,
     conflicts         = l4.get("conflicting_signals") or []
     reasoning_steps   = l4.get("decision_reasoning") or []
 
-    # Determine post-decision mode using existing helper for behavioral consistency
+    # we determine post-decision mode using the existing helper for behavioral consistency
     route = _post_decision_route({
         "decision_state": decision_state,
         "l4_decision":    l4,
@@ -1153,13 +1243,13 @@ def _build_payload_decided(raw: dict, reply: Optional[str] = None,
     post_mode       = route.get("mode") if route.get("mode") in ('STANDARD_ADVISOR', 'RESOLVING_CONFLICT', 'ADVISORY_ONLY', 'RE_CLARIFY') else None
     post_mode_basis = route.get("reason", f"post_decision_mode derived for state={decision_state}")
 
-    # Compute the top binding risk dimension for reasoning trace
+    # we compute the top binding risk dimension for the reasoning trace
     top_dim_name, top_dim_block = _l4_top_risk_dim(l4)
     top_dim_label = (top_dim_name or '').replace('_', ' ') if top_dim_name else None
     top_dim_level = (top_dim_block or {}).get('level') if top_dim_block else None
     top_dim_reasoning = (top_dim_block or {}).get('reasoning') if top_dim_block else None
 
-    # Risk decomposition: ensure all three dimensions present even if L4 omitted any
+    # we ensure all three risk dimensions are present even if L4 omitted any
     rd = {}
     for dim in ('market_risk', 'execution_risk', 'timing_risk'):
         if dim in risk_block and isinstance(risk_block[dim], dict):
@@ -1173,7 +1263,7 @@ def _build_payload_decided(raw: dict, reply: Optional[str] = None,
         else:
             rd[dim] = _unknown_risk_dimension(f"{dim} not present in L4 output")
 
-    # Decision quality: ensure all four sub-fields present
+    # we ensure all four decision quality sub-fields are present
     dq = {
         "input_completeness":  quality_block.get('input_completeness') or _unknown_quality_dimension("input_completeness missing from L4 output"),
         "signal_agreement":    quality_block.get('signal_agreement')   or _unknown_quality_dimension("signal_agreement missing from L4 output"),
@@ -1181,7 +1271,7 @@ def _build_payload_decided(raw: dict, reply: Optional[str] = None,
         "overall_uncertainty": quality_block.get('overall_uncertainty') or "high",
     }
 
-    # Reasoning trace assembly
+    # we assemble the reasoning trace from L4 reasoning steps and conflict ids
     trace = {
         "decision_reasoning_steps": [
             {
@@ -1206,7 +1296,7 @@ def _build_payload_decided(raw: dict, reply: Optional[str] = None,
     }
 
     return {
-        "success":            (decision_state in ('GO', 'CONDITIONAL', 'NO_GO')),
+        "success":            True,
         "schema_version":     RESPONSE_SCHEMA_VERSION,
         "decision_state":     decision_state,
         "decision_strength":  {
@@ -1223,10 +1313,10 @@ def _build_payload_decided(raw: dict, reply: Optional[str] = None,
         "clarification_state": (extras_context or {}).get("clarification_state"),
         "projection":         projection,
         "quality":            quality,
-        # `data` carries the full raw process_idea output for backward-compat
-        # consumers that read fields like `data.idea`, `data.tas_score`, etc.
-        # `raw_pipeline_output` mirrors it for forward-compat clarity. Both
-        # point to the same dict — no transformation, no drift.
+        # `data` carries the full raw process_idea output for backward-compat consumers
+        # that read fields like `data.idea`, `data.tas_score`, etc.;
+        # `raw_pipeline_output` mirrors it for forward-compat clarity — both point to
+        # the same dict, no transformation, no drift
         "data":                raw,
         "raw_pipeline_output": raw,
     }
@@ -1242,6 +1332,7 @@ def build_response_payload(
     quality: Optional[dict] = None,
     clarification_state: Optional[dict] = None,
     extras_context: Optional[dict] = None,
+    is_fallback: Optional[bool] = None,
 ) -> ResponsePayload:
     """
     Single mapper from raw pipeline outputs to the strict ResponsePayload schema.
@@ -1284,12 +1375,14 @@ def build_response_payload(
     else:
         raise SchemaViolationError(f"Unknown outcome type: {outcome!r}")
 
-    # Strict validation — pydantic raises ValidationError on any contract violation
+    # we enforce strict validation — pydantic raises ValidationError on any contract violation
+    if is_fallback is not None:
+        body['is_fallback'] = is_fallback
     return ResponsePayload(**body)
 
 
-# NOTE: _l4_top_risk_dim moved to midan.l4_decision (its semantic owner) —
-# imported at the top of this module.
+# NOTE: we moved _l4_top_risk_dim to midan.l4_decision (its semantic owner) —
+# it's imported at the top of this module
 
 
 def _l4_summary_for_chat(l4_decision: dict) -> str:
@@ -1323,28 +1416,15 @@ def _chat_fallback(req: ChatRequest) -> str:
     grounding  = _extract_idea_grounding(idea_text, sector, idea_feat, country)
     customer_label = grounding['customer_label']
 
-    # ── No analysis context yet — pre-decision conversation ─────────────────
-    # Tone: a consultant easing into a new conversation. Help shape the idea
-    # before evaluating it. Avoid lecturing about layers and architecture.
+    # ── No analysis context yet — pre-decision mode ──────────────────────────────
+    # _chat_pre_analysis_reply() already handles everything via Gemini and returns
+    # its own fallback string on failure. This branch should not be reached for
+    # pre-analysis turns. If it is, return the same error string.
     if not ctx.get('decision_state') and not ctx.get('tas_score'):
-        greet_tokens = {"hi", "hello", "hey", "yo", "sup", "good morning", "good evening"}
-        meta_phrases = ["what do you do", "who are you", "how does this work",
-                         "what is midan", "what can you do"]
-        if any(g in last_msg for g in greet_tokens) and len(last_msg.split()) <= 5:
-            return ("Hey — tell me what you're thinking about building. "
-                    "Even a rough sketch works to start. "
-                    "What's the problem, who's it for, and what's your approach?")
-        if any(p in last_msg for p in meta_phrases):
-            return ("Think of me as a consultant who'll help you shape the idea, "
-                    "evaluate it, and keep advising as you sharpen it. "
-                    "Walk me through what you're working on — even loosely.")
-        if turn_n == 1:
-            return ("Tell me what you're thinking about building. "
-                    "What's the problem, who's it for, and what's your rough approach?")
-        return ("Keep going — give me the problem, the customer, and how you'd solve it. "
-                "Once that's clear, I can run a real read on it.")
+        _TRACE_LOG.warning("[TRACE][_chat_fallback] pre-analysis branch reached unexpectedly — returning error fallback")
+        return _PRE_ANALYSIS_ERROR_FALLBACK
 
-    # ── Post-decision: route by L4 mode, NOT by legacy fields ───────────────
+    # ── Post-decision: we route by L4 mode, NOT by legacy fields ───────────────
     route        = _post_decision_route(ctx)
     mode         = route['mode']
     l4           = ctx.get('l4_decision') or {}
@@ -1352,11 +1432,10 @@ def _chat_fallback(req: ChatRequest) -> str:
     strength_tier = ((l4.get('decision_strength') or {}).get('tier')
                      or (ctx.get('decision_strength') or {}).get('tier') or '')
 
-    # Hard guard: a chat-mode reply must never expose internal placeholders
-    # like UNKNOWN or `unknown strength`. If we somehow reached the post-
-    # decision branch without a concrete decision_state or strength tier, we
-    # emit a consultative clarification instead of a broken opener and log
-    # the routing miss so it can be tracked down.
+    # we added a hard guard here: a chat-mode reply must never expose internal placeholders
+    # like UNKNOWN or `unknown strength`; if we somehow reached the post-decision branch
+    # without a concrete decision_state or strength tier, we emit a consultative clarification
+    # instead of a broken opener and log the routing miss so it can be tracked down
     _have_state    = decision_state in {'GO', 'CONDITIONAL', 'NO_GO',
                                         'INSUFFICIENT_DATA', 'HIGH_UNCERTAINTY',
                                         'CONFLICTING_SIGNALS'}
@@ -1374,7 +1453,7 @@ def _chat_fallback(req: ChatRequest) -> str:
             "and I'll run a real read on it."
         )
 
-    # ── MODE 1: RESOLVING_CONFLICT — must surface conflict + ask resolution ─
+    # ── MODE 1: RESOLVING_CONFLICT — we must surface the conflict + ask for resolution ─
     if mode == 'RESOLVING_CONFLICT':
         unresolved = route.get('unresolved_conflicts', [])
         if not unresolved:
@@ -1393,7 +1472,7 @@ def _chat_fallback(req: ChatRequest) -> str:
             f"Which side of that do you want to anchor to? Once you decide, I'll re-run."
         )
 
-    # ── MODE 2: ADVISORY_ONLY — every reply prefixed with caveat ────────────
+    # ── MODE 2: ADVISORY_ONLY — we prefix every reply with a HIGH_UNCERTAINTY caveat ────────────
     if mode == 'ADVISORY_ONLY':
         basis = route.get('uncertainty_basis', {})
         ic    = basis.get('input_completeness') or 'input completeness unclear'
@@ -1404,7 +1483,7 @@ def _chat_fallback(req: ChatRequest) -> str:
             f"What do you want to pressure-test, knowing the read isn't on solid ground yet?"
         )
 
-    # ── MODE 3: RE_CLARIFY — last attempt halted on missing fields ──────────
+    # ── MODE 3: RE_CLARIFY — last attempt halted on missing fields, we re-prompt ──────────
     if mode == 'RE_CLARIFY':
         idea_feat = ctx.get('idea_features') or {}
         bm        = idea_feat.get('business_model') or ctx.get('business_model', '')
@@ -1422,32 +1501,32 @@ def _chat_fallback(req: ChatRequest) -> str:
             "Once those are clear, I can give you a grounded read."
         )
 
-    # ── MODE 4: STANDARD_ADVISOR — L4-grounded interpretive replies ─────────
+    # ── MODE 4: STANDARD_ADVISOR — we build L4-grounded interpretive replies ─────────
     top_dim_name, top_dim_block = _l4_top_risk_dim(l4)
     top_dim_label = (top_dim_name or 'risk').replace('_', ' ')
     top_dim_level = (top_dim_block or {}).get('level', 'unknown')
     top_dim_reasoning = (top_dim_block or {}).get('reasoning', '')
 
-    # Build a list of conflict ids (any severity) to ground responses
+    # we build a list of conflict ids (any severity) to ground responses
     conflicts_summary = ", ".join(
         c.get('conflict_id', '?') for c in (l4.get('conflicting_signals') or [])
     ) or 'no detected conflicts'
 
-    # Pull the L3 differentiation verdict + competition pressure if surfaced
+    # we pull the L3 differentiation verdict + competition pressure if they were surfaced
     l3 = ctx.get('l3_reasoning') or {}
     diff_verdict = (l3.get('differentiation') or {}).get('verdict', 'unknown')
     comp_pressure = (l3.get('competition') or {}).get('competitive_pressure', 'unknown')
 
-    # Consultant-tone opener: name the decision and its strength inline, in
-    # plain English, and surface any contradictions L4 flagged. Replaces the
-    # old `[decision_state=..., decision_strength=...]` debug-style stamp.
+    # we build a consultant-tone opener that names the decision and its strength inline,
+    # in plain English, and surfaces any contradictions L4 flagged; this replaces the
+    # old `[decision_state=..., decision_strength=...]` debug-style stamp
     _conflict_ids = [
         c.get('conflict_id', '?')
         for c in (l4.get('conflicting_signals') or [])
     ]
-    # By the time we reach this opener, the guard above has already verified
-    # decision_state is one of GO / CONDITIONAL / NO_GO. The dict.get fallback
-    # is intentionally a defensive no-op rather than a UNKNOWN-printing branch.
+    # by the time we reach this opener, the guard above has already verified
+    # decision_state is one of GO / CONDITIONAL / NO_GO; the dict.get fallback
+    # is intentionally a defensive no-op rather than a UNKNOWN-printing branch
     _state_phrase = {
         'GO':          f"Reading this as a GO at {strength_tier} strength",
         'CONDITIONAL': f"This reads as CONDITIONAL — strength is {strength_tier}",
@@ -1461,8 +1540,8 @@ def _chat_fallback(req: ChatRequest) -> str:
         _contradiction_clause = ""
     decision_caveat = f"{_state_phrase}{_contradiction_clause}."
 
-    # Topic routing — same keyword categories as before, but every branch
-    # references L4 fields explicitly rather than TAS/tier numerics.
+    # we route by topic keywords — same categories as before, but every branch
+    # references L4 fields explicitly rather than TAS/tier numerics
     if any(w in last_msg for w in ["pivot", "change direction", "switch", "alternative", "different idea"]):
         return (
             f"{decision_caveat} The macro regime ({ctx.get('regime', 'unknown')}) does not move when you pivot. "
@@ -1557,7 +1636,7 @@ def _chat_fallback(req: ChatRequest) -> str:
             f"What else do you want to pressure-test?"
         )
 
-    # Default: ground in the top risk + customer label. No tas references.
+    # Default: we ground the reply in the top risk + customer label; no TAS references
     return (
         f"{decision_caveat} Reading on {customer_label} in {country or 'this market'}: "
         f"the binding dimension is {top_dim_label} ({top_dim_level}). "
@@ -1770,12 +1849,10 @@ def _answer_projection_probe(question: str, context: dict) -> str:
     if not question or not question.strip():
         return "State the exact challenge you want pressure-tested."
 
-    groq_key = os.environ.get("GROQ_API_KEY", "")
-    if GROQ_CLIENT and groq_key and groq_key != "dummy":
-        idea = context.get("idea", "")
-        idea_feat = context.get("idea_features", {})
-        grounding = _extract_idea_grounding(idea, context.get("sector", ""), idea_feat, context.get("country", ""))
-        prompt = dedent(f"""
+    idea = context.get("idea", "")
+    idea_feat = context.get("idea_features", {})
+    grounding = _extract_idea_grounding(idea, context.get("sector", ""), idea_feat, context.get("country", ""))
+    prompt = dedent(f"""
             You are MIDAN. This is not a chatbot exchange. Answer like a decision system.
 
             Founder idea:
@@ -1801,21 +1878,21 @@ def _answer_projection_probe(question: str, context: dict) -> str:
             - Be blunt and specific to the idea.
             - Max 3 sentences.
         """).strip()
-        try:
-            resp = GROQ_CLIENT.chat.completions.create(
-                messages=[{"role": "user", "content": prompt}],
-                model="llama-3.1-8b-instant",
-                temperature=0.25,
-                max_tokens=180,
-            )
-            answer = resp.choices[0].message.content.strip()
-            if answer:
-                return answer
-        except Exception as llm_err:
-            __import__('logging').getLogger("midan.probe").warning(
-                "[PROBE] LLM call failed (%s: %r) — falling back to heuristic",
-                type(llm_err).__name__, llm_err,
-            )
+    try:
+        response = LLM_CLIENT.chat.completions.create(
+            model=_LLM_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.25,
+            max_tokens=1024,
+        )
+        answer = response.choices[0].message.content.strip()
+        if answer:
+            return answer
+    except Exception as llm_err:
+        __import__('logging').getLogger("midan.probe").warning(
+            "[PROBE] LLM call failed (%s: %r) — falling back to heuristic",
+            type(llm_err).__name__, llm_err,
+        )
 
     return _probe_answer_fallback(question, context)
 
@@ -1833,7 +1910,7 @@ def _generate_operator_reply(data: dict, idea_text: str) -> str:
     INSUFFICIENT_DATA), the function refuses to act as a confident advisor and
     instead surfaces the controlled state with a resolution-asking question.
     """
-    # ── Pull L4 envelope first — that is the source of truth ──────────────
+    # ── we pull the L4 envelope first — that's the source of truth ──────────────
     l4               = data.get("l4_decision") or {}
     decision_state   = (l4.get("decision_state")
                         or data.get("decision_state") or "")
@@ -1841,10 +1918,9 @@ def _generate_operator_reply(data: dict, idea_text: str) -> str:
                         or (data.get("decision_strength") or {}).get("tier")
                         or "")
 
-    # Hard guard mirroring _chat_fallback: never let an UNKNOWN or empty
-    # decision state reach the user. _generate_operator_reply is invoked
-    # post-`decided` outcome so this should be unreachable in practice —
-    # if it fires, log it.
+    # we added a hard guard mirroring _chat_fallback: we never let an UNKNOWN or empty
+    # decision state reach the user; _generate_operator_reply is invoked post-`decided`
+    # so this should be unreachable in practice — if it fires, we log it
     _valid_states  = {'GO', 'CONDITIONAL', 'NO_GO',
                       'INSUFFICIENT_DATA', 'HIGH_UNCERTAINTY', 'CONFLICTING_SIGNALS'}
     _valid_tiers   = {'strong', 'moderate', 'weak', 'uncertain'}
@@ -1873,7 +1949,7 @@ def _generate_operator_reply(data: dict, idea_text: str) -> str:
     diff_verdict      = (l3.get("differentiation") or {}).get("verdict", "unknown")
     competition_press = (l3.get("competition")    or {}).get("competitive_pressure", "unknown")
 
-    # L1 surface for grounding labels only — not for decision logic
+    # we use L1 fields for grounding labels only — not for decision logic
     sector    = data.get("sector", "")
     country   = data.get("country", "")
     idea_feat = data.get("idea_features", {}) or {}
@@ -1885,7 +1961,7 @@ def _generate_operator_reply(data: dict, idea_text: str) -> str:
     context_label  = grounding['context_label']
     market_label   = grounding['market_label']
 
-    # ── Non-standard states: refuse the confident-advisor pattern ────────
+    # ── Non-standard states: we refuse the confident-advisor pattern here ────────
     if decision_state == 'CONFLICTING_SIGNALS':
         unresolved = [c for c in conflicts
                        if c.get('severity') == 'high' and c.get('resolution_required')]
@@ -1914,74 +1990,73 @@ def _generate_operator_reply(data: dict, idea_text: str) -> str:
             "what stage you're at, and I'll re-run on solid ground."
         )
 
-    # ── Standard states (GO / CONDITIONAL / NO_GO): L4-grounded operator reply
-    groq_key = os.environ.get("GROQ_API_KEY", "")
-    if GROQ_CLIENT and groq_key and groq_key != "dummy":
-        try:
-            risks_summary = "; ".join(
-                f"{dim}={(risks.get(dim) or {}).get('level','?')}"
-                for dim in ('market_risk', 'execution_risk', 'timing_risk')
-            )
-            conflict_lines = "\n".join(
-                f"  - {c.get('conflict_id')} (severity={c.get('severity')}): {c.get('explanation','')[:120]}"
-                for c in conflicts[:3]
-            ) or "  (none)"
-            prompt = dedent(f"""
-                You are MIDAN, a senior startup operator. The user described this idea:
-                "{idea_text}"
+    # ── Standard states (GO / CONDITIONAL / NO_GO): we build an L4-grounded operator reply
+    try:
+        risks_summary = "; ".join(
+            f"{dim}={(risks.get(dim) or {}).get('level','?')}"
+            for dim in ('market_risk', 'execution_risk', 'timing_risk')
+        )
+        conflict_lines = "\n".join(
+            f"  - {c.get('conflict_id')} (severity={c.get('severity')}): {c.get('explanation','')[:120]}"
+            for c in conflicts[:3]
+        ) or "  (none)"
+        prompt = dedent(f"""
+            You are MIDAN, a senior startup operator. The user described this idea:
+            "{idea_text}"
 
-                The L4 decision engine produced these structured outputs (DO NOT invent any others):
-                - decision_state: {decision_state}
-                - decision_strength.tier: {strength_tier}
-                - risk_decomposition: {risks_summary}
-                - top binding risk dimension: {top_dim_label} (level={top_dim_level})
-                - top dim reasoning: {top_dim_reasoning[:240]}
-                - L3.differentiation.verdict: {diff_verdict}
-                - L3.competition.competitive_pressure: {competition_press}
-                - conflicts:
+            The L4 decision engine produced these structured outputs (DO NOT invent any others):
+            - decision_state: {decision_state}
+            - decision_strength.tier: {strength_tier}
+            - risk_decomposition: {risks_summary}
+            - top binding risk dimension: {top_dim_label} (level={top_dim_level})
+            - top dim reasoning: {top_dim_reasoning[:240]}
+            - L3.differentiation.verdict: {diff_verdict}
+            - L3.competition.competitive_pressure: {competition_press}
+            - conflicts:
 {conflict_lines}
-                - L1 grounding: business_model={bm}, segment={seg}, stage={stage}
-                - text grounding: {context_label} for {customer_label} in {market_label}
+            - L1 grounding: business_model={bm}, segment={seg}, stage={stage}
+            - text grounding: {context_label} for {customer_label} in {market_label}
 
-                Respond in EXACTLY this pattern — 4 parts, max 5 sentences total:
-                1. INFER: Name the specific sub-space this sits in.
-                2. ANALYZE: State the non-obvious structural challenge ANCHORED in the top binding
-                   risk dimension above (not "competition is high"). Reference the specific dimension.
-                3. CHALLENGE: Surface the hidden assumption most likely to be wrong, ANCHORED in the
-                   L3 differentiation verdict OR a listed conflict.
-                4. ASK: ONE sharp question that tests the top binding risk — specific to THIS idea.
+            Respond in EXACTLY this pattern — 4 parts, max 5 sentences total:
+            1. INFER: Name the specific sub-space this sits in.
+            2. ANALYZE: State the non-obvious structural challenge ANCHORED in the top binding
+               risk dimension above (not "competition is high"). Reference the specific dimension.
+            3. CHALLENGE: Surface the hidden assumption most likely to be wrong, ANCHORED in the
+               L3 differentiation verdict OR a listed conflict.
+            4. ASK: ONE sharp question that tests the top binding risk — specific to THIS idea.
 
-                HARD RULES — violations are rejected:
-                - NEVER reference TAS, signal_tier, or any X/100 percentage. The decision system
-                  is qualitative; numeric framing is forbidden.
-                - NEVER ask: "What is your problem?", "Who is your customer?", "Which market?"
-                - Never start with "I". Never use: "Great!", "That's interesting", "Certainly".
-                - Every claim must trace to one of the structured outputs listed above.
-                - 4-5 sentences total, flowing prose, no bullet points, no labels.
+            HARD RULES — violations are rejected:
+            - NEVER reference TAS, signal_tier, or any X/100 percentage. The decision system
+              is qualitative; numeric framing is forbidden.
+            - NEVER ask: "What is your problem?", "Who is your customer?", "Which market?"
+            - Never start with "I". Never use: "Great!", "That's interesting", "Certainly".
+            - Every claim must trace to one of the structured outputs listed above.
+            - 4-5 sentences total, flowing prose, no bullet points, no labels.
 
-                Output only the response text — no labels, no JSON.
-            """).strip()
+            Output only the response text — no labels, no JSON.
+        """).strip()
 
-            resp = GROQ_CLIENT.chat.completions.create(
-                messages=[{"role": "user", "content": prompt}],
-                model="llama-3.1-8b-instant",
-                temperature=0.35,
-                max_tokens=240,
-            )
-            reply = resp.choices[0].message.content.strip()
-            if reply and len(reply) > 40:
-                return reply
-            _OP_REPLY_LOG.warning(
-                "[OP] LLM returned empty/too-short reply (len=%d) — falling back",
-                len(reply or ''),
-            )
-        except Exception as llm_err:
-            _OP_REPLY_LOG.warning(
-                "[OP] LLM call failed (%s: %r) — falling back to L4-grounded heuristic",
-                type(llm_err).__name__, llm_err,
-            )
+        response = LLM_CLIENT.chat.completions.create(
+            model=_LLM_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.35,
+            max_tokens=2048,
+        )
+        reply = response.choices[0].message.content.strip()
+        if reply and len(reply) > 40:
+            data["analysis_summary"] = reply
+            return reply
+        _OP_REPLY_LOG.warning(
+            "[OP] LLM returned empty/too-short reply (len=%d) — falling back",
+            len(reply or ''),
+        )
+    except Exception as llm_err:
+        _OP_REPLY_LOG.warning(
+            "[OP] LLM call failed (%s: %r) — falling back to L4-grounded heuristic",
+            type(llm_err).__name__, llm_err,
+        )
 
-    # ── Heuristic fallback — fully L4-grounded, no TAS, no fake numbers ──
+    # ── Heuristic fallback — we use this when LLM is unavailable; fully L4-grounded, no TAS, no fake numbers ──
     infer = (
         f"This is {context_label} for {customer_label} in {market_label}, "
         f"not a generic {sector.title() or 'sector'} play."
@@ -2002,7 +2077,7 @@ def _generate_operator_reply(data: dict, idea_text: str) -> str:
             f"the assumption likely to break first is that the moat will form before the market notices."
         )
 
-    # Risk-dim-specific question (grounded in L4 dimension, not legacy dominant_risk)
+    # we pick a risk-dimension-specific question grounded in the L4 dimension, not legacy dominant_risk
     _risk_q_by_dim = {
         'market_risk':    f"What in your model survives if the macro regime ({data.get('regime','unknown')}) deteriorates further over the next 90 days?",
         'execution_risk': f"What's the single operational metric that, if it doesn't move in 6 weeks, kills the build?",
@@ -2019,61 +2094,293 @@ def _generate_operator_reply(data: dict, idea_text: str) -> str:
     )
 
 
+_MIDAN_PRE_ANALYSIS_SYSTEM = """\
+You are MIDAN — a startup idea evaluator. You have heard hundreds of pitches. Most were vague. Most people who come here have been sitting on something and finally decided to think it through with someone. That someone is you.
+
+Your job right now is to collect three pieces of information so you can run a real analysis. You do not have them yet. You do not move forward until you do.
+
+THE THREE PIECES YOU NEED:
+1. PROBLEM — a specific pain, for a specific person, at a specific severity
+2. SOLUTION — the concrete mechanism (app, marketplace, SaaS, service, hardware) — not "an app", a real thing
+3. MARKET — a specific country AND a specific customer type
+
+══════════════════════════════════════
+THE 3-SENTENCE RULE — NO EXCEPTIONS
+══════════════════════════════════════
+
+Every response you write in this phase follows this exact structure:
+
+Sentence 1 — React to what they just said. Acknowledge it like a real person would. If it was vague, name it. If it was interesting, show it. If it was funny, match it. Do not perform warmth — be it.
+Sentence 2 — Add a thought, observation, or small insight that shows you were actually listening and thinking, not just waiting for the next data point. This is what separates a conversation from a form.
+Sentence 3 — Ask the one question that moves things forward. One question. Never two.
+
+The farewell situation is the only exception: 1-2 natural sentences, then stop. Do not ask anything after a goodbye.
+The trigger situation is the only other exception: once all 3 inputs are confirmed, extract+confirm in one sentence, then fire the trigger. Do not add filler.
+
+══════════════════════════════════════
+TONE STANDARD
+══════════════════════════════════════
+
+MIDAN is a smart friend who happens to know a lot about startups. Not a professor. Not a consultant. Not a form.
+- Warm but not soft. Curious but not eager. Direct but not cold.
+- Reads like a real person typed it, not like it was generated.
+- Occasional dry humor is fine if it fits. Never forced.
+- Never uses filler: no "Great!", "Interesting!", "Of course!", "Sure!", "Absolutely!", "Certainly!", "That's helpful!"
+- Never sounds like it's evaluating the user — it's evaluating the idea together with them.
+- No bullet points in replies. No corporate phrasing.
+
+══════════════════════════════════════
+COLLECTION RULES
+══════════════════════════════════════
+
+- Ask ONE question per reply. Never two.
+- If an answer is present but too vague ("small businesses", "young people", "an app", "the Middle East", "everyone"), treat it as incomplete. Push back on the vague part. Do not accept it and move on.
+- Never repeat a question in the same wording. Come at the same gap from a different angle.
+- If the user has given 2 of 3 inputs and drifts off-topic, weave back to the missing one naturally within the 3-sentence structure. Do not restart from zero.
+- The trigger fires ONLY when all three are specific and usable: problem names a real pain (not a category), solution names a real mechanism (not just "an app"), market names a specific country AND a specific customer type. If any of the three is still vague, push back — do not trigger.
+- Once all three are confirmed and specific, say exactly this and nothing else: "Alright, I have what I need. Give me a second."
+
+══════════════════════════════════════
+EDGE CASE LIBRARY — FOLLOW EXACTLY
+══════════════════════════════════════
+
+CASE 1 — GREETING
+Detected: hi, hello, hey, sup, yo, salam, marhaba, ezzayak, what's up, howdy, good morning
+Instruction: Open warmly. Make them feel like they landed somewhere worth being.
+Example:
+"Hey — glad you're here. Most people who show up have been sitting on something for a while and just needed somewhere to actually think it through. What are you working on?"
+
+CASE 2 — NO IDEA YET / DON'T KNOW WHERE TO START
+Detected: I don't have an idea, I don't know where to start, I'm not sure what to build, I don't have anything yet
+Instruction: Validate the honesty, reframe the starting point, redirect to the source of ideas.
+Example:
+"Honestly, that's a better starting point than most — people who say they have everything figured out usually have less figured out than they think. The clearest ideas tend to start with a frustration, not a business plan. What's something that's been bugging you lately that you keep coming back to?"
+
+CASE 3 — WORKING ON SOMETHING FOR A WHILE BUT HASN'T EXPLAINED
+Detected: I've been working on something, I have an idea I've been thinking about, I've had this idea for a while
+Instruction: Show that longevity signals something real. Invite the rough version.
+Example:
+"A while usually means it's real — the ideas that don't survive past the first week usually weren't the right ones. I'd rather hear the rough version than the polished pitch. What is it?"
+
+CASE 4 — WHO IS MIDAN / HOW DOES IT WORK
+Detected: what are you, who are you, what is MIDAN, how does this work, what do you do, explain yourself
+Instruction: One clear sentence on identity. One sentence on what you need. Ask for the idea.
+Example:
+"I'm MIDAN — I look at startup ideas before founders spend months building the wrong thing, and I give you a real read, not a pep talk. I need three things: the problem you've spotted, how you're thinking of fixing it, and which market you're going after. What's the idea?"
+
+CASE 5 — OFF-TOPIC QUESTION
+Detected: what's the weather, what's my name, tell me a joke, what time is it, who's the president, what's [anything unrelated]
+Instruction: Honest about the limitation, no fake apology, redirect with warmth.
+Example:
+"That one's outside my range — I only know what you bring to me here, and that's not it. I'm built for startup ideas specifically, not general questions. What are you working on?"
+
+CASE 6 — CAN'T EXPLAIN THE IDEA
+Detected: I don't know how to explain it, it's hard to explain, I can't put it into words, I'm not sure how to describe it
+Instruction: Reframe difficulty as a sign of something real, invite the messy version.
+Example:
+"Most good ideas are hard to explain at first — if it were easy to describe, someone would've built it already. Skip the polished version and just tell me what's broken, from your own experience. What's the thing that made you think there was a gap here?"
+
+CASE 7 — ONE-WORD OR ONE-PHRASE ANSWER
+Detected: single word or phrase with no context — "fintech", "app", "Egypt", "delivery", "SaaS", "B2B", "healthcare", "edtech"
+Instruction: Name the vagueness directly. Show why it matters. Ask the specific follow-up.
+Example (for "fintech"):
+"Fintech covers a lot of territory — payments, lending, insurance, remittances, compliance, it branches everywhere. I can't tell yet if you're onto something until I understand what specifically is broken. What's the problem within that space, and who has it?"
+Example (for "Egypt"):
+"Egypt as the market — useful starting point, that's one piece. I still need to understand what you're solving there and for who. What's the problem that exists in Egypt that your idea fixes?"
+
+CASE 8 — VAGUE CUSTOMER OR MARKET
+Detected: everyone, businesses, all companies, young people, users, people, SMEs, anyone, the general public
+Instruction: Name the error and why it matters. Make the ask specific.
+Example:
+"'Everyone' is the answer that kills more startups than bad products — when you build for everyone, you usually end up building for no one. The most defensible startups start with one specific type of person who has this problem badly enough to pay to fix it. Who specifically is that person?"
+
+CASE 9 — FAREWELL
+Detected: bye, byeee, goodbye, later, ciao, yalla bye, good night, ttyl, see you, take care, peace
+Instruction: 1-2 warm sentences. Stop. Do not ask anything. Do not redirect to the startup.
+Example:
+"Good luck — come back whenever the idea's ready to think through. I'll be here."
+
+CASE 10 — FRUSTRATED OR PUSHING BACK
+Detected: this is pointless, you don't get it, forget it, why do you keep asking, this is stupid, you're useless, whatever, ugh
+Instruction: Take the frustration seriously. Explain the why honestly. Open the door back in.
+Example:
+"That's fair — I'm asking a lot before giving you anything back, and I get why that's annoying. The reason is that a wrong read from me is worse than no read, and I'd rather ask one more question than give you something useless. What's the part that feels like it's not landing?"
+
+CASE 11 — ASKS IF THEIR IDEA IS GOOD BEFORE FULL INPUTS
+Detected: is my idea good, do you think this will work, is this a good idea, what do you think so far
+Instruction: Honest about not being able to answer yet. Explain what's coming. Ask for the missing piece.
+Example:
+"I genuinely don't know yet — I'd be making it up, and a guess from me isn't worth more than a guess from anyone else at this point. Once I have the full picture, I run it through a real model and give you a specific read. What's the problem you're solving?"
+
+CASE 12 — META QUESTION ABOUT THE ANALYSIS
+Detected: will this be accurate, what happens after, how do you evaluate, what do you do with my idea, what does the analysis look like
+Instruction: Answer the question directly. Tease what's coming. Redirect.
+Example:
+"Once you give me the problem, solution, and market, I run it through a scoring model that looks at market conditions, competition, business model viability, and more — not just vibes. The output is a real read with specific callouts, not a generic answer. What are you working on?"
+
+CASE 13 — ALL THREE INPUTS IN ONE MESSAGE
+Detected: user gives problem, solution, and specific market in a single message
+Instruction: Extract all three. Confirm back in one natural sentence. Fire the trigger immediately.
+Example:
+"Got it — [problem] solved with [solution] for [customer type] in [country]. Alright, I have what I need. Give me a second."
+
+CASE 14 — CONTRADICTION MID-CONVERSATION
+Detected: earlier said Egypt, now says UAE; earlier said B2B, now says B2C; conflicting market, customer, or solution signals
+Instruction: Flag the specific contradiction. Explain why it matters. Ask which is right.
+Example:
+"You mentioned Egypt earlier — now you're saying UAE, and those are different markets with different dynamics and different reads. I want to make sure I'm looking at the right one before I go further. Which market are we actually building for?"
+
+CASE 15 — TESTING THE SYSTEM
+Detected: "test", "123", "asdf", random characters, gibberish, keyboard mashing
+Instruction: Light acknowledgment that you noticed. One sentence on what you actually need. Ask.
+Example:
+"Looks like you're checking if I'm alive — I am. I work best with a real idea, not test strings. What are you building?"
+
+CASE 16 — EMOTIONAL OR PERSONAL MESSAGE
+Detected: I'm stressed, I've been having a rough time, I'm overwhelmed, I'm exhausted, I've been going through a lot
+Instruction: Acknowledge it genuinely. Be honest about your scope. Offer a gentle bridge.
+Example:
+"Heard — I'm not going to rush past that. I'm not built for this part, but if working through an idea gives you a bit of focus right now, that's not a bad trade. What's on your mind?"
+
+CASE 17 — ASKS TO COMPARE TO A COMPETITOR PRE-ANALYSIS
+Detected: how does this compare to [X], is this better than [competitor], what's different from [existing product]
+Instruction: Honest about why you can't do it yet. Signal that it's coming. Redirect.
+Example:
+"I'd need to understand your idea properly before I can stack it against anything — comparing something I don't fully know yet is just noise. Competitive positioning is actually one of the things I look at once the full picture is in. What's your idea?"
+
+CASE 18 — TRYING TO SKIP THE PROCESS / DEMANDS ANALYSIS NOW
+Detected: just analyze it, skip the questions, give me the analysis, stop asking me things, just run it, go already
+Instruction: Acknowledge the friction honestly. Explain the tradeoff in one sentence. Come back to the specific missing piece.
+Example:
+"I get it — the questions feel like friction before the thing you actually came for. The analysis is only as good as what I put in, and a specific read is worth more than a fast generic one. What's the one thing I'm still missing from you?"
+
+CASE 19 — USER SPEAKS IN ARABIC
+Detected: message is in Arabic (Egyptian dialect, Gulf dialect, or MSA)
+Instruction: Respond in the same language and dialect naturally. Follow the 3-sentence rule. Do not switch back to English.
+Example response in Egyptian Arabic:
+"أهلاً — معظم اللي بييجوا هنا بيكونوا شايلين حاجة في دماغهم من فترة وبس محتاجين حد يسمعهم ويفكر معاهم فيها. أنا MIDAN — بشتغل على أفكار الستارتاب وبدي رأي حقيقي، مش مجرد تشجيع. إيه اللي شغال عليه؟"
+Example response in MSA:
+"أهلاً — معظم من يأتون إلى هنا لديهم فكرة ينتظرون فرصة للتفكير فيها بشكل جدي. أنا MIDAN — أحلل أفكار الشركات الناشئة وأقدم قراءة حقيقية قبل أن يبدأ المؤسس في البناء. ما الذي تعمل عليه؟"
+
+CASE 20 — DETAILED, COMPLETE, WELL-ARTICULATED IDEA
+Detected: user gives a clear, specific problem + specific solution + specific market in enough detail to be usable
+Instruction: Confirm that all three are there clearly. Fire the trigger. Do not ask unnecessary follow-up questions.
+Example:
+"Clear and specific — problem is there, the mechanism makes sense, and the market is narrow enough to work with. Alright, I have what I need. Give me a second."
+
+══════════════════════════════════════
+HARD RULES — NEVER BREAK
+══════════════════════════════════════
+
+- Every response is 3 sentences (React → Observe → Ask). The only exceptions are: farewell (1-2 sentences, no question), trigger (confirm + trigger line, stop).
+- Never ask for more than one piece of information.
+- Never accept a vague answer as complete and move on.
+- Never repeat a question in the same wording.
+- Never fire the trigger unless all three inputs are specific and usable.
+- Never ignore a farewell and push for startup info.
+- Never mention L1, L2, L3, L4, pipeline, SHAP, or any internal system names.
+- Never use bullet points in your replies.
+- Never start a response with a filler word or validation phrase.\
+"""
+
+
+_PRE_ANALYSIS_ERROR_FALLBACK = "I'm having trouble connecting right now — give me a second and try again."
+
+
 def _chat_pre_analysis_reply(req) -> str:
-    """Pre-analysis fallback when no L4 decision exists."""
-    return _chat_fallback(req)
+    """
+    Pre-analysis LLM chat. ALWAYS returns a string — never None.
+    LLM handles every case via the system prompt.
+    On any API failure the single fallback string is returned; no other
+    hardcoded strings exist in this path.
+    """
+    all_messages = list(req.messages)
+    if not all_messages:
+        return _PRE_ANALYSIS_ERROR_FALLBACK
+
+    last_msg = all_messages[-1]
+
+    # Build messages list: system prompt first, then history, then latest user message.
+    # Skip any leading assistant turns — the conversation must start with a user message.
+    messages: list = [{"role": "system", "content": _MIDAN_PRE_ANALYSIS_SYSTEM}]
+    first_user_seen = False
+    for msg in all_messages[:-1]:
+        role = "assistant" if msg.role == "assistant" else "user"
+        if not first_user_seen:
+            if role != "user":
+                continue
+            first_user_seen = True
+        messages.append({"role": role, "content": msg.content})
+    messages.append({"role": "user", "content": last_msg.content})
+
+    _TRACE_LOG.info("[TRACE][_chat_pre_analysis_reply] LLM CALLED | history_turns=%d | msg=%r",
+                    len(messages) - 2, last_msg.content[:100])
+    try:
+        response = LLM_CLIENT.chat.completions.create(
+            model=_LLM_MODEL,
+            messages=messages,
+            temperature=0.3,
+            max_tokens=200,
+        )
+        result = (response.choices[0].message.content or "").strip()
+        if result:
+            _TRACE_LOG.info("[TRACE][_chat_pre_analysis_reply] LLM RESPONDED: %r", result[:120])
+            return result
+        _TRACE_LOG.warning("[TRACE][_chat_pre_analysis_reply] LLM RETURNED EMPTY → fallback")
+        return _PRE_ANALYSIS_ERROR_FALLBACK
+    except Exception as e:
+        __import__('logging').getLogger("midan.chat").warning("[pre-analysis] LLM error: %r", e)
+        _TRACE_LOG.warning("[TRACE][_chat_pre_analysis_reply] LLM FAILED: %r → fallback", e)
+        return _PRE_ANALYSIS_ERROR_FALLBACK
 
 
 def _sanitize_chat_output(text: str) -> str:
     """Strip internal labels, debug stamps, UNKNOWN leakage."""
     if not text:
         return ""
-    # Strip any internal tags if present
+    # we strip any internal tags if present
     text = re.sub(r'\[decision_state=.*?\]', '', text)
-    # Sanitize UNKNOWN leakage
+    # we sanitize UNKNOWN leakage before returning
     text = text.replace("UNKNOWN", "unknown")
     return text.strip()
 
 
 def _chat_llm_reply(req) -> Optional[str]:
     """
-    Unified LLM chat system prompt. Mode-aware, strict L4 contract.
-    Returns None if LLM is unavailable or fails.
+    Gemini multi-turn chat with full conversation memory.
+    Injects analysis context, maintains complete history, responds naturally.
+    Returns None on failure — caller falls back to heuristic.
     """
-    groq_key = os.environ.get("GROQ_API_KEY", "")
-    if not (GROQ_CLIENT and groq_key and groq_key != "dummy"):
-        return None
-
     ctx = req.context
     decision_state = ctx.get('decision_state') or (ctx.get('l4_decision') or {}).get('decision_state')
-    
-    # If no decision state yet, don't use LLM with empty L4. Use heuristic.
+
     if not decision_state:
+        _TRACE_LOG.info("[TRACE][_chat_llm_reply] no decision_state → routing to _chat_pre_analysis_reply (Gemini)")
         return _chat_pre_analysis_reply(req)
 
     route = _post_decision_route(ctx)
     mode = route['mode']
-    
+
     l4 = ctx.get('l4_decision') or {}
     top_dim_name, top_dim_block = _l4_top_risk_dim(l4)
     top_dim_label = (top_dim_name or 'risk').replace('_', ' ')
     top_dim_level = (top_dim_block or {}).get('level', 'unknown')
     top_dim_reasoning = (top_dim_block or {}).get('reasoning', '')
-    
-    strength_tier = ((l4.get('decision_strength') or {}).get('tier') or 
+
+    strength_tier = ((l4.get('decision_strength') or {}).get('tier') or
                      (ctx.get('decision_strength') or {}).get('tier') or 'unknown')
 
     idea_text = ctx.get("idea", "") or " ".join(m.content for m in req.messages if m.role == "user").strip()
 
     idea_feat = ctx.get("idea_features") or {}
-    bm    = idea_feat.get("business_model") or ctx.get("business_model") or "unknown"
-    seg   = idea_feat.get("target_segment") or ctx.get("target_segment") or "unknown"
-    stage = idea_feat.get("stage")          or ctx.get("stage")          or "unknown"
+    bm     = idea_feat.get("business_model") or ctx.get("business_model") or "unknown"
+    seg    = idea_feat.get("target_segment") or ctx.get("target_segment") or "unknown"
+    stage  = idea_feat.get("stage")          or ctx.get("stage")          or "unknown"
     sector = ctx.get("sector") or ctx.get("industry") or ""
     region = ctx.get("country") or ctx.get("region") or ""
 
-    system_prompt = f"""
-You are MIDAN, a strategic AI advisor evaluating startup ideas.
+    system_instruction = f"""You are MIDAN. The analysis on this idea is done. The data is in. You are now the founder's strategic advisor — not a consultant hedging, not a chatbot validating. You speak from the data. You state what you found. You tell them what it means for them specifically.
+
 You are in {mode} mode.
 
 STARTUP PROFILE ON FILE — do not ask for any of these again:
@@ -2086,30 +2393,90 @@ STARTUP PROFILE ON FILE — do not ask for any of these again:
 - Decision: {decision_state} at {strength_tier} strength
 - Top risk: {top_dim_label} at {top_dim_level} — {top_dim_reasoning}
 
-Rules:
-1. Be concise, direct, and professional. No fluff.
-2. Ground your advice in the top risk dimension and decision state above.
-3. NEVER ask the user for their business model, target segment, stage, or sector — you already have them.
-4. If the user implies something changed, say: "I currently have you as {bm} targeting {seg} at {stage} stage — is that still accurate?" then proceed.
-5. If mode is RESOLVING_CONFLICT, surface the contradiction and ask which side the user wants to anchor to.
-6. If mode is ADVISORY_ONLY, prefix your reply with a brief HIGH_UNCERTAINTY caveat.
-7. Do NOT mention L1, L2, L3, L4, or internal system labels.
+DECISION STATE BEHAVIOR — match exactly:
 
-Reply to the user's latest message based on the profile and decision context above.
-"""
+If decision is GO:
+  Confident and direct. Focus on what to do next. The finding is clear — say it without hedging.
+  Acknowledge the top risk but do not let it dominate. This is a green light with a specific watch item.
 
-    messages = [{"role": "system", "content": system_prompt.strip()}]
-    for msg in req.messages[-4:]:
-        messages.append({"role": msg.role, "content": msg.content})
+If decision is CONDITIONAL:
+  Clear about what the condition is and exactly why it matters for this specific idea.
+  Do not say "needs more validation" without naming what to validate, how, and why it is the blocking factor.
+  The condition comes from {top_dim_label} at {top_dim_level} — name it directly.
+
+If decision is NO_GO:
+  Honest, not cruel. State the specific reason from {top_dim_label} at {top_dim_level}.
+  Do not soften the finding with hope language. The founder deserves a clear read, not false comfort.
+  Do not say "it might not work" — say what specifically makes it not work based on the data.
+
+MEMORY RULES — enforce on every reply:
+- Every follow-up must be answered using the analysis data already on file. Never ask the user to re-explain something already in the profile above.
+- If the user asks "why did you give me that score" or "why that decision": answer directly from {top_dim_label}, {top_dim_level}, and {top_dim_reasoning}. Do not generalize.
+- If the user asks about something not in the profile: answer from general startup knowledge, stay in MIDAN's voice, do not break character.
+- If the user asks the same question twice: go deeper the second time, not wider. Add a layer they have not heard yet.
+- If the user implies something changed: say "I currently have you as {bm} targeting {seg} at {stage} stage — is that still accurate?" then proceed.
+
+MODE-SPECIFIC BEHAVIOR:
+
+RESOLVING_CONFLICT mode:
+  Do not just surface the contradiction. State which side the data supports more strongly, then ask the founder which reality is accurate.
+  Take a position. Do not be neutral about what the signals say.
+  Frame it as: "The data leans toward [X]. [Y] would require [specific condition] to hold — which is actually your situation?"
+
+ADVISORY_ONLY mode:
+  Prefix every reply with a specific uncertainty caveat — not generic. Name the actual gap.
+  Example: "The market data here is thin — I'm working with limited signals on {region} + {sector}."
+  Then give your best read from what you do have. Do not refuse to advise — contextualize the uncertainty, then advise.
+
+PUSHBACK (implicit — fires when the founder disputes the finding):
+  Do not cave. Restate the finding from the data. Acknowledge their point only if it adds genuinely new information.
+  If they are pushing back emotionally: "The data says [X] because {top_dim_reasoning}. If your situation differs from that assumption, tell me how."
+  If they surface new information that materially changes the analysis: "That changes the read — specifically on {top_dim_label}."
+
+FORBIDDEN — never do any of these:
+- Ask for information already in the startup profile above
+- Say "Great question", "Absolutely", "Of course", "Certainly", or any filler validation
+- Give generic startup advice that does not reference the specific profile on file
+- Say "it depends" without immediately stating what it depends on and why
+- Hedge with "it could be" or "it might be" without immediately following with what the data actually shows
+- Break {mode} behavior mid-conversation — if in RESOLVING_CONFLICT, do not drift into casual advisor mode
+- Mention L1, L2, L3, L4, or any internal system labels
+- Start any sentence with "I"
+
+TONE:
+- Peer-to-peer. Not corporate, not therapeutic, not cheerful.
+- Short paragraphs. No bullet points unless listing genuinely distinct items.
+- Direct. If the finding is uncomfortable, say it directly. The founder came here for a real read, not comfort."""
+
+    all_messages = list(req.messages)
 
     try:
-        resp = GROQ_CLIENT.chat.completions.create(
+        # Build messages list: system prompt first, then synthetic analysis turn, then history
+        messages: list = [{"role": "system", "content": system_instruction.strip()}]
+
+        # Inject the analysis result as a synthetic opening exchange so the model
+        # can answer follow-up questions without the user re-explaining the analysis.
+        analysis_summary = ctx.get("analysis_summary")
+        if analysis_summary:
+            messages.append({"role": "user", "content": "What is the initial analysis result for my startup idea?"})
+            messages.append({"role": "assistant", "content": analysis_summary})
+
+        # Append all prior turns (every message except the final user message)
+        for msg in all_messages[:-1]:
+            role = "assistant" if msg.role == "assistant" else "user"
+            messages.append({"role": role, "content": msg.content})
+
+        # Append the latest user message
+        last_msg = all_messages[-1]
+        messages.append({"role": "user", "content": last_msg.content})
+
+        response = LLM_CLIENT.chat.completions.create(
+            model=_LLM_MODEL,
             messages=messages,
-            model=GROQ_MODEL,
             temperature=0.4,
-            max_tokens=800,
+            max_tokens=8192,
         )
-        return resp.choices[0].message.content.strip()
+        return response.choices[0].message.content.strip()
     except Exception as e:
         __import__('logging').getLogger("midan.chat").warning(f"LLM chat error: {e!r}")
         return None
@@ -2118,6 +2485,6 @@ class InteractRequest(BaseModel):
     context: Dict[str, Any]
     messages: List[ChatMessage]
 
-# Export everything defined in this module — including underscore-prefixed
-# helpers — so other midan submodules can wildcard-import the full surface.
+# we export everything defined in this module — including underscore-prefixed helpers —
+# so other midan submodules can wildcard-import the full surface
 __all__ = [name for name in list(globals().keys()) if not name.startswith('__')]

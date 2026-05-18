@@ -18,7 +18,7 @@ NOVELTY PRE-CHECK:
 
 ROUTING TREE (evaluated in priority order after novelty pre-check):
   Path 1 — HIGH_CERTAINTY:
-      IS >= REACT_IS_HIGH AND shap reliable AND (rag confirms OR rag skipped for non-novelty)
+      IS >= REACT_IS_HIGH AND shap NOT atypical (>= REACT_SHAP_UNRELIABLE) AND no RAG conflict
   Path 2 — LOW_CERTAINTY:
       IS <= REACT_IS_LOW AND shap reliable
   Path 3 — BORDERLINE_CONFIRMED:
@@ -45,8 +45,8 @@ import logging
 
 _ROUTER_LOG = logging.getLogger("midan.react_router")
 
-# Path identifiers — string constants for routing path names.
-# These are surfaced in the response for full traceability.
+# we define path identifiers as string constants for routing path names;
+# we surface these in the response for full traceability
 PATH_NOVELTY                   = "PATH_NOVELTY"
 PATH_1_HIGH_CERTAINTY          = "PATH_1_HIGH_CERTAINTY"
 PATH_2_LOW_CERTAINTY           = "PATH_2_LOW_CERTAINTY"
@@ -96,7 +96,7 @@ def react_route(
     rag_vote           = rag_result.get("vote")     # None when skipped
     novelty_score      = float(rag_result.get("novelty_score", 0.0))
 
-    # Derived routing flags
+    # we derive routing flags from the input signals
     is_novel       = (rag_skipped and rag_skipped_reason == "novelty")
     rag_confirms   = (not rag_skipped and rag_vote == svm_regime)
     rag_conflicts  = (not rag_skipped and rag_vote is not None and rag_vote != svm_regime)
@@ -106,13 +106,13 @@ def react_route(
     is_high        = (intelligent_score >= REACT_IS_HIGH)
     is_low         = (intelligent_score <= REACT_IS_LOW)
 
-    # Asymmetric opportunity: novel case + upward sector trend
-    # Not a routing change — purely a framing flag in the response.
+    # we flag asymmetric opportunity when it's a novel case + upward sector trend —
+    # this is not a routing change, purely a framing flag in the response
     asymmetric = is_novel and (sarima_trend >= ASYMMETRIC_OPPORTUNITY_SARIMA_FLOOR)
 
-    # ── NOVELTY PRE-CHECK — runs before all other paths ──────────────────────
-    # Novelty means "no meaningful map for this territory." RAG has already
-    # been suppressed. This path changes framing, not L4 authority.
+    # ── NOVELTY PRE-CHECK — we run this before all other paths ──────────────────────
+    # novelty means "no meaningful map for this territory"; RAG has already been suppressed;
+    # this path changes framing, not L4 authority
     if is_novel:
         return _result(
             path_id=PATH_NOVELTY,
@@ -129,22 +129,25 @@ def react_route(
         )
 
     # ── 7-PATH DETERMINISTIC TREE ─────────────────────────────────────────────
-    # Each path is evaluated in priority order. First match wins.
-    # The tree is readable and maintainable by design — no nested conditions.
+    # we evaluate each path in priority order — first match wins;
+    # we kept the tree flat and readable by design — no nested conditions
 
-    # Path 1: IS clearly high + typical attribution + no RAG conflict
-    if is_high and shap_reliable and not rag_conflicts:
+    # Path 1: IS clearly high + shap not fully atypical + no RAG conflict.
+    # we accept shap in the borderline zone (0.40–0.65) when IS is well above threshold —
+    # borderline shap with high IS is advisory noise, not a blocker; only shap < UNRELIABLE
+    # (fully atypical attribution) justifies escalating a high-IS input to Path 7.
+    if is_high and not shap_atypical and not rag_conflicts:
         return _result(
             path_id=PATH_1_HIGH_CERTAINTY,
             force_review=False,
             rag_conflict_severity="none",
             is_novel=False,
             asymmetric=False,
-            basis=f"IS={intelligent_score:.3f}>={REACT_IS_HIGH} | shap_cosine={shap_cosine:.3f} (reliable) | no RAG conflict",
+            basis=f"IS={intelligent_score:.3f}>={REACT_IS_HIGH} | shap_cosine={shap_cosine:.3f} (not atypical) | no RAG conflict",
             rag_vote=rag_vote,
         )
 
-    # Path 2: IS clearly low + typical attribution (unfavorable but reliable signal)
+    # Path 2: we fire this when IS is clearly low + attribution is typical (unfavorable but reliable signal)
     if is_low and shap_reliable:
         return _result(
             path_id=PATH_2_LOW_CERTAINTY,
@@ -156,7 +159,7 @@ def react_route(
             rag_vote=rag_vote,
         )
 
-    # Path 3: IS borderline + typical attribution + RAG confirms SVM
+    # Path 3: we fire this when IS is borderline + attribution is typical + RAG confirms SVM
     if is_borderline and shap_reliable and rag_confirms:
         return _result(
             path_id=PATH_3_BORDERLINE_CONFIRMED,
@@ -168,7 +171,7 @@ def react_route(
             rag_vote=rag_vote,
         )
 
-    # Path 4: IS borderline + typical attribution + RAG conflicts with SVM
+    # Path 4: we fire this when IS is borderline + attribution is typical + RAG conflicts with SVM
     if is_borderline and shap_reliable and rag_conflicts:
         return _result(
             path_id=PATH_4_BORDERLINE_CONFLICT,
@@ -183,9 +186,9 @@ def react_route(
             rag_vote=rag_vote,
         )
 
-    # Path 5: Atypical attribution + RAG confirms (IS at any level)
-    # Model is reasoning unusually for this cluster, but historical precedents agree.
-    # Low-severity conflict: atypical but corroborated.
+    # Path 5: we fire this when attribution is atypical but RAG confirms (IS at any level);
+    # the model is reasoning unusually for this cluster, but historical precedents agree —
+    # we call this a low-severity conflict: atypical but corroborated
     if shap_atypical and rag_confirms:
         return _result(
             path_id=PATH_5_ATYPICAL_SUPPORTED,
@@ -200,7 +203,7 @@ def react_route(
             rag_vote=rag_vote,
         )
 
-    # Path 6: Atypical attribution + RAG conflicts (worst case — two sources of doubt)
+    # Path 6: worst case — we fire this when attribution is atypical AND RAG conflicts (two sources of doubt)
     if shap_atypical and rag_conflicts:
         return _result(
             path_id=PATH_6_FULL_CONFLICT,
@@ -216,9 +219,25 @@ def react_route(
             rag_vote=rag_vote,
         )
 
-    # Path 7: Catch-all — borderline IS + no reliable second opinion
-    # Covers: borderline IS + rag_skipped (artifact unavailable or non-novelty skip)
-    # Also covers: is_high/is_low + shap in the gap between UNRELIABLE and RELIABLE
+    # Path 7: catch-all — we land here on borderline IS + no reliable second opinion;
+    # covers: (a) artifact_unavailable, (b) tied_vote, (c) non-novelty skip,
+    # (d) is_high/is_low + shap in the gap between UNRELIABLE and RELIABLE.
+    # We surface the exact rag_skipped_reason so the routing trace is traceable
+    # and the dashboard can explain WHY no second opinion was available.
+    _rag_tie     = rag_result.get("rag_tie", False)
+    _tied_labels = rag_result.get("tied_labels", [])
+    if _rag_tie and _tied_labels:
+        _p7_reason = (
+            f"RAG vote tied between {_tied_labels} ({rag_result.get('n_neighbors',0)} neighbors, "
+            f"equal splits). Tied vote is ambiguity, not evidence — no majority winner accepted."
+        )
+    elif rag_skipped_reason == "artifact_unavailable":
+        _p7_reason = "RAG index artifact not available — no second opinion possible."
+    elif rag_skipped_reason == "empty_neighbors":
+        _p7_reason = "RAG returned zero usable neighbors — index may be too small."
+    else:
+        _p7_reason = f"RAG skipped (reason={rag_skipped_reason})."
+
     return _result(
         path_id=PATH_7_MAXIMUM_UNCERTAINTY,
         force_review=True,
@@ -226,9 +245,8 @@ def react_route(
         is_novel=False,
         asymmetric=False,
         basis=(
-            f"IS={intelligent_score:.3f} | shap_cosine={shap_cosine:.3f} "
-            f"| rag_skipped={rag_skipped} (reason={rag_skipped_reason}). "
-            "No reliable second opinion available — human review required."
+            f"IS={intelligent_score:.3f} | shap_cosine={shap_cosine:.3f} | "
+            f"{_p7_reason} Human review required."
         ),
         rag_vote=None,
     )

@@ -100,7 +100,7 @@ def enhanced_regime(svm_regime, svm_conf, inflation, gdp_growth,
     )
 
 
-# ── TEST 1: Agent A1 Parsing ────────────────────────────────
+# ── TEST 1: Agent A1 Parsing — we verify sector/country detection here ────────
 
 class TestAgentA1:
     def test_detects_fintech_from_keywords(self):
@@ -144,7 +144,7 @@ class TestAgentA1:
         assert final_sec == 'healthtech'
 
 
-# ── TEST 2: Enhanced Regime Rules ────────────────────────────
+# ── TEST 2: Enhanced Regime Rules — we verify the domain rule overrides here ──
 
 class TestEnhancedRegime:
     def test_growth_market_fires(self):
@@ -189,7 +189,7 @@ class TestEnhancedRegime:
                             f"conf={conf} out of range"
 
 
-# ── TEST 3: SVM Pipeline (requires .pkl models) ─────────────
+# ── TEST 3: SVM Pipeline — we require .pkl models on disk for these to pass ───
 
 class TestSVMPipeline:
     def test_svm_produces_valid_regime(self, models):
@@ -250,7 +250,7 @@ class TestSVMPipeline:
             f"Only {len(regime_counts)} regime(s) — lacks diversity"
 
 
-# ── TEST 4: SARIMA Data Integrity ────────────────────────────
+# ── TEST 4: SARIMA Data Integrity — we check the precomputed JSON structure ───
 
 class TestSARIMA:
     def test_all_expected_sectors_present(self, models):
@@ -292,7 +292,7 @@ class TestSARIMA:
                 f"{sec} has all-negative forecast"
 
 
-# ── TEST 5: TAS Score ────────────────────────────────────────
+# ── TEST 5: TAS Score — we verify spread across sectors to catch homogeneity ──
 
 class TestTAS:
     def test_tas_spread_across_sectors(self, models):
@@ -332,7 +332,7 @@ class TestTAS:
             f"TAS spread only {spread:.3f} — not differentiated"
 
 
-# ── TEST 6: Demo Scenarios ───────────────────────────────────
+# ── TEST 6: Demo Scenarios — we run parametrized checks against known inputs ──
 
 class TestDemoScenarios:
     @pytest.mark.parametrize(
@@ -361,7 +361,7 @@ class TestDemoScenarios:
         assert cf is True
 
 
-# ── TEST 7: Agent A0 Idea Evaluation (keyword fallback) ────
+# ── TEST 7: Agent A0 Idea Evaluation — we test the keyword fallback path here ─
 
 IDEA_DIMENSIONS = [
     'problem_clarity', 'market_fit', 'feasibility',
@@ -448,7 +448,7 @@ class TestAgentA0:
                "revenue" in reasons['revenue_model']
 
 
-# ── TEST 8: SVS and Quadrant ───────────────────────────────
+# ── TEST 8: SVS and Quadrant — we verify all four quadrant outcomes here ──────
 
 class TestSVSQuadrant:
     def _quadrant(self, tas, idea_score):

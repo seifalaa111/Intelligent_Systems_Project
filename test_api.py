@@ -27,7 +27,7 @@ def test_analyze_endpoint_returns_structured_analysis():
     assert response.status_code == 200
 
     data = response.json()
-    # New canonical contract: ResponsePayload schema
+    # we assert against the new canonical contract: the ResponsePayload schema
     assert data["success"] is True
     assert data["schema_version"] == "1.0"
     assert data["decision_state"] in ("GO", "CONDITIONAL", "NO_GO")
@@ -35,7 +35,7 @@ def test_analyze_endpoint_returns_structured_analysis():
     assert "market_risk"    in data["risk_decomposition"]
     assert "execution_risk" in data["risk_decomposition"]
     assert "timing_risk"    in data["risk_decomposition"]
-    # Legacy raw pipeline output is preserved under raw_pipeline_output / data
+    # we verify that legacy raw pipeline output is preserved under raw_pipeline_output / data
     raw = data["raw_pipeline_output"]
     assert raw["sector"] == "fintech"
     assert raw["country"] == "EG"
@@ -56,7 +56,7 @@ def test_project_endpoint_refuses_generic_input_without_faking_structure():
     assert response.status_code == 200
 
     data = response.json()
-    # `type` replaces legacy `mode`; PRE_ANALYSIS replaces analysis_allowed=False
+    # we use `type` instead of legacy `mode`; PRE_ANALYSIS replaces analysis_allowed=False
     assert data["type"] == "interpretation"
     assert data["decision_state"] == "PRE_ANALYSIS"
     assert data["projection"]["quality"]["components"]["mechanism"] is False
@@ -95,6 +95,6 @@ def test_project_probe_answers_directly():
     assert response.status_code == 200
 
     data = response.json()
-    # Probe answer is now the canonical `reply`; `type` replaces legacy `mode`.
+    # we made the probe answer the canonical `reply`; `type` now replaces the legacy `mode`.
     assert data["type"] == "probe"
     assert data["reply"].lower().startswith("the idea is weak because")

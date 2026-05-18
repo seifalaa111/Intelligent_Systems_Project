@@ -49,7 +49,7 @@ from typing import Optional
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# ── Signal Schema (canonical values only) ─────────────────────────────────────
+# ── Signal Schema — we lock canonical values here so validators have a single source of truth ──
 SIGNAL_SCHEMA = {
     "retention_proxy":       ["high", "medium", "low"],
     "onboarding_friction":   ["low", "medium", "high"],
@@ -57,9 +57,7 @@ SIGNAL_SCHEMA = {
     "competition_intensity": ["high", "moderate", "low"],
 }
 
-# ── Signal Tier Registry ───────────────────────────────────────────────────────
-# This is the formal system architecture declaration.
-# Every consumer of this module must respect these tiers.
+# ── Signal Tier Registry — we declare the formal architecture here so every consumer respects tiers ──
 SIGNAL_TIERS = {
     "onboarding_friction":   "TEXT_EXTRACTABLE",   # Tier 1
     "monetization_strength": "TEXT_EXTRACTABLE",   # Tier 1
@@ -67,14 +65,13 @@ SIGNAL_TIERS = {
     "competition_intensity": "LLM_DEPENDENT",      # Tier 3
 }
 
-# Tier 3 signals should NEVER be returned from rule-based extraction.
-# Returning null for them when LLM is unavailable is CORRECT behaviour.
+# we never return Tier 3 signals from the rule-based path — null without LLM is the correct result
 LLM_DEPENDENT_SIGNALS = {s for s, t in SIGNAL_TIERS.items() if t == "LLM_DEPENDENT"}
 TEXT_EXTRACTABLE_SIGNALS = {s for s, t in SIGNAL_TIERS.items() if t == "TEXT_EXTRACTABLE"}
 HYBRID_SIGNALS = {s for s, t in SIGNAL_TIERS.items() if t == "HYBRID"}
 
 
-# ── Few-Shot Cache (ground truth anchors) ─────────────────────────────────────
+# ── Few-Shot Cache — we cache ground truth examples so we don't reload them on every call ──
 _FEW_SHOT_CACHE: Optional[list] = None
 
 
@@ -106,7 +103,7 @@ def _load_few_shot_examples() -> list[dict]:
                 "justification": sig["justification"],
             })
 
-    # 2 examples per signal, diverse values
+    # we cap at 2 examples per signal and enforce value diversity to avoid prompt skew
     examples = []
     for signal_name, pool in pool_by_signal.items():
         seen_values = set()
@@ -119,7 +116,7 @@ def _load_few_shot_examples() -> list[dict]:
     return examples
 
 
-# ── Prompt Builder ─────────────────────────────────────────────────────────────
+# ── Prompt Builder — we construct the few-shot prompt here before sending it to the LLM ──
 
 def _build_extraction_prompt(text: str, startup_name: str = "") -> str:
     """
@@ -180,7 +177,7 @@ Respond in JSON format ONLY. No explanation outside the JSON.
     return prompt
 
 
-# ── Output Validator ───────────────────────────────────────────────────────────
+# ── Output Validator — we validate LLM output here before any values enter the pipeline ──
 
 def _validate_and_normalize(
     raw_output: dict,
@@ -228,8 +225,7 @@ def _validate_and_normalize(
 
 
 # ── Tier 1 & 2 Rule-Based Extraction ──────────────────────────────────────────
-# IMPORTANT: competition_intensity (Tier 3) is NOT in these rules.
-# Its absence here is by design — it is LLM-DEPENDENT.
+# we intentionally omit competition_intensity (Tier 3) from these rules — it is LLM-DEPENDENT by design
 
 _RETENTION_RULES = {
     "high": [
@@ -328,12 +324,9 @@ _MONETIZATION_RULES = {
     ],
 }
 
-# NOTE: No _COMPETITION_RULES dict.
-# competition_intensity is Tier 3 (LLM-DEPENDENT).
-# Attempting to extract it from text produces unreliable results
-# because company websites never name their own competitors.
-# Only exception: Failory failure narratives sometimes do —
-# but that's source-specific and handled by the LLM via context.
+# we have no _COMPETITION_RULES dict by design — competition_intensity is Tier 3 (LLM-DEPENDENT).
+# Rule extraction here produces unreliable results because company websites never name competitors.
+# The one exception — Failory failure narratives — is handled by the LLM via context.
 
 
 def _rule_based_extract(
@@ -355,7 +348,7 @@ def _rule_based_extract(
         "retention_proxy":       _RETENTION_RULES,       # Tier 2
         "onboarding_friction":   _FRICTION_RULES,        # Tier 1
         "monetization_strength": _MONETIZATION_RULES,    # Tier 1
-        # competition_intensity intentionally absent
+        # we leave competition_intensity absent here by design — it belongs to Tier 3
     }
 
     for signal_name, rules in rules_map.items():
@@ -388,7 +381,7 @@ def _rule_based_extract(
     return signal_values, signal_evidence
 
 
-# ── Main Extractor Class ───────────────────────────────────────────────────────
+# ── Main Extractor Class — we wire all three tiers together here ──────────────
 
 class ModelSignalExtractor:
     """
@@ -438,24 +431,24 @@ class ModelSignalExtractor:
         if not text or len(text.strip()) < 50:
             return {}, {}
 
-        # Step 1: Rule-based (Tier 1 + Tier 2 only)
+        # we always run the rule-based pass first so Tier 1 + Tier 2 are covered without LLM
         rule_values, rule_evidence = _rule_based_extract(text)
 
         if not self._ollama_available:
-            # Without LLM: Tier 1 + Tier 2 only. Tier 3 = null (correct).
+            # we return rule results only when LLM is unavailable — Tier 3 stays null, which is correct
             return rule_values, rule_evidence
 
-        # Step 2: LLM pass (all tiers, including Tier 3)
+        # we then run the full LLM pass covering all tiers including Tier 3
         try:
             llm_values, llm_evidence = self._ollama_extract(text, startup_name)
 
-            # Merge: LLM wins on any signal it produced
+            # we merge with LLM winning on any signal it produced
             merged_values  = {**rule_values,  **llm_values}
             merged_evidence = {**rule_evidence, **llm_evidence}
             return merged_values, merged_evidence
 
         except Exception:
-            # LLM failure: fall back to rule-based (Tier 3 remains null)
+            # we fall back to rule-based results on any LLM failure so Tier 3 stays null
             return rule_values, rule_evidence
 
     def _ollama_extract(
@@ -556,7 +549,7 @@ class ModelSignalExtractor:
         }
 
 
-# ── Singleton ──────────────────────────────────────────────────────────────────
+# ── Singleton — we use a module-level instance so all callers share the same Ollama connection ──
 
 _extractor_instance: Optional[ModelSignalExtractor] = None
 

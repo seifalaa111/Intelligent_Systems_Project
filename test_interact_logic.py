@@ -22,9 +22,9 @@ def run_interact(context, messages):
 def test_vague_starter_gets_prompt_to_describe_idea():
     result = run_interact({}, [{"role": "user", "content": "I have an idea"}])
     assert result["type"] == "chat"
-    # Reply now flows through the LLM (pre-analysis system prompt) rather than
-    # a canned string, so we just assert it came back non-empty and free of
-    # any internal-label leak. Content quality is exercised by /chat tests.
+    # we route through the LLM (pre-analysis system prompt) now rather than a canned string,
+    # so we just assert the reply came back non-empty and free of any internal-label leak.
+    # Content quality is exercised separately in the /chat tests.
     reply = result["reply"]
     assert reply and len(reply.strip()) > 0
     import re as _re_test
@@ -50,7 +50,7 @@ def test_multi_turn_analysis_uses_accumulated_clarification_text():
         ],
     )
     assert second["type"] == "analysis"
-    # `data` carries the full raw pipeline output for back-compat consumers.
+    # we keep `data` carrying the full raw pipeline output so back-compat consumers still work
     assert second["data"]["idea"] == f"{first_user} {second_user}"
 
 
@@ -69,7 +69,7 @@ def test_post_analysis_turn_routes_to_chat_mode():
             "tas_score": 72,
             "signal_tier": "Strong",
             "idea": "Invoice financing for Egyptian SMEs",
-            # New contract: a valid L4 envelope must accompany legacy fields.
+            # we require a valid L4 envelope to accompany legacy fields now
             "decision_state": "GO",
             "decision_strength": {"tier": "moderate"},
             "l4_decision": {
@@ -113,7 +113,7 @@ def test_post_analysis_turn_without_l4_routes_to_reclarify():
         f"RE_CLARIFY, not chat. Got type={result['type']!r}."
     )
     reply_lower = result["reply"].lower()
-    # Must never expose internal placeholders.
+    # we verify the reply never exposes internal placeholder strings
     assert "unknown" not in reply_lower
     assert "unknown strength" not in reply_lower
 
@@ -244,7 +244,7 @@ def test_l0_passes_well_formed_idea_through_to_l1():
     )
     assert data.get("success") is True
     assert data.get("tas_score", 0) > 0
-    # Confidence metadata is part of the canonical response now.
+    # we now include confidence metadata as part of the canonical response
     assert 0.0 <= data["l1_aggregate_confidence"] <= 1.0
     assert "l1_field_confidence" in data
     assert "l1_field_source" in data
@@ -292,7 +292,7 @@ def test_l2_macro_base_and_adjusted_are_separately_exposed():
                      "capital_concentration", "velocity_yoy"}
     assert set(base.keys()) == expected_keys
     assert set(adjusted.keys()) == expected_keys
-    # capital_concentration is never adjusted by idea-level rules.
+    # we never adjust capital_concentration via idea-level rules — it stays fixed
     assert base["capital_concentration"] == adjusted["capital_concentration"]
 
 
@@ -301,7 +301,7 @@ def test_l2_idea_adjustments_only_fire_for_high_confidence_l1():
     base = {"inflation": 4.0, "gdp_growth": 6.0, "macro_friction": 5.1,
             "capital_concentration": 250000.0, "velocity_yoy": 0.1}
 
-    # Low-confidence L1 (everything at 0.55) → zero adjustments.
+    # we set up a low-confidence L1 (everything at 0.55) and verify it produces zero adjustments
     l1_low = {
         "values": {"target_segment": "b2c", "stage": "growth",
                    "regulatory_risk": "high", "competitive_intensity": "high"},
@@ -310,7 +310,7 @@ def test_l2_idea_adjustments_only_fire_for_high_confidence_l1():
     }
     assert api._idea_macro_adjustments(base, l1_low) == []
 
-    # High-confidence L1 → adjustments fire with full traceability.
+    # we use a high-confidence L1 here and expect adjustments to fire with full traceability
     l1_high = {
         "values": {"target_segment": "b2c", "stage": "growth",
                    "regulatory_risk": "high", "competitive_intensity": "high"},
@@ -334,8 +334,8 @@ def test_l2_idea_adjustments_skip_unknown_fields():
         "confidence": {"target_segment": 0.0, "stage": 0.85},
     }
     adjs = api._idea_macro_adjustments({"inflation": 4.0}, l1)
-    # Only stage adjustment may fire; target_segment must be skipped despite
-    # any expected_value match because the underlying value is UNKNOWN.
+    # we verify only stage adjustment may fire; target_segment must be skipped because
+    # the underlying value is UNKNOWN even if an expected_value would otherwise match
     assert all(a["source_field"] != "target_segment" for a in adjs)
 
 
@@ -348,7 +348,7 @@ def test_l2_decision_path_records_svm_and_rule_override():
     assert steps[0]["step"] == "svm"
     assert any(s["step"] == "rule_override" for s in steps)
     assert steps[-1]["step"] == "final"
-    # Rule_override step must carry rule_id + explanation for traceability.
+    # we require rule_override steps to carry rule_id + explanation for traceability
     override = next(s for s in steps if s["step"] == "rule_override")
     assert "rule_id" in override
     assert "explanation" in override
@@ -450,7 +450,7 @@ def test_l3_differentiation_distinguishes_idea_inferred_from_sector_baseline():
     for item in diff["what_is_missing"]:
         assert item["source"] == "sector_baseline"
     assert diff["sector_baseline"]["source"] == "sector_baseline_heuristic"
-    # Verdict must be one of the documented qualitative tiers.
+    # we restrict the verdict to one of the documented qualitative tiers
     assert diff["verdict"] in ("thin", "moderate", "structural")
 
 
@@ -522,7 +522,7 @@ def test_l3_signal_interactions_fire_only_for_high_confidence_l1():
     )
     assert any(i['interaction_id'] == 'low_diff_high_competition' for i in fired_high)
 
-    # Same predicate but low confidence on one involved field — must NOT fire.
+    # we use the same predicate but drop confidence on one field — the rule must NOT fire
     low = _strong_l1_envelope(differentiation_score=2, competitive_intensity='high')
     low['confidence']['competitive_intensity'] = 0.40
     fired_low = api._analyze_signal_interactions(
@@ -595,7 +595,7 @@ def test_l3_does_not_introduce_new_top_level_scalar_score():
     if r["unit_economics"].get("available"):
         for proxy in ("cac_proxy", "revenue_per_user_proxy", "scalability_pressure"):
             assert isinstance(r["unit_economics"][proxy]["tier"], str)
-    # No numeric "differentiation_v2_score" or similar
+    # we guard against any new numeric score like "differentiation_v2_score" being introduced
     forbidden = [k for k in r if k.endswith("_score") and k != "legacy_scalar_signal"]
     assert forbidden == [], f"L3 introduced a new scalar score: {forbidden}"
 
@@ -673,7 +673,7 @@ def test_l4_risk_decomposition_three_independent_dimensions():
         assert "drivers"   in r
         assert "reasoning" in r
         assert "evidence_grounded_in" in r
-        # Each dimension grounded in specific layers
+        # we verify each dimension is grounded in specific layer fields
         assert isinstance(r["evidence_grounded_in"]["l1_fields_used"], list)
 
 
@@ -708,7 +708,7 @@ def test_l4_state_machine_insufficient_data_blocks_decision():
     l3 = api.compute_l3_reasoning("test", l1, "EMERGING_MARKET", "fintech", {'idea_signal': 0.5})
     d  = api.compute_l4_decision(l1, "EMERGING_MARKET", 0.7, fcm, fr, l3, legacy_tas=0.5)
     assert d["decision_state"] == "INSUFFICIENT_DATA"
-    # First reasoning step must be the insufficient-data check
+    # we check that the first reasoning step is always the insufficient-data guard
     first_step = d["decision_reasoning"][0]
     assert first_step["rule_id"] == "r0_insufficient_data"
 
@@ -744,7 +744,7 @@ def test_l4_medium_severity_conflict_does_not_block_decision():
         "test setup expects thin differentiation verdict"
     d  = api.compute_l4_decision(l1, "EMERGING_MARKET", 0.7, fcm, fr, l3, legacy_tas=0.6)
     assert d["decision_state"] != "CONFLICTING_SIGNALS"
-    # The medium conflict should still appear in the conflicts list
+    # we still expect the medium conflict to appear in the conflicts list even though it doesn't block
     medium = [c for c in d["conflicting_signals"] if c.get("severity") == "medium"]
     assert any(c["conflict_id"] == "strong_macro_weak_diff_resolvable" for c in medium)
 
@@ -761,8 +761,8 @@ def test_l4_offsetting_downgrades_high_risk_explicitly():
         l1, "CONTRACTING_MARKET", "fintech", {'idea_signal': 0.5},
     )
     d  = api.compute_l4_decision(l1, "CONTRACTING_MARKET", 0.7, fcm, fr, l3, legacy_tas=0.5)
-    # Market risk in CONTRACTING_MARKET would otherwise be "high"; offset should
-    # downgrade to "elevated_with_offset" because differentiation verdict is structural.
+    # we expect market risk in CONTRACTING_MARKET to be "high" without offsetting;
+    # we verify the offset downgrades it to "elevated_with_offset" when differentiation is structural
     if l3["differentiation"].get("verdict") == "structural":
         assert d["risk_decomposition"]["market_risk"]["level"] == "elevated_with_offset"
         assert any(o["risk_dim"] == "market_risk" for o in d["offsetting_applied"])
@@ -949,7 +949,7 @@ def test_chat_fallback_resolving_conflict_surfaces_specific_conflict_id():
     reply = _chat_reply(ctx, 'What do you think?')
     assert 'b2c_high_cac_low_rpu' in reply
     assert 'Pivot to B2B' in reply
-    # Must explicitly refuse normal advice
+    # we require the reply to explicitly refuse normal advice in this mode
     assert 'cannot continue as a normal advisor' in reply.lower()
 
 
@@ -962,9 +962,9 @@ def test_chat_fallback_advisory_only_leads_with_caveat():
     )
     reply = _chat_reply(ctx, 'What do you think?')
     assert 'advisory only' in reply.lower()
-    # Must reference the specific basis content — but with the internal
-    # `L1`/`L2`/`L3`/`L4` label STRIPPED by the chat output sanitizer.
-    # The post-stabilization contract is zero-tolerance for layer-name leaks.
+    # we expect the reply to reference the specific basis content but with internal
+    # `L1`/`L2`/`L3`/`L4` labels stripped by the chat output sanitizer —
+    # our post-stabilization contract is zero-tolerance for layer-name leaks
     import re as _re_test
     assert not _re_test.search(r'\b[Ll](?:ayer)?\s*[1-4]\b', reply), (
         f"Internal layer label leaked into chat reply: {reply!r}"
@@ -977,9 +977,9 @@ def test_chat_fallback_re_clarify_refuses_to_advise_and_lists_missing_fields():
     ctx = _ctx_with_l4('INSUFFICIENT_DATA')
     reply = _chat_reply(ctx, 'What do I do?')
     assert 'INSUFFICIENT_DATA' in reply
-    # Must explicitly say analysis will not run
+    # we require the reply to explicitly say analysis will not run
     assert "won't run another analysis" in reply.lower() or 'will not produce' in reply.lower()
-    # Must name the specific L1 fields needed
+    # we verify the reply names the specific L1 fields the user needs to supply
     assert 'business model' in reply.lower()
     assert 'segment' in reply.lower()
     assert 'stage' in reply.lower()
@@ -993,8 +993,8 @@ def test_chat_fallback_standard_advisor_names_decision_state_and_strength():
     reply = _chat_reply(ctx, 'What about competition?')
     assert 'GO' in reply, f"reply must name the decision state inline: {reply!r}"
     assert 'strong' in reply.lower(), f"reply must name decision_strength tier inline: {reply!r}"
-    # The old debug-style bracket stamp must NOT appear — the surface is now
-    # consultant tone, not a key=value technical print.
+    # we removed the old debug-style bracket stamp — the surface is now
+    # consultant tone, not a key=value technical print
     assert '[decision_state=' not in reply, (
         "Bracket-style decision_state stamp leaked back into the chat reply: " + reply
     )
@@ -1010,7 +1010,7 @@ def test_chat_fallback_grounds_responses_in_l4_top_risk_dimension():
         risk_levels={'market_risk': 'low', 'execution_risk': 'high', 'timing_risk': 'medium'},
     )
     reply = _chat_reply(ctx, 'what are the risks here?')
-    # execution_risk is the highest dimension — must be named in the reply
+    # we verify execution_risk is the highest dimension and must be named in the reply
     assert 'execution risk' in reply.lower()
 
 
@@ -1039,8 +1039,7 @@ def test_interact_route_surfaces_post_decision_mode_in_response_type():
                     'explanation': 'e', 'resolution_path': 'p'}],
     )
     result = run_interact(ctx, [{'role': 'user', 'content': 'What about competition?'}])
-    # New canonical schema: type carries the wire-level mode label, decision_state
-    # carries the L4 state. Both surfaced.
+    # we surface both labels: type carries the wire-level mode and decision_state carries the L4 state
     assert result['type'] == 'conflict_resolution'
     assert result['decision_state'] == 'CONFLICTING_SIGNALS'
     assert result['post_decision_mode'] == 'RESOLVING_CONFLICT'
@@ -1094,9 +1093,9 @@ def test_operator_reply_for_high_uncertainty_is_advisory_only():
     reply = api._generate_operator_reply(data, 'A vague fintech idea')
     assert 'HIGH_UNCERTAINTY' in reply
     assert 'advisory only' in reply.lower()
-    # Post-stabilization contract: the `L1`/`L2`/`L3`/`L4` token must NOT
+    # we enforce the post-stabilization contract: `L1`/`L2`/`L3`/`L4` tokens must NOT
     # appear in any user-facing reply. The basis content (e.g. "aggregate 0.40")
-    # still surfaces — only the internal layer label is stripped.
+    # still surfaces — we only strip the internal layer labels.
     import re as _re_test
     assert not _re_test.search(r'\b[Ll](?:ayer)?\s*[1-4]\b', reply), (
         f"Internal layer label leaked into operator reply: {reply!r}"

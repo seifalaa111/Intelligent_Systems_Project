@@ -34,28 +34,28 @@ class DirectoryExtractor(BaseExtractor):
 
         text = clean_text(raw_content)
 
-        # ── VALUE PROPOSITION (from tagline or meta) ──
+        # ── VALUE PROPOSITION — we prefer the tagline field since directories make it explicit ──
         tagline = metadata.get("tagline", "")
         if tagline and 10 < len(tagline) < 300:
             entry["value_proposition"] = tagline
         else:
-            # Extract from content
+            # we fall back to og:description when there is no tagline
             meta_tags = metadata.get("meta_tags", {})
             if meta_tags.get("og_description"):
                 entry["value_proposition"] = meta_tags["og_description"][:300]
 
-        # ── INDUSTRY & MODEL ──
+        # ── INDUSTRY & MODEL — we combine tagline + content so classification has maximum context ──
         search_text = f"{tagline} {text[:2000]}"
         entry["primary_industry"], entry["secondary_industry"] = self._classify_industry(search_text)
         entry["business_model"] = self._classify_business_model(search_text)
         entry["target_segment"] = self._classify_target_segment(search_text)
 
-        # ── TOPICS / CATEGORIES ──
+        # ── TOPICS / CATEGORIES — we map PH topics directly to differentiation when available ──
         topics = metadata.get("topics", [])
         if topics:
             entry["differentiation"] = f"Product Hunt categories: {', '.join(topics[:5])}"
 
-        # ── COMPETITION (from "alternatives" or "vs" mentions) ──
+        # ── COMPETITION — we infer intensity from "alternatives" and "vs" language in the page ──
         comp_level, comp_ev = self._extract_competition_from_directory(text)
         entry["competition_intensity"] = comp_level
         if comp_level and comp_ev:

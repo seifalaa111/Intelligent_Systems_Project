@@ -9,7 +9,7 @@ from extractors.base_extractor import BaseExtractor
 from utils.text_cleaner import clean_text, truncate
 from config.settings import PAIN_KEYWORDS
 
-# Model-assisted signal extractor (replaces rule-based _classify_level for L3)
+# we import the model-assisted extractor here so it can override rule-based L3 results
 try:
     from extractors.model_signal_extractor import get_model_signal_extractor
     _MODEL_EXTRACTOR = get_model_signal_extractor()

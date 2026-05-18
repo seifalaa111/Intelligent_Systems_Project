@@ -51,7 +51,7 @@ _L0_IMPOSSIBLE = [
 ]
 
 # ── D3: No revenue model — free-money, charity, pure redistribution ────────────
-# These describe moving money to people with no charging mechanism on top.
+# we put these here because they describe ideas that move money to people with no charging mechanism — redistribution, not business
 _L0_FREE_MONEY = [
     'give people money', 'giving people money', 'give money for free',
     'giving money for free', 'giving away money', 'give away money',
@@ -65,7 +65,7 @@ _L0_FREE_MONEY = [
 ]
 
 # ── D4: No value exchange — free-for-all with zero monetization path ───────────
-# Triggers when ALL of: free + no B2B/subscription/commission/enterprise signal
+# we trigger this when ALL of these apply: free + no B2B/subscription/commission/enterprise signal
 _L0_FREE_EVERYTHING = [
     'completely free for everyone', 'totally free forever',
     'free for all users', 'free to everyone forever',
@@ -116,7 +116,7 @@ _L0_CONCRETE_RESCUE = [
 ]
 
 # ── D7: Contradictions — claims that mutually exclude each other ──────────────
-# Each tuple is (phrase_a, phrase_b). If BOTH appear, the idea is internally inconsistent.
+# we store each contradiction as (phrase_a, phrase_b) — if both appear in the same idea, it's internally inconsistent
 _L0_CONTRADICTIONS = [
     ('completely free', 'subscription'),
     ('completely free', 'premium tier'),
@@ -148,7 +148,7 @@ _L0_PROMPT_INJECTION = [
     '</system>', '<|im_start|>', '<|im_end|>',
 ]
 
-# Patterns indicating the input is not an idea description at all
+# we catch inputs that aren't idea descriptions at all using these patterns
 _L0_NON_IDEA_TOKENS = [
     'lorem ipsum', 'asdf', 'qwerty', 'test test test',
     '...', '!!!!!', '???????', '12345', 'aaaaa',
@@ -404,10 +404,6 @@ def _l0_llm_arbiter(idea_text: str) -> Optional[dict]:
     Returns a rejection dict if the LLM identifies a failure, None if it passes.
     Only called after all pattern checks pass.
     """
-    groq_key = os.environ.get("GROQ_API_KEY", "")
-    if not (GROQ_CLIENT and groq_key and groq_key != "dummy"):
-        return None
-
     prompt = dedent(f"""
         You are a startup viability analyst. Evaluate whether this text describes a
         legitimate business concept that could realistically generate revenue.
@@ -439,14 +435,13 @@ def _l0_llm_arbiter(idea_text: str) -> Optional[dict]:
     """).strip()
 
     try:
-        resp = GROQ_CLIENT.chat.completions.create(
+        response = LLM_CLIENT.chat.completions.create(
+            model=_LLM_MODEL,
             messages=[{"role": "user", "content": prompt}],
-            model=GROQ_MODEL,
             temperature=0.0,
-            max_tokens=1200,
-            response_format={"type": "json_object"},
+            max_tokens=4096,
         )
-        data = json.loads(resp.choices[0].message.content.strip())
+        data = json.loads(response.choices[0].message.content.strip())
         if data.get("is_valid", True):
             return None
 
@@ -559,10 +554,8 @@ def _l0_how_to_fix(idea_text: str, rejection_type: str) -> list:
     Generate 2–3 specific, idea-grounded fix suggestions.
     LLM first (grounded in the actual idea text); rule-based fallback.
     """
-    groq_key = os.environ.get("GROQ_API_KEY", "")
-    if GROQ_CLIENT and groq_key and groq_key != "dummy":
-        try:
-            prompt = dedent(f"""
+    try:
+        prompt = dedent(f"""
                 A startup idea was rejected because of: {rejection_type.replace('_', ' ')}
 
                 The idea: "{idea_text}"
@@ -582,19 +575,18 @@ def _l0_how_to_fix(idea_text: str, rejection_type: str) -> list:
                 {{"fixes": ["Fix 1 specific to this idea", "Fix 2 specific to this idea"]}}
             """).strip()
 
-            resp = GROQ_CLIENT.chat.completions.create(
-                messages=[{"role": "user", "content": prompt}],
-                model=GROQ_MODEL,
-                temperature=0.25,
-                max_tokens=1500,
-                response_format={"type": "json_object"},
-            )
-            data  = json.loads(resp.choices[0].message.content.strip())
-            fixes = data.get('fixes', [])
-            if isinstance(fixes, list) and len(fixes) >= 2:
-                return [str(f) for f in fixes[:3]]
-        except Exception as e:
-            _L0_LOG.warning(f"[L0] how_to_fix LLM failed: {e!r}")
+        response = LLM_CLIENT.chat.completions.create(
+            model=_LLM_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.25,
+            max_tokens=4096,
+        )
+        data  = json.loads(response.choices[0].message.content.strip())
+        fixes = data.get('fixes', [])
+        if isinstance(fixes, list) and len(fixes) >= 2:
+            return [str(f) for f in fixes[:3]]
+    except Exception as e:
+        _L0_LOG.warning(f"[L0] how_to_fix LLM failed: {e!r}")
 
     return _L0_FIX_FALLBACKS.get(rejection_type, _L0_FIX_FALLBACKS['not_a_business_idea'])
 
@@ -633,7 +625,7 @@ def _layer0_sanity_check(idea_text: str) -> dict:
     for result in checks:
         if result is None:
             continue
-        # All checks are now blocking — no valid=True early return.
+        # we made all checks blocking now — no valid=True shortcuts that bypass the gate
         result['how_to_fix'] = _l0_how_to_fix(idea_text, result['rejection_type'])
         _L0_LOG.info(
             f"[L0] REJECTED severity={result.get('severity','?')} "
@@ -643,7 +635,7 @@ def _layer0_sanity_check(idea_text: str) -> dict:
         _log_rejection(result['rejection_type'], result.get('severity', 'BROKEN'), idea_text)
         return result
 
-    # All deterministic checks passed → LLM arbiter for borderline cases
+    # we call the LLM arbiter here only after all deterministic checks pass — it handles borderline cases
     llm_result = _l0_llm_arbiter(idea_text)
     if llm_result is not None:
         llm_result['how_to_fix'] = _l0_how_to_fix(idea_text, llm_result['rejection_type'])
@@ -661,6 +653,5 @@ def _layer0_sanity_check(idea_text: str) -> dict:
 
 
 
-# Export everything defined in this module — including underscore-prefixed
-# helpers — so other midan submodules can wildcard-import the full surface.
+# we export everything here — underscore helpers too — so submodules can wildcard-import the full surface
 __all__ = [name for name in list(globals().keys()) if not name.startswith('__')]

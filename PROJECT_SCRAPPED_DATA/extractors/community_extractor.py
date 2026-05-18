@@ -10,7 +10,7 @@ from utils.text_cleaner import clean_text, truncate
 from config.settings import PAIN_KEYWORDS
 
 
-# Reddit-specific complaint indicators
+# we list Reddit-specific complaint indicators here because they differ from generic pain-point language
 COMPLAINT_KEYWORDS = [
     "hate", "worst", "terrible", "horrible", "awful", "trash",
     "useless", "waste of time", "waste of money", "scam", "rip off",
@@ -59,10 +59,10 @@ class CommunityExtractor(BaseExtractor):
 
         text = clean_text(raw_content)
 
-        # ── USER COMPLAINTS ──
+        # we extract user complaints first since they are the primary signal for this source
         entry["user_complaints"] = self._extract_complaints(text)
 
-        # ── PAIN POINTS ──
+        # we then pull pain points which capture broader friction beyond complaints
         entry["pain_points"] = self._extract_pain_points(text)
 
         # ── SWITCHING SIGNALS ──
@@ -75,11 +75,11 @@ class CommunityExtractor(BaseExtractor):
         sw_level, sw_evidence = self._extract_switching_signals(text)
         add_signal("switching_cost", (sw_level, sw_evidence))
 
-        # ── SENTIMENT-BASED SIGNALS ──
+        # ── SENTIMENT-BASED SIGNALS — we infer retention and competition from community tone ──
         add_signal("retention_proxy", self._infer_retention(text))
         add_signal("competition_intensity", self._infer_competition(text))
 
-        # ── INDUSTRY / MODEL (from context if available) ──
+        # ── INDUSTRY / MODEL — we classify from context when community content carries enough signal ──
         entry["primary_industry"], entry["secondary_industry"] = self._classify_industry(text)
         entry["business_model"] = self._classify_business_model(text)
         entry["target_segment"] = self._classify_target_segment(text)
@@ -89,7 +89,7 @@ class CommunityExtractor(BaseExtractor):
     def _extract_complaints(self, text: str) -> list[str]:
         """Extract user complaints from Reddit content."""
         complaints = []
-        # Focus on COMMENT sections which contain user opinions
+        # we focus on COMMENT sections because they carry the actual user opinions
         comment_sections = re.findall(r"\[COMMENT[^\]]*\]\s*(.*?)(?=\[COMMENT|\[TITLE\]|\Z)",
                                        text, re.DOTALL)
 
@@ -118,12 +118,12 @@ class CommunityExtractor(BaseExtractor):
         """Extract switching behavior and alternative mentions."""
         text_lower = text.lower()
 
-        # Detect switching mentions
+        # we count switching mentions to infer how easy it is for users to leave
         switching_count = sum(1 for kw in SWITCHING_KEYWORDS if kw in text_lower)
 
         level = ""
         if switching_count >= 3:
-            level = "low"  # lots of switching = low switching cost
+            level = "low"  # we set low switching cost when switching is mentioned frequently
         elif switching_count >= 1:
             level = "medium"
 

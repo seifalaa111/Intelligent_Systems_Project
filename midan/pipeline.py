@@ -12,7 +12,7 @@ from midan.core import *  # noqa: F401,F403
 from midan.l0_gate import _layer0_sanity_check, _l0_how_to_fix, _log_rejection  # noqa: F401
 from midan.l1_parser import (  # noqa: F401
     extract_idea_features, agent_a1_parse, _l1_clarification_message,
-    _validate_l1_consistency,
+    _validate_l1_consistency, _L1_LOG,
 )
 from midan.l2_intelligence import (  # noqa: F401
     enhanced_regime_with_path, compute_fcm_membership, compute_shap,
@@ -29,6 +29,7 @@ from midan.react_router import react_route  # noqa: F401
 from midan.drift_monitor import log_prediction  # noqa: F401
 from midan.response import (  # noqa: F401
     _generate_l4_reasoning, agent_a0_evaluate_idea, _generate_explanation_layer,
+    _generate_go_decision_llm,
 )
 
 
@@ -161,17 +162,16 @@ def run_inference(
     if idea_features_result is None:
         idea_features_result = extract_idea_features(idea_text, sec)
         if not idea_features_result["is_sufficient"]:
-            # Defensive: process_idea is the canonical caller and gates upstream.
-            # If anyone bypasses that gate, halt here rather than feed UNKNOWN
+            # we made this defensive because process_idea is the canonical caller and gates upstream.
+            # If anyone bypasses that gate, we halt here rather than feed UNKNOWN
             # values into L2–L4.
             raise ValueError(
                 f"L1 extraction insufficient for inference: "
                 f"unknown_required={idea_features_result['unknown_required']} "
                 f"aggregate_confidence={idea_features_result['aggregate_confidence']}"
             )
-    # Use runtime_values for downstream arithmetic — non-required UNKNOWNs
-    # get documented neutral defaults here. Required UNKNOWNs are impossible
-    # at this point (the gate would have halted upstream).
+    # we use runtime_values for downstream arithmetic — non-required UNKNOWNs get neutral defaults here.
+    # Required UNKNOWNs are impossible at this point (the gate would have halted upstream).
     idea_features = idea_features_result["runtime_values"]
     bm_label  = idea_features['business_model']
     seg_label = idea_features['target_segment'].upper()
@@ -182,7 +182,7 @@ def run_inference(
     # ════════════════════════════════════════════════════════════════════════
     # L2 — Market intelligence layer
     #
-    # Transparency contract:
+    # we expose the full transparency contract here:
     #   l2_macro_base       — pure (sector, country) static lookup, source=static_table
     #   l2_idea_adjustments — explicit, traceable deltas, source=inferred
     #   l2_macro_adjusted   — base + capped deltas; what the SVM actually sees
@@ -213,10 +213,9 @@ def run_inference(
     }
 
     # ── L2A.5: Idea-perturbed macro vector ────────────────────────────────────
-    # Adjustments only fire on high-confidence L1 fields (>= 0.70). Each delta
-    # is logged with its source field, source value, and reason code. The
-    # response carries both base and adjusted vectors so consumers can see
-    # exactly what was inferred vs. what was looked up.
+    # we only fire adjustments on high-confidence L1 fields (>= 0.70). We log each delta
+    # with its source field, source value, and reason code. We carry both base and adjusted
+    # vectors in the response so consumers can see exactly what was inferred vs. looked up.
     idea_adjustments = _idea_macro_adjustments(macro_base, idea_features_result)
     macro_adjusted, applied_deltas = apply_idea_adjustments(macro_base, idea_adjustments)
     macro_adjusted = {
@@ -235,7 +234,7 @@ def run_inference(
     else:
         logs.append("[L2A.5] No idea adjustments applied (L1 confidence below threshold for all rules).")
 
-    # Use the adjusted vector for SVM input. SHAP runs on the same vector so
+    # we feed the adjusted vector into SVM and run SHAP on the same vector so
     # explainability matches what the model actually saw.
     inflation  = macro_adjusted["inflation"]
     gdp_growth = macro_adjusted["gdp_growth"]
@@ -313,7 +312,7 @@ def run_inference(
         logs.append("[L2D] Training-time drift flag set — patterns shifted during training window")
 
     # ── L2D.5: Intelligent Score — routing composite (IS) ─────────────────────
-    # IS is a routing signal only — it feeds react_router, NOT L4 decision_state.
+    # we use IS as a routing signal only — it feeds react_router, NOT L4 decision_state.
     mu_fcm_val = fcm_signal.get('top_membership', 0.5) if fcm_signal.get('available') else 0.5
     is_result = compute_intelligent_score(
         conf=conf,
@@ -356,14 +355,14 @@ def run_inference(
             f"(SARIMA {freshness['sarima_days_stale']} days old)"
         )
 
-    # legacy alias for downstream consumers; the freshness envelope carries
+    # we keep this as a legacy alias for downstream consumers; the freshness envelope carries
     # the canonical training-time vs runtime breakdown.
     drift_flag = train_drift
 
     # ── L3: Idea Signal Scoring (legacy scalar — kept for L4 TAS contract) ──
-    # The scalar idea_signal feeds L4 TAS computation (kept stable so existing
-    # consumers don't break). The PRIMARY explanation surface for L3 is the
-    # structured `l3_reasoning` envelope built right after this call.
+    # we keep the scalar idea_signal feeding L4 TAS so existing consumers don't break.
+    # The PRIMARY explanation surface for L3 is the structured `l3_reasoning` envelope
+    # we build right after this call.
     idea_signal_data = compute_idea_signal(idea_features, regime, sector=sec, idea_text=idea_text)
     idea_signal      = idea_signal_data['idea_signal']
     dominant_risk    = idea_signal_data.get('dominant_risk', 'execution')
@@ -393,7 +392,7 @@ def run_inference(
     )
 
     # ── Mechanism extraction pipeline (between L3 and L4) ─────────────────────
-    # run_mechanism_pipeline never raises — returns insufficient envelope on error.
+    # we made run_mechanism_pipeline never raise — it returns an insufficient envelope on error.
     # mechanism_uncertainty feeds L4 as a continuous probabilistic modifier.
     mechanism_envelope = run_mechanism_pipeline(
         l3_reasoning  = l3_reasoning,
@@ -443,9 +442,9 @@ def run_inference(
     )
 
     # ── L4a: Legacy TAS — preserved for backward compat, ZERO decision influence ──
-    # The decision is now made by compute_l4_decision (state machine over risks,
-    # conflicts, uncertainty). TAS is kept only because some response fields and
-    # external consumers still read it. It does NOT factor into decision_state.
+    # we moved the decision to compute_l4_decision (state machine over risks, conflicts, uncertainty).
+    # we kept TAS only because some response fields and external consumers still read it —
+    # it does NOT factor into decision_state.
     tas = round(
         conf         * 0.30
         + sarima_trend * 0.20
@@ -481,17 +480,17 @@ def run_inference(
     )
 
     # ── Combined signals for display (macro SHAP + idea breakdown) ────────────
-    # IMPORTANT: market_* values are SHAP fractional shares (sum≈1.0, display as v×100%).
+    # we note: market_* values are SHAP fractional shares (sum≈1.0, display as v×100%).
     # idea_* values are signed adjustment deltas + one absolute base score.
-    # model_regime_fit is the absolute base (0.58–0.91) and is sent separately so
-    # the UI can render it on its own scale rather than conflating it with small deltas.
-    # Removing abs(): signs are preserved so the UI can color positive vs negative.
+    # we send model_regime_fit separately so the UI can render it on its own scale
+    # rather than conflating it with small deltas.
+    # we preserve signs (no abs()) so the UI can color positive vs negative.
     idea_breakdown = idea_signal_data['breakdown']
     combined_signals = {
         **{f"market_{k}": round(float(v), 4) for k, v in shap_dict.items()},
-        # Base fit exposed alone so UI knows it's the baseline, not an adjustment
+        # we expose base fit alone so UI knows it's the baseline, not an adjustment
         "idea_model_regime_fit": round(float(idea_breakdown['model_regime_fit']), 4),
-        # Signed adjustments — preserve sign so UI can distinguish boost vs penalty
+        # we preserve sign on adjustments so the UI can distinguish boost vs penalty
         **{
             f"idea_{k}": round(float(v), 4)
             for k, v in idea_breakdown.items()
@@ -516,9 +515,9 @@ def run_inference(
     logs.append(f"[A2/A4] {len(a2_comps)} competitors | Sentiment: {a4_sentiment}")
 
     # ── L4b: Strategic Reasoning Engine ───────────────────────────────────────
-    # Replaces the old A7 "3-sentence synthesis" with a true interpretation layer.
-    # Produces 5 structured reasoning fields that VARY by BM type + regime.
-    # SHAP is correctly scoped to market signal explanation only.
+    # we replaced the old A7 "3-sentence synthesis" with a true interpretation layer here.
+    # we produce 5 structured reasoning fields that VARY by BM type + regime.
+    # we scope SHAP to market signal explanation only.
     regime_readable = regime.replace('_', ' ').title()
     top3_names      = [k.replace('_', ' ') for k, _ in sorted(shap_dict.items(), key=lambda x: x[1], reverse=True)[:3]]
 
@@ -532,9 +531,9 @@ def run_inference(
     )
 
     # ── Tier 3: signal anchors for every L4 text field (full traceability) ──
-    # Each text field is paired with the canonical L1/L2/L3 signal paths that
-    # justify it. Anchors are computed deterministically from the L4 decision
-    # envelope — no LLM-generated trace fabrication.
+    # we pair each text field with the canonical L1/L2/L3 signal paths that justify it.
+    # we compute anchors deterministically from the L4 decision envelope —
+    # no LLM-generated trace fabrication.
     _diff_block = l3_reasoning.get('differentiation', {})
     _comp_block = l3_reasoning.get('competition', {})
     strategic_anchors = {
@@ -578,40 +577,62 @@ def run_inference(
     reg_risk  = idea_features.get('regulatory_risk', 'medium')
     in_growth = regime in ('GROWTH_MARKET', 'EMERGING_MARKET')
 
-    if tas >= 0.76:   # Strong
+    if tas >= 0.76:
         decision_badge = "GO — CONDITIONAL"
-        action = (
-            f"GO — but only if: you can sign 3 paying {seg_label} customers within 30 days without building anything. "
-            f"If that fails, the signal is wrong and you stop. "
-            f"{'Build toward the supply-side density milestone first — nothing else matters until the marketplace liquidity threshold is reached.' if bm_label == 'marketplace' else 'Ship the smallest possible version in 4 weeks, put it in front of 20 customers, and measure retention by day 14.'} "
-            f"If raising: Flat6Labs, 500 MENA, Algebra Ventures — come with evidence, not a pitch deck. "
-            f"Watch {top3_names[0]} — if it deteriorates, your regime reclassifies and this decision reverses."
-        )
-    elif tas >= 0.60:  # Moderate
+    elif tas >= 0.60:
         decision_badge = "CONDITIONAL — VALIDATE FIRST"
-        action = (
-            f"DO NOT BUILD YET. Validate the {dominant_risk} assumption first. "
-            f"Run 15 structured interviews with {seg_label} buyers in the next 2 weeks — not to confirm the idea, to find the 3 who would pay today. "
-            f"{'Map the full regulatory path before writing a line of code — it is the critical path item, not a nice-to-have.' if reg_risk == 'high' else 'Find the single use case with the highest willingness-to-pay and build only that — everything else is scope creep at this stage.'} "
-            f"If you cannot find 3 buyers willing to pay in 2 weeks → stop. Do not raise, do not build, do not iterate. The idea needs a different angle."
-        )
-    elif tas >= 0.44:  # Mixed
+    elif tas >= 0.44:
         decision_badge = "HIGH RISK — PROVE OR STOP"
-        action = (
-            f"HIGH RISK. Do not commit capital to a build. "
-            f"The {dominant_risk} risk is not a planning item — it is an existential unknown. Resolve it before anything else. "
-            f"Run the cheapest possible experiment that either proves or kills the core assumption within 3 weeks. "
-            f"{'For a marketplace: manually broker 5 real transactions end-to-end. If you cannot close them, the model does not work.' if bm_label == 'marketplace' else 'For this model: pre-sell the product before building it. If no one pays upfront, no one will pay after launch either.'} "
-            f"If the experiment fails → stop building this version. If it succeeds → you have the evidence to raise on."
-        )
-    else:  # Weak
+    else:
         decision_badge = "NO-GO — DO NOT BUILD"
-        action = (
-            f"NO-GO. Do not build this now. "
-            f"The {signal_tier} signal at {int(tas*100)}/100 in a {regime.replace('_',' ').title()} means the market is actively working against this model right now. "
-            f"{'The ' + dominant_risk + ' risk cannot be resolved by iteration — it requires a structural market change that is not in your control.' if dominant_risk != 'execution' else 'The fundamental assumptions this idea rests on have not been validated and the market environment makes validation expensive.'} "
-            f"{'If the idea is right and the timing is wrong: keep it, spend nothing, revisit in 90 days when SARIMA signals change.' if diff >= 3 else 'If you still believe in this: spend 4 weeks talking to 20 customers before writing a single line of code. Let them prove you right — do not prove yourself right by building.'}"
-        )
+
+    top_signal = top3_names[0] if top3_names else dominant_risk
+    action = _generate_go_decision_llm(
+        tas=tas,
+        decision_badge=decision_badge,
+        seg_label=seg_label,
+        bm_label=bm_label,
+        dominant_risk=dominant_risk,
+        top_signal=top_signal,
+        reg_risk=reg_risk,
+        stage=stage,
+        regime=regime,
+        sector=sec,
+        country=country,
+        idea_text=idea_text,
+        diff=diff,
+    )
+
+    if action is None:
+        # Hardcoded fallback — fires only if LLM call fails
+        if tas >= 0.76:
+            action = (
+                f"GO — but only if: you can sign 3 paying {seg_label} customers within 30 days without building anything. "
+                f"If that fails, the signal is wrong and you stop. "
+                f"{'Build toward the supply-side density milestone first — nothing else matters until the marketplace liquidity threshold is reached.' if bm_label == 'marketplace' else 'Ship the smallest possible version in 4 weeks, put it in front of 20 customers, and measure retention by day 14.'} "
+                f"If raising: Flat6Labs, 500 MENA, Algebra Ventures — come with evidence, not a pitch deck."
+            )
+        elif tas >= 0.60:
+            action = (
+                f"DO NOT BUILD YET. Validate the {dominant_risk} assumption first. "
+                f"Run 15 structured interviews with {seg_label} buyers in the next 2 weeks — not to confirm the idea, to find the 3 who would pay today. "
+                f"{'Map the full regulatory path before writing a line of code.' if reg_risk == 'high' else 'Find the single use case with the highest willingness-to-pay and build only that.'} "
+                f"If you cannot find 3 buyers willing to pay in 2 weeks, stop — do not raise, do not build."
+            )
+        elif tas >= 0.44:
+            action = (
+                f"HIGH RISK. Do not commit capital to a build. "
+                f"The {dominant_risk} risk is an existential unknown — resolve it before anything else. "
+                f"{'Manually broker 5 real transactions end-to-end — if you cannot close them, the model does not work.' if bm_label == 'marketplace' else 'Pre-sell the product before building it — if no one pays upfront, no one will pay after launch.'} "
+                f"If the experiment fails, stop building this version; if it succeeds, you have the evidence to raise on."
+            )
+        else:
+            action = (
+                f"Do not build this now. "
+                f"The {signal_tier} signal at {int(tas*100)}/100 in a {regime.replace('_',' ').title()} means the market is actively working against this model. "
+                f"{'The ' + dominant_risk + ' risk cannot be resolved by iteration — it requires a structural market change outside your control.' if dominant_risk != 'execution' else 'The core assumptions have not been validated and the market environment makes validation expensive.'} "
+                f"{'Keep the idea, spend nothing, revisit in 90 days when signals change.' if diff >= 3 else 'Spend 4 weeks talking to 20 customers before writing a line of code — let them prove you right.'}"
+            )
 
     # ── Slack Webhook ─────────────────────────────────────────────────────────
     action_fired = tas >= 0.70 and in_growth
@@ -642,11 +663,11 @@ def run_inference(
         logs.append(f"[SLACK] TAS={tas:.3f} ({signal_tier}) — threshold not met")
 
     # ── Explanation Layer ─────────────────────────────────────────────────────
-    # Generated after idea_eval is available via process_idea — placeholder here.
-    # The full explanation layer is computed in process_idea() and injected there.
+    # we generate this after idea_eval is available via process_idea — placeholder here.
+    # We compute the full explanation layer in process_idea() and inject it there.
     logs.append("[L4b] Strategic reasoning engine complete")
 
-    # ── Prediction log — synchronous append, never raises ────────────────────
+    # ── Prediction log — we do a synchronous append here; it never raises ────
     import datetime as _dt
     log_prediction({
         'timestamp':         _dt.datetime.utcnow().isoformat(),
@@ -719,7 +740,10 @@ def run_inference(
         'react_path':           react_decision['path_id'],
         'react_decision':       react_decision,
         'rag_result':           rag_result,
+        'shap_cosine':          shap_cosine,
         'signal_consensus':     signal_consensus,
+        # ── Pipeline trace — every layer appended a log line to this list ─
+        'logs':                 logs,
     }
 
 def _build_invalid_response(l0: dict) -> dict:
@@ -793,7 +817,7 @@ def _build_clarification_response(idea_text: str, sector_key: str, l1_result: di
 
 
 def process_idea(idea_text: str, default_sector: str = "fintech", default_country: str = "EG") -> dict:
-    # ── Layer 0: Sanity gate — strict, blocking before any ML pipeline ────────
+    # ── Layer 0: we run a strict sanity gate here, blocking before any ML pipeline ──
     l0 = _layer0_sanity_check(idea_text)
     if not l0.get('valid', False):
         return _build_invalid_response(l0)
@@ -804,8 +828,8 @@ def process_idea(idea_text: str, default_sector: str = "fintech", default_countr
     country_code = parsed_ctry if ctry_found else default_country
 
     # ── Layer 1: Confidence-scored extraction + cross-field consistency ───────
-    # If extraction is insufficient OR fields are inconsistent, the pipeline
-    # halts here — L2/L3/L4 must NEVER run on UNKNOWN or contradictory inputs.
+    # we halt here if extraction is insufficient OR fields are inconsistent —
+    # L2/L3/L4 must NEVER run on UNKNOWN or contradictory inputs.
     l1_result = extract_idea_features(idea_text, sector_key)
     if not l1_result["is_sufficient"]:
         _L1_LOG.info(
@@ -816,7 +840,7 @@ def process_idea(idea_text: str, default_sector: str = "fintech", default_countr
         )
         return _build_clarification_response(idea_text, sector_key, l1_result)
 
-    # ── L2/L3/L4 inference uses the validated L1 envelope ─────────────────────
+    # ── L2/L3/L4 inference: we use the validated L1 envelope here ────────────
     report    = run_inference(
         sector_key, country_code,
         idea_text=idea_text,
@@ -848,16 +872,16 @@ def process_idea(idea_text: str, default_sector: str = "fintech", default_countr
     return {
         "success":         True,
         "idea":            idea_text,
-        # ── L0 always passes here — INCOMPLETE is now blocking. Fields kept None
+        # ── L0 always passes here — we made INCOMPLETE blocking. We keep these fields None
         # for response-shape stability with existing frontend consumers.
         "l0_flag":         None,
         "l0_verdict":      None,
         "l0_what_is_missing": None,
         "l0_how_to_fix":   [],
-        # ── L1 confidence metadata — first-class in the response ───────────
-        # idea_features_raw preserves UNKNOWN sentinels for low-confidence
-        # non-required fields. idea_features (below) is the runtime view
-        # (neutral defaults applied where idea_features_raw says UNKNOWN).
+        # ── L1 confidence metadata — we surface this first-class in the response ──
+        # idea_features_raw preserves UNKNOWN sentinels for low-confidence non-required fields.
+        # idea_features (below) is the runtime view —
+        # we apply neutral defaults wherever idea_features_raw says UNKNOWN.
         "l1_aggregate_confidence": l1_result["aggregate_confidence"],
         "l1_field_confidence":     l1_result["confidence"],
         "l1_field_source":         l1_result["source"],
@@ -867,16 +891,16 @@ def process_idea(idea_text: str, default_sector: str = "fintech", default_countr
         "country":         country_code,
         "regime":          report["regime"],
         # ── PRIMARY decision surface (L4 state machine) ─────────────────
-        # decision_state replaces decision_badge as the decision basis.
-        # decision_strength (qualitative tier) replaces numeric `confidence`.
+        # we replaced decision_badge with decision_state as the decision basis.
+        # we replaced numeric `confidence` with decision_strength (qualitative tier).
         # See l4_decision below for full reasoning trace.
         "decision_state":     report["l4_decision"]["decision_state"],
         "decision_strength":  report["l4_decision"]["decision_strength"],
         "l4_decision":        report["l4_decision"],
-        # ── Per-text-field signal anchors (Tier 3 grounding) ────────────
+        # ── Per-text-field signal anchors (Tier 3 grounding) — we include these for full traceability ──
         "strategic_anchors":  report["strategic_anchors"],
-        # ── Legacy numeric fields — preserved for back-compat only ──────
-        # These have ZERO influence on decision_state. Frontend should
+        # ── Legacy numeric fields — we preserve these for back-compat only ──
+        # They have ZERO influence on decision_state. Frontend should
         # migrate to decision_state + decision_strength.
         "tas_score":       int(report["tas"] * 100),
         "signal_tier":     report["signal_tier"],
@@ -885,7 +909,7 @@ def process_idea(idea_text: str, default_sector: str = "fintech", default_countr
         "drift_flag":      report["drift_flag"],          # legacy alias of train_time_drift
         "action_fired":    report["action_fired"],
         # ── L2 transparency surface ────────────────────────────────────
-        # base = pure (sector, country) lookup, source=static_table
+        # we expose: base = pure (sector, country) lookup, source=static_table
         # adjusted = base + capped idea-derived deltas, deltas listed below
         # adjustments = explicit traceable list (each marked source="inferred")
         # decision_path = SVM step → optional rule_override → optional staleness
@@ -899,8 +923,8 @@ def process_idea(idea_text: str, default_sector: str = "fintech", default_countr
         "regime_decision_path":  report["regime_decision_path"],
         "fcm_membership":        report["fcm_membership"],
         # ── L3 structured reasoning (PRIMARY explanation surface) ─────
-        # Replaces scalar idea_signal as the explanation layer. The scalar
-        # is preserved inside l3_reasoning.legacy_scalar_signal and in the
+        # we replaced the scalar idea_signal with this as the explanation layer.
+        # we preserve the scalar inside l3_reasoning.legacy_scalar_signal and in the
         # idea_signal field below for L4 TAS continuity.
         "l3_reasoning":          report["l3_reasoning"],
         # ── L4 Strategic Reasoning Engine (7-part output) ──────────────
@@ -929,19 +953,32 @@ def process_idea(idea_text: str, default_sector: str = "fintech", default_countr
         "signal_explanations":     explanation["signal_explanations"],
         "svs":                     svs,
         "quadrant":                quadrant,
-        # ── Mechanism analysis (serialized MechanismEnvelope) ────────────
+        # ── Mechanism analysis (serialized MechanismEnvelope) — we include for L4 probabilistic input ──
         "mechanism_analysis":      report.get("mechanism_analysis", {}),
-        # epistemic_disclosure: one sentence from EpistemicSummary, always present.
-        # Surfaced separately so UI and chat layer can prepend it without parsing.
+        # we surface epistemic_disclosure separately (one sentence from EpistemicSummary)
+        # so the UI and chat layer can prepend it without parsing the full envelope.
         "epistemic_disclosure": (
             (report.get("mechanism_analysis") or {})
             .get("epistemic_summary", {})
             .get("recommended_disclosure", "")
         ),
+        # ── ReAct routing surface (re-surfaced from run_inference for dashboard zones 2/4) ──
+        "confidence":            report["confidence"],
+        "intelligent_score":     report["intelligent_score"],
+        "is_components":         report["is_components"],
+        "is_correlated_trio":    report["is_correlated_trio"],
+        "react_path":            report["react_path"],
+        "react_decision":        report["react_decision"],
+        "rag_result":            report["rag_result"],
+        "shap_cosine":           report.get("shap_cosine", 0.5),
+        "signal_consensus":      report.get("signal_consensus", ""),
+        "xai_score":             report.get("xai_score", 0.5),
+        # ── Pipeline trace — forwarded from run_inference ─────────────────
+        "logs":                  report.get("logs", []),
     }
 
 
 
-# Export everything defined in this module — including underscore-prefixed
+# we export everything defined in this module — including underscore-prefixed
 # helpers — so other midan submodules can wildcard-import the full surface.
 __all__ = [name for name in list(globals().keys()) if not name.startswith('__')]

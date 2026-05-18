@@ -32,9 +32,9 @@ from midan.l3_reasoning import _l3_field_known, _safe_int  # noqa: F401
 #   • Every decision step references the exact L1/L2/L3 signals it uses.
 # ═══════════════════════════════════════════════════════════════
 
-# L4_DECISION_VERSION and the ENABLE_OFFSETTING / ENABLE_CONFLICT_DETECTION
-# toggles are owned by midan.config and reach this module via
-# `from midan.core import *`.
+# we pull L4_DECISION_VERSION and the ENABLE_OFFSETTING / ENABLE_CONFLICT_DETECTION
+# toggles from midan.config — they reach this module via
+# `from midan.core import *`
 
 # ── Risk levels and tier ladder ─────────────────────────────────────────────
 _RISK_LADDER  = ['low', 'medium', 'high']
@@ -69,7 +69,7 @@ def _decompose_market_risk(regime: str, regime_conf: float, fcm_membership: dict
         base_level = 'high'
         drivers.append({'signal': 'L2.regime', 'value': regime, 'effect': 'high_market_risk'})
 
-    # FCM ambiguity bumps risk one notch up — uncertain regime ≠ confident regime.
+    # we bump risk one notch when FCM is ambiguous — uncertain regime is not the same as a confident one
     fcm_ambiguous = bool(fcm_membership and fcm_membership.get('is_ambiguous'))
     if fcm_ambiguous:
         drivers.append({
@@ -78,7 +78,7 @@ def _decompose_market_risk(regime: str, regime_conf: float, fcm_membership: dict
         })
         base_level = _bump_risk(base_level, +1)
 
-    # Staleness penalty (already applied to conf elsewhere) — surface as driver
+    # we surface the staleness penalty here as a driver so it's visible in the trace
     if l2_freshness and l2_freshness.get('runtime_staleness_flag'):
         drivers.append({
             'signal': 'L2.l2_data_freshness.runtime_staleness_flag', 'value': True,
@@ -126,7 +126,7 @@ def _decompose_execution_risk(l1_values: dict, l1_confidence: dict, l3_reasoning
             },
         }
 
-    # Operational complexity → primary driver
+    # we use operational complexity as the primary driver here
     op_complex = bm_block.get('cost_structure', {}).get('operational_complexity', 'medium')
     drivers.append({'signal': 'L3.business_model.cost_structure.operational_complexity',
                     'value': op_complex, 'effect': f'op complexity={op_complex}'})
@@ -135,7 +135,7 @@ def _decompose_execution_risk(l1_values: dict, l1_confidence: dict, l3_reasoning
     elif op_complex == 'low':
         base_level = 'low'
 
-    # CAC tier
+    # we check CAC tier next — each pressure point bumps execution risk one step
     if ue_block.get('available'):
         cac_tier = ue_block.get('cac_proxy', {}).get('tier')
         rpu_tier = ue_block.get('revenue_per_user_proxy', {}).get('tier')
@@ -204,7 +204,7 @@ def _decompose_timing_risk(l1_values: dict, l1_confidence: dict, regime: str) ->
     drivers.append({'signal': 'L1.stage', 'value': stage,
                     'effect': f'stage={stage}'})
 
-    # Early stage in hostile regime is structural mistiming
+    # we treat early stage in a hostile regime as structural mistiming
     hostile = regime in ('CONTRACTING_MARKET', 'HIGH_FRICTION_MARKET')
     if stage in ('idea', 'validation') and hostile:
         drivers.append({'signal': 'L2.regime', 'value': regime,
@@ -248,8 +248,8 @@ def _decompose_timing_risk(l1_values: dict, l1_confidence: dict, regime: str) ->
 
 
 # ── OFFSETTING ANALYZER (reasoning dominance) ───────────────────────────────
-# A "high" risk on a single dimension can be downgraded to "elevated_with_offset"
-# when an explicitly-named strong signal compensates. Each offset is logged.
+# we downgrade a "high" risk on a single dimension to "elevated_with_offset"
+# when an explicitly-named strong signal compensates — we log every offset we apply
 def _apply_offsetting(risks: dict, l1_values: dict, l1_confidence: dict,
                        l3_reasoning: dict) -> tuple:
     """
@@ -260,7 +260,7 @@ def _apply_offsetting(risks: dict, l1_values: dict, l1_confidence: dict,
     log = []
     out = {k: dict(v) for k, v in risks.items()}
 
-    # Strong differentiation can offset high market risk
+    # we allow strong differentiation to offset high market risk
     diff_block = l3_reasoning.get('differentiation', {})
     if (diff_block.get('available')
         and diff_block.get('verdict') == 'structural'
@@ -275,7 +275,7 @@ def _apply_offsetting(risks: dict, l1_values: dict, l1_confidence: dict,
             'evidence_signals':  ['L3.differentiation.verdict=structural'],
         })
 
-    # Strong scalability + improving unit economics can offset high execution risk
+    # we allow strong scalability and improving unit economics to offset high execution risk
     ue_block = l3_reasoning.get('unit_economics', {})
     scal_tier = (ue_block.get('scalability_pressure') or {}).get('tier') if ue_block.get('available') else None
     rpu_tier  = (ue_block.get('revenue_per_user_proxy') or {}).get('tier') if ue_block.get('available') else None
@@ -293,7 +293,7 @@ def _apply_offsetting(risks: dict, l1_values: dict, l1_confidence: dict,
                                   'L3.unit_economics.revenue_per_user_proxy=high'],
         })
 
-    # Strong differentiation can also offset high timing risk in early stages
+    # we also allow strong differentiation to offset high timing risk at early stages
     if (diff_block.get('available')
         and diff_block.get('verdict') == 'structural'
         and out['timing_risk']['level'] == 'high'
@@ -312,10 +312,9 @@ def _apply_offsetting(risks: dict, l1_values: dict, l1_confidence: dict,
 
 
 # ── CONFLICT DETECTOR (severity-tiered, rule-based) ─────────────────────────
-# Each conflict is a structural tension between two or more signals. Only
-# severity='high' AND resolution_required=True will escalate the decision
-# state to CONFLICTING_SIGNALS. Lower severities feed into reasoning but
-# don't halt.
+# we model each conflict as a structural tension between two or more signals.
+# we only escalate to CONFLICTING_SIGNALS when severity='high' AND resolution_required=True —
+# lower severities feed into reasoning but we do not halt on them
 def _detect_conflicts(l1_values: dict, l1_confidence: dict, regime: str,
                        l3_reasoning: dict) -> list:
     conflicts = []
@@ -325,7 +324,7 @@ def _detect_conflicts(l1_values: dict, l1_confidence: dict, regime: str,
     bm_block   = l3_reasoning.get('business_model', {})
     ue_block   = l3_reasoning.get('unit_economics', {})
 
-    # 1. Strong macro × weak differentiation × high competition
+    # we fire this conflict when macro is favorable but differentiation is thin and competition is high
     if (regime in ('GROWTH_MARKET', 'EMERGING_MARKET')
         and diff_verdict == 'thin'
         and l1_values.get('competitive_intensity') == 'high'):
@@ -338,7 +337,7 @@ def _detect_conflicts(l1_values: dict, l1_confidence: dict, regime: str,
             'resolution_path':     'Either deepen differentiation (toward structural) or pick a defensible niche where competition is lower.',
         })
 
-    # 2. Strong macro × weak differentiation × low/medium competition (resolvable)
+    # we mark this version resolvable — the window is open while competition is still low or medium
     if (regime in ('GROWTH_MARKET', 'EMERGING_MARKET')
         and diff_verdict == 'thin'
         and l1_values.get('competitive_intensity') in ('low', 'medium')):
@@ -351,7 +350,7 @@ def _detect_conflicts(l1_values: dict, l1_confidence: dict, regime: str,
             'resolution_path':     'Use the macro tailwind to fund and ship differentiation work before competition catches up.',
         })
 
-    # 3. Growth-stage idea × contracting macro
+    # we flag growth-stage ideas in a contracting macro as a hard structural conflict
     if (l1_values.get('stage') == 'growth'
         and regime in ('CONTRACTING_MARKET', 'HIGH_FRICTION_MARKET')):
         conflicts.append({
@@ -363,7 +362,7 @@ def _detect_conflicts(l1_values: dict, l1_confidence: dict, regime: str,
             'resolution_path':     'Either reset to capital-efficient unit economics for survival mode, or wait out the regime.',
         })
 
-    # 4. Strong BM fit × high regulatory risk (resolvable, not blocking)
+    # we surface the regulatory burden as a medium conflict — it is resolvable and not blocking
     if (bm_block.get('available')
         and l1_values.get('regulatory_risk') == 'high'):
         conflicts.append({
@@ -375,7 +374,7 @@ def _detect_conflicts(l1_values: dict, l1_confidence: dict, regime: str,
             'resolution_path':     'Map the regulatory path explicitly; treat licensing as the critical path, not a side stream.',
         })
 
-    # 5. B2C × high CAC × low RPU (unit economics broken)
+    # we hard-block on inverted B2C unit economics — high CAC and low RPU means acquisition costs more than it returns
     if ue_block.get('available'):
         cac = (ue_block.get('cac_proxy') or {}).get('tier')
         rpu = (ue_block.get('revenue_per_user_proxy') or {}).get('tier')
@@ -402,7 +401,7 @@ def _assess_decision_quality(l1_result: dict, l2_freshness: dict, l3_reasoning: 
     headline numeric confidence. No collapsed scores — every tier is paired
     with an explicit basis string.
     """
-    # Input completeness — driven by L1 aggregate confidence + count of UNKNOWNs
+    # we derive input completeness from L1 aggregate confidence and the count of UNKNOWN required fields
     agg_conf = (l1_result or {}).get('aggregate_confidence', 0.0)
     unknown_required = (l1_result or {}).get('unknown_required', [])
     if agg_conf >= 0.75 and not unknown_required:
@@ -416,7 +415,7 @@ def _assess_decision_quality(l1_result: dict, l2_freshness: dict, l3_reasoning: 
         f"L1.unknown_required={unknown_required or 'none'}."
     )
 
-    # Signal agreement — count of layers in agreement vs disagreement
+    # we count how many layers are in agreement vs disagreement to get the signal agreement tier
     agreement_signals = []
     bm_avail = l3_reasoning.get('business_model', {}).get('available', False)
     if bm_avail:
@@ -439,7 +438,7 @@ def _assess_decision_quality(l1_result: dict, l2_freshness: dict, l3_reasoning: 
         f"L3 BM available, no insufficient modules, no high-severity conflicts."
     )
 
-    # Assumption density — count heuristic-source signals
+    # we count heuristic-source signals to measure assumption density
     heuristic_count = 0
     grounded_count = 0
     if l3_reasoning.get('differentiation', {}).get('available'):
@@ -450,7 +449,7 @@ def _assess_decision_quality(l1_result: dict, l2_freshness: dict, l3_reasoning: 
         heuristic_count += 1   # heuristic_per_bm_template
     if l3_reasoning.get('unit_economics', {}).get('available'):
         heuristic_count += 1   # qualitative_proxy
-    # Grounded signals: trained model outputs (regime), staleness gate
+    # we count grounded signals separately — trained model outputs and the staleness gate
     grounded_count += 1  # regime is from trained SVM
     if not l2_freshness.get('runtime_staleness_flag', False):
         grounded_count += 1  # forecasts within freshness window
@@ -467,15 +466,15 @@ def _assess_decision_quality(l1_result: dict, l2_freshness: dict, l3_reasoning: 
         f"→ {h_ratio:.0%} heuristic share."
     )
 
-    # Overall uncertainty — derived from the three tiers + L2 staleness
-    # + mechanism_uncertainty as a continuous probabilistic modifier.
+    # we derive overall uncertainty from the three tiers plus L2 staleness,
+    # and we blend in mechanism_uncertainty as a continuous probabilistic modifier.
     #
-    # mechanism_uncertainty ranges 0.0–0.30 (max). Mapped to 0.0–1.0 bad-tier
+    # mechanism_uncertainty ranges 0.0–0.30 (max). we map it to a 0.0–1.0 bad-tier
     # contribution so it shifts the distribution rather than hard-switching state:
     #   0.10 → +0.33 contribution (not enough alone to push to high)
     #   0.20 → +0.67 contribution (significant push, needs one other bad signal)
     #   0.30 → +1.00 contribution (equivalent to one bad tier → moderate alone)
-    # This preserves ambiguity when ambiguity is structurally real.
+    # we chose this approach to preserve ambiguity when ambiguity is structurally real
     discrete_bad = sum(1 for t in (ic_tier, sa_tier) if t == 'low') + (1 if ad_tier == 'high' else 0)
     mech_contribution = mechanism_uncertainty / 0.30  # 0.0–1.0 continuous
     bad_tiers_continuous = discrete_bad + mech_contribution
@@ -529,7 +528,7 @@ def _derive_decision_state(risks: dict, quality: dict, conflicts: list,
     """
     steps = []
 
-    # Rule 0 — INSUFFICIENT_DATA: any required L3 module unavailable
+    # we check first for INSUFFICIENT_DATA — if any required L3 module is unavailable we halt immediately
     insufficient = l3_reasoning.get('insufficient_information', [])
     if insufficient:
         modules = ", ".join(i.get('module', '?') for i in insufficient)
@@ -551,7 +550,7 @@ def _derive_decision_state(risks: dict, quality: dict, conflicts: list,
         'conclusion': 'All required L3 modules available — proceed.',
     })
 
-    # Rule 1 — HIGH_UNCERTAINTY: overall uncertainty is high → advisory only
+    # we escalate to HIGH_UNCERTAINTY when overall uncertainty is high — verdict becomes advisory only
     if quality['overall_uncertainty'] == 'high':
         steps.append({
             'step':       'check_high_uncertainty',
@@ -573,7 +572,7 @@ def _derive_decision_state(risks: dict, quality: dict, conflicts: list,
         'conclusion': 'Uncertainty within decisionable range — proceed.',
     })
 
-    # Rule 2 — CONFLICTING_SIGNALS: only when high-severity AND unresolved
+    # we only escalate to CONFLICTING_SIGNALS when the conflict is both high-severity and unresolved
     severe_unresolved = [c for c in conflicts
                           if c.get('severity') == 'high' and c.get('resolution_required')]
     if severe_unresolved:
@@ -596,7 +595,7 @@ def _derive_decision_state(risks: dict, quality: dict, conflicts: list,
         'conclusion': 'No severe unresolved conflicts — proceed.',
     })
 
-    # Risk count after offsetting. "elevated_with_offset" counts as medium for state derivation.
+    # we count risks after offsetting — we treat "elevated_with_offset" as medium for state derivation
     def _effective_level(level):
         return 'medium' if level == 'elevated_with_offset' else level
 
@@ -614,7 +613,7 @@ def _derive_decision_state(risks: dict, quality: dict, conflicts: list,
         'conclusion': 'Risk profile aggregated from three dimensions (post-offset).',
     })
 
-    # Rule 3 — NO_GO: ≥2 effective-high risks
+    # we emit NO_GO when two or more effective-high risks are present
     if n_high >= 2:
         steps.append({
             'step':       'apply_no_go_rule',
@@ -628,7 +627,7 @@ def _derive_decision_state(risks: dict, quality: dict, conflicts: list,
             'decision_reasoning_steps': steps,
         }
 
-    # Rule 4 — GO: zero high risks AND ≥1 low risk AND no medium-severity-or-higher unresolved conflict
+    # we emit GO only when there are zero high risks, at least one low risk, and no unresolved medium-or-higher conflicts
     medium_unresolved = [c for c in conflicts
                           if c.get('severity') == 'medium' and c.get('resolution_required')]
     if n_high == 0 and n_low >= 1 and not medium_unresolved:
@@ -645,7 +644,7 @@ def _derive_decision_state(risks: dict, quality: dict, conflicts: list,
             'decision_reasoning_steps': steps,
         }
 
-    # Rule 5 — CONDITIONAL: everything else (one high OR all medium OR low+medium with conflicts)
+    # we fall through to CONDITIONAL for everything else — one high risk, all medium, or low+medium with conflicts
     steps.append({
         'step':       'apply_conditional_rule',
         'rule_id':    'r3b_conditional',
@@ -724,25 +723,25 @@ def compute_l4_decision(
     l1_values     = (l1_result or {}).get('values', {})
     l1_confidence = (l1_result or {}).get('confidence', {})
 
-    # Risk decomposition
+    # we decompose risk into three independent dimensions before combining them
     market_r    = _decompose_market_risk(regime, regime_conf, fcm_membership, l2_freshness)
     execution_r = _decompose_execution_risk(l1_values, l1_confidence, l3_reasoning)
     timing_r    = _decompose_timing_risk(l1_values, l1_confidence, regime)
     risks_raw   = {'market_risk': market_r, 'execution_risk': execution_r, 'timing_risk': timing_r}
 
-    # Offsetting (gated by midan.config.ENABLE_OFFSETTING).
+    # we apply offsetting only when ENABLE_OFFSETTING is on — gated by midan.config
     if ENABLE_OFFSETTING:
         risks_adj, offset_log = _apply_offsetting(risks_raw, l1_values, l1_confidence, l3_reasoning)
     else:
         risks_adj, offset_log = risks_raw, []
 
-    # Conflicts (gated by midan.config.ENABLE_CONFLICT_DETECTION).
+    # we run conflict detection only when ENABLE_CONFLICT_DETECTION is on — gated by midan.config
     if ENABLE_CONFLICT_DETECTION:
         conflicts = _detect_conflicts(l1_values, l1_confidence, regime, l3_reasoning)
     else:
         conflicts = []
 
-    # ReAct RAG conflict injection — advisory signal from react_router
+    # we inject the RAG conflict from react_router as an advisory signal here
     if react_decision and react_decision.get('rag_conflict_severity') in ('low', 'medium'):
         rag_vote_label = react_decision.get('rag_vote') or 'unknown'
         conflicts.append({
@@ -761,19 +760,18 @@ def compute_l4_decision(
             },
         })
 
-    # Decision quality + strength
+    # we assess decision quality and strength before entering the state machine
     quality   = _assess_decision_quality(
         l1_result, l2_freshness, l3_reasoning, risks_adj, conflicts,
         mechanism_uncertainty=mechanism_uncertainty,
     )
     strength  = _decision_strength_tier(quality)
 
-    # State machine
+    # we run the state machine to derive the final decision state
     sm = _derive_decision_state(risks_adj, quality, conflicts, l3_reasoning)
 
-    # ReAct force_human_review override — react_router has authority to escalate
-    # to INSUFFICIENT_DATA when both attribution and precedent signals conflict.
-    # L4 state machine remains authoritative for all other state transitions.
+    # we let react_router escalate to INSUFFICIENT_DATA when attribution and precedent both conflict —
+    # the L4 state machine stays authoritative for all other transitions
     if react_decision and react_decision.get('force_human_review'):
         if sm['state'] not in ('INSUFFICIENT_DATA',):
             sm['state'] = 'INSUFFICIENT_DATA'
@@ -783,7 +781,7 @@ def compute_l4_decision(
                 f"requires human review: {react_decision.get('routing_basis', '')}"
             )
 
-    # Derivation trace
+    # we build the derivation trace so every signal that touched the decision is visible
     derivation = _build_decision_derivation(l1_result, regime, fcm_membership, l3_reasoning, sm['state'])
 
     return {
@@ -828,6 +826,6 @@ def _l4_top_risk_dim(l4_decision: dict) -> tuple:
 
 
 
-# Export everything defined in this module — including underscore-prefixed
-# helpers — so other midan submodules can wildcard-import the full surface.
+# we export everything defined in this module — including underscore-prefixed
+# helpers — so other midan submodules can wildcard-import the full surface
 __all__ = [name for name in list(globals().keys()) if not name.startswith('__')]

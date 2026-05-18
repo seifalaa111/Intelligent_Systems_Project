@@ -43,6 +43,7 @@ from midan.core import (
 )
 import numpy as np
 import pickle, json, os, logging
+from datetime import datetime, timezone
 
 _OUTER_LOG = logging.getLogger("midan.outer_react")
 
@@ -64,6 +65,7 @@ def run_outer_react_loop() -> dict:
         _OUTER_LOG.error("[OUTER_REACT] Unexpected error: %s: %r", type(_e).__name__, _e)
         return {
             "retrain_status":     "error",
+            "success":            False,
             "error":              f"{type(_e).__name__}: {_e}",
             "artifacts_written":  [],
             "artifacts_preserved": [],
@@ -74,7 +76,7 @@ def _run_retrain() -> dict:
     # ── Step 1: Rebuild training matrix ──────────────────────────────────────
     X_train, y_labels_raw = _build_training_matrix()
     if len(X_train) == 0:
-        return {"retrain_status": "error", "error": "empty training matrix",
+        return {"retrain_status": "error", "success": False, "error": "empty training matrix",
                 "artifacts_written": [], "artifacts_preserved": []}
 
     _OUTER_LOG.info("[OUTER_REACT] Training matrix: %d samples, %d features", *X_train.shape)
@@ -127,6 +129,7 @@ def _run_retrain() -> dict:
             )
             return {
                 "retrain_status":     "rollback_accuracy_gate",
+                "success":            False,
                 "accuracy_old":       old_accuracy,
                 "accuracy_new":       new_accuracy,
                 "artifacts_written":  [],
@@ -138,6 +141,7 @@ def _run_retrain() -> dict:
     if regime_anchors is None:
         return {
             "retrain_status": "error",
+            "success":        False,
             "error": "regime_anchors_pca.pkl missing — cannot remap cluster identities safely",
             "artifacts_written": [], "artifacts_preserved": [],
         }
@@ -152,6 +156,7 @@ def _run_retrain() -> dict:
         )
         return {
             "retrain_status":     "rollback_cluster_collision",
+            "success":            False,
             "cluster_names":      new_cluster_names,
             "artifacts_written":  [],
             "artifacts_preserved": ["all — cluster collision"],
@@ -216,18 +221,31 @@ def _run_retrain() -> dict:
     _update_drift_baseline(new_accuracy)
     written.append('drift_baseline.json (accuracy updated)')
 
+    # ── Step 11: SARIMA reset / refit ─────────────────────────────────────────
+    # The outer loop rebuilds all discriminative artifacts but produces no new
+    # time-series data. We must either refit SARIMA from the raw investments CSV
+    # (preferred) or soft-reset to a neutral forecast (fallback). Either way the
+    # old forecasts from the pre-drift regime are no longer trustworthy and must
+    # be invalidated before the next inference cycle.
+    _sarima_path  = os.path.join(MODELS_DIR, 'sarima_results.json')
+    sarima_result = _refit_sarima(_sarima_path)
+    written.append(f'sarima_results.json ({sarima_result.get("sarima_reset", "unknown")})')
+
     _OUTER_LOG.info(
-        "[OUTER_REACT] Retrain complete: acc %.4f -> %.4f | cluster_remap=%s | shap_drift=%s",
+        "[OUTER_REACT] Retrain complete: acc %.4f -> %.4f | cluster_remap=%s | shap_drift=%s | sarima=%s",
         old_accuracy or 0.0, new_accuracy, new_cluster_names, shap_drift,
+        sarima_result.get("sarima_reset"),
     )
 
     return {
         "retrain_status":          "success",
+        "success":                 True,
         "accuracy_old":            old_accuracy,
         "accuracy_new":            new_accuracy,
         "cluster_remap":           new_cluster_names,
         "shap_drift_detected":     shap_drift,
         "per_cluster_shap_cosine": shap_cosines,
+        "sarima_reset":            sarima_result,
         "artifacts_written":       written,
         "artifacts_preserved":     preserved,
     }
@@ -440,6 +458,226 @@ def _load_pkl_optional(name):
             return pickle.load(f)
     except Exception:
         return None
+
+
+# ── SARIMA reset / refit ──────────────────────────────────────────────────────
+
+def _sarima_soft_reset(sarima_path: str) -> dict:
+    """
+    Invalidate stale SARIMA forecasts by resetting every sector to neutral values.
+
+    forecast_mean = [SARIMA_RESET_NEUTRAL_MEAN] × 3
+    → sarima_trend = clip(SARIMA_RESET_NEUTRAL_MEAN / 50.0, 0.15, 0.90) = 0.50
+
+    drift_flag is set True so downstream code knows these are reset values, not
+    real forecasts. sarima_reset_at provides an audit timestamp.
+
+    This is the correct response when:
+      (a) investments_VC.csv is unavailable, or
+      (b) per-sector refit fails.
+    It is NOT a no-op — it actively invalidates the pre-drift forecasts that
+    would otherwise propagate stale signals into the next inference cycle.
+    """
+    from midan.config import SARIMA_RESET_NEUTRAL_MEAN
+
+    reset_at = datetime.now(timezone.utc).isoformat()
+    neutral  = float(SARIMA_RESET_NEUTRAL_MEAN)
+
+    try:
+        if os.path.exists(sarima_path):
+            with open(sarima_path, 'r', encoding='utf-8') as f:
+                sarima_data = json.load(f)
+        else:
+            from midan.core import SECTOR_EFF_MACRO
+            sarima_data = {sector: {} for sector in SECTOR_EFF_MACRO}
+
+        for sector in sarima_data:
+            sarima_data[sector].update({
+                "forecast_mean":       [neutral, neutral, neutral],
+                "forecast_lower":      [round(neutral * 0.85, 4)] * 3,
+                "forecast_upper":      [round(neutral * 1.15, 4)] * 3,
+                "drift_flag":          True,
+                "sarima_reset_at":     reset_at,
+                "sarima_reset_reason": "outer_retrain_soft_reset",
+            })
+
+        with open(sarima_path, 'w', encoding='utf-8') as f:
+            json.dump(sarima_data, f, indent=2)
+
+        _OUTER_LOG.info(
+            "[OUTER_REACT] SARIMA soft reset: %d sectors → neutral_mean=%.1f (sarima_trend=0.50) at %s",
+            len(sarima_data), neutral, reset_at,
+        )
+        return {
+            "sarima_reset":    "soft_reset",
+            "sectors_reset":   list(sarima_data.keys()),
+            "reset_at":        reset_at,
+        }
+
+    except Exception as _e:
+        _OUTER_LOG.error("[OUTER_REACT] _sarima_soft_reset failed (%s: %r)", type(_e).__name__, _e)
+        return {"sarima_reset": "soft_reset_failed", "error": f"{type(_e).__name__}: {_e}"}
+
+
+def _refit_sarima(sarima_path: str) -> dict:
+    """
+    Attempt a full SARIMAX(1,1,1)(1,1,1,12) refit from Datasets/investments_VC.csv.
+
+    If the CSV is absent, malformed, or yields fewer than 24 monthly observations
+    for a sector, that sector falls back to _sarima_soft_reset for that sector only.
+    If the import of pandas/statsmodels fails entirely, the whole function falls
+    back to a full soft reset.
+
+    The refit computes:
+      - 3-step forecast mean / confidence interval
+      - residual drift flag (max |residual| > 3σ)
+      - AIC for model quality tracking
+
+    Result is written to sarima_path in-place.
+    """
+    datasets_dir = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "Datasets",
+    )
+    csv_path = os.path.join(datasets_dir, "investments_VC.csv")
+
+    if not os.path.exists(csv_path):
+        _OUTER_LOG.warning(
+            "[OUTER_REACT] investments_VC.csv not found (%s) — using SARIMA soft reset", csv_path
+        )
+        return _sarima_soft_reset(sarima_path)
+
+    try:
+        import pandas as pd
+        from statsmodels.tsa.statespace.sarimax import SARIMAX
+        from midan.config import SARIMA_RESET_NEUTRAL_MEAN
+    except ImportError as _ie:
+        _OUTER_LOG.warning(
+            "[OUTER_REACT] pandas/statsmodels unavailable (%s) — using SARIMA soft reset", _ie
+        )
+        return _sarima_soft_reset(sarima_path)
+
+    try:
+        df = pd.read_csv(csv_path, low_memory=False)
+
+        # Flexible column detection — tolerate name variations across CSV versions
+        col_lower  = {c.lower().strip(): c for c in df.columns}
+        date_col   = next((col_lower[k] for k in col_lower if 'date' in k or 'year' in k), None)
+        sector_col = next((col_lower[k] for k in col_lower
+                           if any(t in k for t in ('sector', 'market', 'vertical', 'category', 'industry'))), None)
+        amount_col = next((col_lower[k] for k in col_lower
+                           if any(t in k for t in ('amount', 'raised', 'funding', 'investment'))), None)
+
+        if date_col is None or sector_col is None:
+            _OUTER_LOG.warning(
+                "[OUTER_REACT] investments_VC.csv missing required date/sector columns "
+                "(found: %s) — using soft reset", list(df.columns)
+            )
+            return _sarima_soft_reset(sarima_path)
+
+        df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
+        df = df.dropna(subset=[date_col])
+        df['_month'] = df[date_col].dt.to_period('M')
+
+        if os.path.exists(sarima_path):
+            with open(sarima_path, 'r', encoding='utf-8') as f:
+                sarima_data = json.load(f)
+        else:
+            from midan.core import SECTOR_EFF_MACRO
+            sarima_data = {sector: {} for sector in SECTOR_EFF_MACRO}
+
+        fitted_at        = datetime.now(timezone.utc).isoformat()
+        neutral          = float(SARIMA_RESET_NEUTRAL_MEAN)
+        sectors_fitted   = []
+        sectors_fallback = []
+
+        for sector in sarima_data:
+            # Partial match: "fintech" matches "financial technology / fintech" etc.
+            keyword = sector.lower().replace('_market', '').replace('_', ' ')
+            mask    = df[sector_col].astype(str).str.lower().str.contains(keyword, na=False, regex=False)
+            sec_df  = df[mask]
+
+            if len(sec_df) < 24:
+                sarima_data[sector].update({
+                    "forecast_mean":       [neutral, neutral, neutral],
+                    "forecast_lower":      [round(neutral * 0.85, 4)] * 3,
+                    "forecast_upper":      [round(neutral * 1.15, 4)] * 3,
+                    "drift_flag":          True,
+                    "sarima_reset_at":     fitted_at,
+                    "sarima_reset_reason": "insufficient_data_for_refit",
+                })
+                sectors_fallback.append(sector)
+                continue
+
+            try:
+                monthly = (
+                    sec_df.groupby('_month')[amount_col].sum().dropna()
+                    if amount_col else sec_df.groupby('_month').size()
+                )
+                monthly.index = monthly.index.to_timestamp()
+                monthly = monthly.sort_index()
+
+                model  = SARIMAX(monthly, order=(1, 1, 1), seasonal_order=(1, 1, 1, 12),
+                                 enforce_stationarity=False, enforce_invertibility=False)
+                fit    = model.fit(disp=False, maxiter=200)
+                fc     = fit.get_forecast(steps=3)
+                fc_mu  = fc.predicted_mean.values.tolist()
+                ci     = fc.conf_int()
+                fc_lo  = ci.iloc[:, 0].values.tolist()
+                fc_hi  = ci.iloc[:, 1].values.tolist()
+
+                resid     = fit.resid.dropna()
+                resid_std = float(resid.std()) if len(resid) > 1 else 0.0
+                resid_max = float(resid.abs().max()) if len(resid) > 0 else 0.0
+                drift_fl  = bool(resid_max > 3 * resid_std) if resid_std > 0 else False
+
+                sarima_data[sector].update({
+                    "aic":              round(float(fit.aic), 2),
+                    "forecast_mean":    [round(v, 4) for v in fc_mu],
+                    "forecast_lower":   [round(v, 4) for v in fc_lo],
+                    "forecast_upper":   [round(v, 4) for v in fc_hi],
+                    "drift_flag":       drift_fl,
+                    "last_date":        str(monthly.index[-1].date()),
+                    "sarima_fitted_at": fitted_at,
+                    "sarima_reset_reason": None,
+                })
+                sectors_fitted.append(sector)
+
+            except Exception as _se:
+                sarima_data[sector].update({
+                    "forecast_mean":       [neutral, neutral, neutral],
+                    "forecast_lower":      [round(neutral * 0.85, 4)] * 3,
+                    "forecast_upper":      [round(neutral * 1.15, 4)] * 3,
+                    "drift_flag":          True,
+                    "sarima_reset_at":     fitted_at,
+                    "sarima_reset_reason": f"fit_error:{type(_se).__name__}",
+                })
+                sectors_fallback.append(sector)
+                _OUTER_LOG.warning(
+                    "[OUTER_REACT] SARIMA refit failed for sector=%s (%s: %r)",
+                    sector, type(_se).__name__, _se,
+                )
+
+        with open(sarima_path, 'w', encoding='utf-8') as f:
+            json.dump(sarima_data, f, indent=2)
+
+        _OUTER_LOG.info(
+            "[OUTER_REACT] SARIMA refit: %d sectors fitted, %d soft-reset",
+            len(sectors_fitted), len(sectors_fallback),
+        )
+        return {
+            "sarima_reset":       "refit",
+            "sectors_fitted":     sectors_fitted,
+            "sectors_soft_reset": sectors_fallback,
+            "fitted_at":          fitted_at,
+        }
+
+    except Exception as _e:
+        _OUTER_LOG.error(
+            "[OUTER_REACT] _refit_sarima outer failure (%s: %r) — falling back to soft reset",
+            type(_e).__name__, _e,
+        )
+        return _sarima_soft_reset(sarima_path)
 
 
 __all__ = ['run_outer_react_loop']

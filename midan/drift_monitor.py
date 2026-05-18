@@ -38,7 +38,8 @@ from midan.core import (
     MACRO_STALENESS_HARD_THRESHOLD, LOG_MAX_ENTRIES,
     STATIC_MACRO_TABLE_AS_OF,
 )
-import json, os, logging
+import json, os, logging, threading
+from datetime import datetime, timezone, timedelta
 import numpy as np
 
 _DRIFT_LOG = logging.getLogger("midan.drift_monitor")
@@ -47,7 +48,9 @@ _LOG_DIR  = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "logs",
 )
-_LOG_PATH = os.path.join(_LOG_DIR, "prediction_log.jsonl")
+_LOG_PATH           = os.path.join(_LOG_DIR, "prediction_log.jsonl")
+_COOLDOWN_PATH      = os.path.join(_LOG_DIR, "retrain_cooldown.json")
+_RETRAIN_STATUS_PATH = os.path.join(_LOG_DIR, "retrain_status.json")
 
 
 # ── Prediction logging ────────────────────────────────────────────────────────
@@ -67,22 +70,196 @@ def log_prediction(entry: dict) -> None:
     try:
         os.makedirs(_LOG_DIR, exist_ok=True)
 
-        # Read current entry count without loading all entries
+        # we count current entries without loading all of them into memory
         line_count = 0
         if os.path.exists(_LOG_PATH):
             with open(_LOG_PATH, 'r', encoding='utf-8') as f:
                 for _ in f:
                     line_count += 1
 
-        # Sliding window: if at or over cap, drop oldest 20%
+        # we implement a sliding window: when at or over cap, we drop the oldest 20%
         if line_count >= LOG_MAX_ENTRIES:
             _trim_log(line_count)
 
         with open(_LOG_PATH, 'a', encoding='utf-8') as f:
             f.write(json.dumps(entry, ensure_ascii=False) + '\n')
 
+        # Auto-trigger drift check every DRIFT_CHECK_INTERVAL predictions.
+        # We use line_count+1 (the count after this write) for the modulo check.
+        # The import is lazy to avoid a circular dependency at module load time.
+        new_count = line_count + 1
+        from midan.config import DRIFT_CHECK_INTERVAL
+        if new_count % DRIFT_CHECK_INTERVAL == 0:
+            try:
+                from midan.core import drift_baseline
+                maybe_trigger_retrain(drift_baseline)
+            except Exception as _te:
+                _DRIFT_LOG.warning(
+                    "[DRIFT] maybe_trigger_retrain raised (%s: %r) — inference unaffected",
+                    type(_te).__name__, _te,
+                )
+
     except Exception as _e:
         _DRIFT_LOG.warning("[DRIFT] log_prediction failed (%s: %r) — entry dropped", type(_e).__name__, _e)
+
+
+def load_prediction_log(limit: int = 200) -> list:
+    """
+    Public wrapper around _load_log.
+
+    Returns the most recent `limit` entries. Pass limit=0 to load all.
+    Never raises. Used by the dashboard (Zone 5) and drift status endpoint.
+    """
+    entries = _load_log()
+    if limit and len(entries) > limit:
+        return entries[-limit:]
+    return entries
+
+
+def _write_retrain_status(data: dict) -> None:
+    """Overwrite retrain_status.json atomically. Never raises."""
+    try:
+        os.makedirs(_LOG_DIR, exist_ok=True)
+        with open(_RETRAIN_STATUS_PATH, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+    except Exception as _e:
+        _DRIFT_LOG.warning("[DRIFT] _write_retrain_status failed (%s)", _e)
+
+
+def maybe_trigger_retrain(drift_baseline: dict) -> dict:
+    """
+    Evaluate both drift signals and spawn a background outer retraining loop
+    if the AND gate fires AND the cooldown window has elapsed.
+
+    This is called from log_prediction() every DRIFT_CHECK_INTERVAL entries.
+    It is also safe to call externally (e.g. from tests or admin scripts).
+
+    Returns:
+        {
+            "triggered": bool,
+            "status":    "cooldown_active" | "no_drift" | "retrain_spawned",
+            "reason":    str,
+        }
+
+    Never raises — caller (log_prediction) must not lose the logged entry
+    because this check failed.
+    """
+    from midan.config import RETRAIN_COOLDOWN_HOURS
+
+    # ── Cooldown guard ─────────────────────────────────────────────────────────
+    # We write the cooldown marker BEFORE spawning the thread (below) so that
+    # rapid calls within the same DRIFT_CHECK_INTERVAL window can't stack up
+    # multiple concurrent retrains.
+    if os.path.exists(_COOLDOWN_PATH):
+        try:
+            with open(_COOLDOWN_PATH, 'r', encoding='utf-8') as f:
+                cd = json.load(f)
+            last_str = cd.get("last_retrain_at")
+            if last_str:
+                last_dt = datetime.fromisoformat(last_str)
+                age     = datetime.now(timezone.utc) - last_dt
+                if age < timedelta(hours=RETRAIN_COOLDOWN_HOURS):
+                    remaining_h = round((timedelta(hours=RETRAIN_COOLDOWN_HOURS) - age).total_seconds() / 3600, 1)
+                    _DRIFT_LOG.debug(
+                        "[DRIFT] Retrain cooldown active — %s h remaining. Skipping check.",
+                        remaining_h,
+                    )
+                    return {
+                        "triggered": False,
+                        "status":    "cooldown_active",
+                        "reason":    f"Last retrain <{RETRAIN_COOLDOWN_HOURS}h ago ({remaining_h}h remaining)",
+                    }
+        except Exception as _e:
+            # If the cooldown file is malformed we proceed — better to risk a
+            # spurious retrain than to permanently block the auto-trigger.
+            _DRIFT_LOG.warning("[DRIFT] Could not parse cooldown file (%s) — proceeding", _e)
+
+    # ── Dual-signal drift check ────────────────────────────────────────────────
+    check_at  = datetime.now(timezone.utc).isoformat()
+    drift_res = check_drift(drift_baseline)
+
+    if not drift_res["drift_detected"]:
+        _write_retrain_status({
+            "last_check_at": check_at,
+            "triggered":     False,
+            "drift_result":  drift_res,
+        })
+        return {
+            "triggered": False,
+            "status":    "no_drift",
+            "reason":    "AND gate not satisfied (need both signal_1 AND signal_2)",
+        }
+
+    # ── Both signals confirmed — prepare and spawn ─────────────────────────────
+    _DRIFT_LOG.warning(
+        "[DRIFT] DUAL-SIGNAL DRIFT CONFIRMED at %s — spawning outer retraining loop "
+        "(gap_svm_fired=%s centroid_fired=%s).",
+        check_at,
+        drift_res["signal_1_gap_fired"],
+        drift_res["signal_2_centroid_fired"],
+    )
+
+    # Write the cooldown marker NOW before spawning. This prevents a second
+    # concurrent call (e.g. from a parallel request) from stacking a second retrain.
+    try:
+        os.makedirs(_LOG_DIR, exist_ok=True)
+        with open(_COOLDOWN_PATH, 'w', encoding='utf-8') as f:
+            json.dump({"last_retrain_at": check_at}, f)
+    except Exception as _e:
+        _DRIFT_LOG.warning("[DRIFT] Could not write cooldown marker (%s) — retrain will proceed anyway", _e)
+
+    _write_retrain_status({
+        "last_check_at":    check_at,
+        "triggered":        True,
+        "trigger_reason":   "dual_signal_drift_confirmed",
+        "retrain_started_at": check_at,
+        "retrain_status":   "running",
+        "drift_result":     drift_res,
+    })
+
+    def _background_retrain() -> None:
+        # Lazy import here so the module-level import graph stays clean.
+        try:
+            from midan.outer_react import run_outer_react_loop
+            result = run_outer_react_loop()
+        except Exception as _e:
+            _DRIFT_LOG.error("[DRIFT] run_outer_react_loop raised (%s: %r)", type(_e).__name__, _e)
+            result = {"success": False, "error": f"{type(_e).__name__}: {_e}"}
+
+        completed_at = datetime.now(timezone.utc).isoformat()
+        success      = bool(result.get("success"))
+
+        _DRIFT_LOG.info(
+            "[DRIFT] Background retrain finished at %s — success=%s",
+            completed_at, success,
+        )
+
+        # Strip any large in-memory artifact blobs before persisting to status file.
+        safe_result = {k: v for k, v in result.items() if k not in ("new_artifacts",)}
+
+        _write_retrain_status({
+            "last_check_at":       check_at,
+            "triggered":           True,
+            "trigger_reason":      "dual_signal_drift_confirmed",
+            "retrain_started_at":  check_at,
+            "retrain_completed_at": completed_at,
+            "retrain_status":      "completed" if success else "failed",
+            "drift_result":        drift_res,
+            "retrain_result":      safe_result,
+        })
+
+    thread = threading.Thread(
+        target=_background_retrain,
+        daemon=True,
+        name="midan-outer-retrain",
+    )
+    thread.start()
+
+    return {
+        "triggered": True,
+        "status":    "retrain_spawned",
+        "reason":    "dual_signal_drift_confirmed — background thread started",
+    }
 
 
 def _trim_log(current_count: int) -> None:
@@ -116,13 +293,13 @@ def check_drift(drift_baseline: dict) -> dict:
     """
     macro_stale, macro_days = _check_macro_staleness()
 
-    # Graceful degradation: no baseline → no drift signals, but still report staleness
+    # we degrade gracefully when there's no baseline — no drift signals fire, but we still report staleness
     if not drift_baseline:
         return _no_drift_result(
             macro_stale, macro_days, 0, reason="no_baseline",
         )
 
-    # Load prediction log
+    # we load the prediction log for analysis
     entries = _load_log()
     n = len(entries)
 
@@ -131,13 +308,13 @@ def check_drift(drift_baseline: dict) -> dict:
             macro_stale, macro_days, n, reason=f"insufficient_log ({n}<{DRIFT_MIN_LOG_ENTRIES})",
         )
 
-    # Signal 1: gap_svm rolling mean decline
+    # Signal 1: we check for gap_svm rolling mean decline
     sig1_fired, sig1_detail = _check_gap_svm_drift(entries, drift_baseline)
 
-    # Signal 2: FCM centroid displacement
+    # Signal 2: we check for FCM centroid displacement
     sig2_fired, sig2_detail = _check_centroid_drift(entries, drift_baseline)
 
-    # AND gate: both must fire for confirmed drift
+    # AND gate: we require both signals to fire for confirmed drift
     drift_detected = sig1_fired and sig2_fired
 
     if drift_detected:
@@ -176,7 +353,7 @@ def _load_log() -> list:
                     try:
                         entries.append(json.loads(line))
                     except json.JSONDecodeError:
-                        pass  # skip malformed lines silently
+                        pass  # we skip malformed lines silently to keep loading robust
     except Exception as _e:
         _DRIFT_LOG.warning("[DRIFT] _load_log failed (%s) — returning empty", _e)
     return entries
@@ -222,8 +399,8 @@ def _check_centroid_drift(entries: list, baseline: dict):
     if not baseline_centroids:
         return False, {"reason": "no_baseline_centroids"}
 
-    # Build recent x_pca per cluster using regime as cluster proxy
-    # (regime is the closest available cluster label in the log)
+    # we build recent x_pca per cluster using regime as the cluster proxy —
+    # regime is the closest available cluster label in the log
     regime_to_pca: dict = {}
     for e in entries:
         regime = e.get("regime")
@@ -241,10 +418,10 @@ def _check_centroid_drift(entries: list, baseline: dict):
     per_cluster_drift = {}
 
     for i, baseline_c in enumerate(baseline_arr):
-        # Find which regime key has the most log entries
-        # (approximate: we match cluster index to the i-th most common regime)
+        # we find which regime key has the most log entries —
+        # approximate: we match cluster index to the i-th most common regime
         for regime, pca_list in regime_to_pca.items():
-            if len(pca_list) < 3:  # need at least 3 points for a meaningful centroid
+            if len(pca_list) < 3:  # we need at least 3 points for a meaningful centroid
                 continue
             recent_centroid = np.mean(pca_list, axis=0)
             l2_dist = float(np.linalg.norm(recent_centroid - baseline_c))
@@ -289,4 +466,4 @@ def _no_drift_result(macro_stale: bool, macro_days, n: int, reason: str) -> dict
     }
 
 
-__all__ = ['log_prediction', 'check_drift']
+__all__ = ['log_prediction', 'check_drift', 'load_prediction_log', 'maybe_trigger_retrain']

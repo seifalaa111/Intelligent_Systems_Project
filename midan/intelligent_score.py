@@ -29,9 +29,9 @@ import numpy as np
 
 
 # ── Regime favorability lookup ───────────────────────────────────────────────
-# Fixed, not learned. Reflects the macro direction implied by each regime label.
-# Asymmetric by design: adverse environments score lower than favorable ones
-# score higher, because downside risk is more consequential for routing.
+# we keep this fixed, not learned — it reflects the macro direction implied by each regime label;
+# we made it asymmetric by design: adverse environments score lower than favorable ones score higher,
+# because downside risk is more consequential for routing
 _S_FAVORABLE = {
     'GROWTH_MARKET':      0.85,
     'EMERGING_MARKET':    0.65,
@@ -96,7 +96,7 @@ def compute_intelligent_score(
     arima = float(np.clip(sarima_trend, 0.0, 1.0))
     cos   = float(np.clip(shap_cosine, 0.0, 1.0))
 
-    # Base weighted sum
+    # we compute the base weighted sum of the 5 signals
     raw_is = (
         IS_W_S     * s
         + IS_W_GAP   * gap
@@ -105,11 +105,10 @@ def compute_intelligent_score(
         + IS_W_SHAP  * cos
     )
 
-    # Correlated-trio discount: gap, mu, shap_cosine share x_scaled geometry.
-    # When all three are strongly high simultaneously, they are all signaling
-    # "deep inside known territory" — not providing independent evidence.
-    # The discount prevents IS from inflating in easy cases while leaving
-    # normal IS behavior unchanged for cases where the signals diverge.
+    # we apply a correlated-trio discount because gap, mu, and shap_cosine share x_scaled geometry;
+    # when all three are strongly high simultaneously they're all signaling "deep inside known territory" —
+    # not providing independent evidence; the discount prevents IS from inflating in easy cases
+    # while leaving normal IS behavior unchanged for cases where the signals diverge
     is_correlated_trio = (
         gap > IS_CORRELATED_TRIO_THRESHOLD
         and mu  > IS_CORRELATED_TRIO_THRESHOLD

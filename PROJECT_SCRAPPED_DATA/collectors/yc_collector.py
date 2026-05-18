@@ -14,7 +14,7 @@ from config.settings import YC_DELAY
 from bs4 import BeautifulSoup
 
 
-# Well-known YC companies with verified data for fallback / seed
+# we keep a curated seed list of well-known YC companies as a verified fallback
 YC_SEED_DATA = [
     {
         "name": "Stripe",
@@ -240,11 +240,11 @@ class YCCollector(BaseCollector):
         log_stage(self.logger, "YC COLLECTOR", "Starting collection")
         results = []
 
-        # Strategy 1: Try scraping individual YC company pages
+        # we first try scraping individual YC company pages when targets are given
         if targets:
             results = self._collect_from_targets(targets)
 
-        # Strategy 2: If no targets or scraping failed, use seed data
+        # we fall back to seed data when scraping yields nothing
         if not results:
             self.logger.info("Using curated YC seed data")
             results = self._collect_from_seed()
@@ -265,7 +265,7 @@ class YCCollector(BaseCollector):
             if not name:
                 continue
 
-            # Check if this company is in our seed data
+            # we check the seed list first to avoid unnecessary HTTP requests
             seed_match = self._find_in_seed(name)
             if seed_match:
                 entry = self._seed_to_raw_entry(seed_match)
@@ -273,7 +273,7 @@ class YCCollector(BaseCollector):
                 log_success(self.logger, f"Found YC company in seed: {name}")
                 continue
 
-            # Try scraping the YC company page directly
+            # we attempt a live scrape of the YC company page when seed data has no match
             slug = name.lower().replace(" ", "-")
             url = f"{self.YC_COMPANIES_URL}/{slug}"
             entry = self._scrape_company_page(name, url)
@@ -327,12 +327,12 @@ class YCCollector(BaseCollector):
 
             soup = BeautifulSoup(response.text, "lxml")
 
-            # Extract the main content
+            # we convert the page to plain text for downstream extraction
             text = html_to_text(response.text)
             if not text or len(text) < 50:
                 return None
 
-            # Try to extract structured data from the page
+            # we also pull structured meta data to supplement the plain text
             meta = extract_meta(response.text)
 
             return self._make_raw_entry(

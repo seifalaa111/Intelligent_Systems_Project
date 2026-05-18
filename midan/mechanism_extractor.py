@@ -41,8 +41,8 @@ MECHANISM_CATEGORIES: Dict[str, str] = {
     "regulatory_headwind":    "constraint_mechanism",
 }
 
-# Category-level impact priors for selection scoring.
-# Constraints score 0.90 — they matter even with weak evidence.
+# we define category-level impact priors for selection scoring.
+# we score constraints at 0.90 because they matter even when evidence is weak
 IMPACT_PRIORS: Dict[str, float] = {
     "advantage_mechanism":    1.00,
     "constraint_mechanism":   0.90,
@@ -50,7 +50,7 @@ IMPACT_PRIORS: Dict[str, float] = {
     "operational_mechanism":  0.70,
 }
 
-# Base weights per mechanism type — starting point, normalized in Phase 1D.
+# we set base weights per mechanism type here — these are the starting point, normalized in Phase 1D
 BASE_WEIGHTS: Dict[str, float] = {
     "network_effect":       0.85,
     "switching_cost":       0.75,
@@ -65,9 +65,9 @@ BASE_WEIGHTS: Dict[str, float] = {
     "regulatory_headwind":  0.75,
 }
 
-# Observation strength levels.
-# A single STRENGTH_SPECIFIC observation outweighs multiple STRENGTH_GENERIC ones
-# because confidence calibration weights by strength, not just count.
+# we define observation strength levels here.
+# we chose this design so a single STRENGTH_SPECIFIC observation outweighs multiple STRENGTH_GENERIC ones —
+# confidence calibration weights by strength, not just count
 STRENGTH_SPECIFIC   = 1.00   # direct structural claim, named barrier, explicit mechanism
 STRENGTH_STRUCTURAL = 0.85   # structural dependency, process specificity, named signal
 STRENGTH_MODERATE   = 0.55   # feature differentiation, typed customer, score-based
@@ -82,8 +82,8 @@ MECHANISM_CAPS: Dict[str, int] = {
     "insufficient_information": 0,
 }
 
-# Dependency map prevents double-counting mechanism signals in replication scoring.
-# A dependent dimension's score is discounted 50% if its dependency is also scored.
+# we use this dependency map to prevent double-counting causal signals in replication scoring.
+# we discount a dependent dimension 50% when its dependency is also present in the score
 REPLICATION_DIMENSION_DEPS: Dict[str, List[str]] = {
     "time_to_replicate":      [],
     "capital_intensity":      [],
@@ -94,8 +94,8 @@ REPLICATION_DIMENSION_DEPS: Dict[str, List[str]] = {
     "ecosystem_lock_in":      ["network_density_gap"],
 }
 
-# Per-mechanism replication dimension scores (raw, before dependency discounting).
-# Constraint mechanisms score low — they limit the idea, not the competitor.
+# we define raw replication scores per mechanism here, before we apply the dependency discount.
+# we score constraint mechanisms low because they limit the idea, not the competitor
 _REPLICATION_DIMS: Dict[str, Dict[str, float]] = {
     "network_effect":       {"time_to_replicate": 0.80, "network_density_gap": 0.90, "capital_intensity": 0.70},
     "switching_cost":       {"time_to_replicate": 0.65, "data_accumulation_lead": 0.75, "ecosystem_lock_in": 0.60},
@@ -147,7 +147,7 @@ class CalibratedMechanism:
     mechanism_type: str
     mechanism_category: str
 
-    # Only these three scalars are stored. effective_weight is computed on demand.
+    # we only store these three scalars — effective_weight is computed on demand to avoid stale-state drift
     base_weight: float
     confidence: float
     evidence_strength: float     # 1.0 | 0.75 | 0.50
@@ -298,8 +298,8 @@ def _check_condition(cond: TensionCondition, context: Dict[str, Any]) -> bool:
     return False
 
 
-# Tension rules — structured objects, not strings.
-# Each rule fires only when both mechanisms are present AND all conditions pass.
+# we define tension rules as structured objects, not strings.
+# we fire each rule only when both mechanisms are present AND all conditions pass
 _TENSION_RULES: List[_TensionRule] = [
     _TensionRule(
         mechanism_a="network_effect",
@@ -375,9 +375,9 @@ def _extract_text_signals(idea_lower: str) -> List[StructuralObservation]:
     """
     signals = []
 
-    # API/platform dependency requires operational criticality signals — not just integrations.
-    # "integrates with" and "plugin for" are deliberately excluded: they describe features,
-    # not structural lock-in. These patterns require dependency + failure sensitivity.
+    # we require operational criticality signals for API/platform dependency — not just integrations.
+    # we deliberately exclude "integrates with" and "plugin for" because they describe features,
+    # not structural lock-in — we need dependency + failure sensitivity to fire this signal
     if any(p in idea_lower for p in (
         "cannot function without",
         "depends entirely on",
@@ -419,8 +419,8 @@ def _extract_text_signals(idea_lower: str) -> List[StructuralObservation]:
             extractability_confidence=0.65,
         ))
 
-    # Platform dependency requires named platform with distribution control.
-    # "built on" alone is insufficient — must name a specific controlling platform.
+    # we require a named platform with distribution control for this signal.
+    # we treat "built on" alone as insufficient — we need a specific controlling platform named
     if any(p in idea_lower for p in (
         "through the app store",
         "through google play",
@@ -461,7 +461,7 @@ def score_extractability(
 
     signal_gaps: List[str] = []
 
-    # L3 module completeness
+    # we check L3 module completeness first
     l3_available = []
     for module in REQUIRED_L3:
         block = l3_reasoning.get(module) or {}
@@ -470,7 +470,7 @@ def score_extractability(
         else:
             signal_gaps.append(f"l3.{module}")
 
-    # L1 field completeness: must be non-UNKNOWN and above confidence floor
+    # we check L1 field completeness — fields must be non-UNKNOWN and above the confidence floor
     l1_available = []
     for fname in REQUIRED_L1:
         val  = l1_values.get(fname)
@@ -482,7 +482,7 @@ def score_extractability(
 
     completeness = (len(l3_available) + len(l1_available)) / (len(REQUIRED_L3) + len(REQUIRED_L1))
 
-    # Specificity: differentiation verdict is a proxy for signal richness
+    # we use differentiation verdict as a proxy for signal richness when scoring specificity
     diff_block  = l3_reasoning.get("differentiation") or {}
     diff_verdict = diff_block.get("verdict", "") if diff_block.get("available") else ""
     if diff_verdict in ("structural", "moderate"):
@@ -492,7 +492,7 @@ def score_extractability(
     else:
         specificity = 0.0
 
-    # Consistency: L3 insufficient_information modules reduce score
+    # we reduce the consistency score for each L3 insufficient_information module present
     n_insufficient = len(l3_reasoning.get("insufficient_information") or [])
     consistency = max(0.0, 1.0 - n_insufficient * 0.25)
 
@@ -658,7 +658,7 @@ def structural_observation_pass(
             extractability_confidence=0.90,
         ))
 
-    # ── L1: differentiation_score (scalar — supporting only, not primary) ────
+    # ── L1: differentiation_score (scalar — we use this as supporting evidence only, not primary) ────
     diff_score = l1_values.get("differentiation_score", 0)
     if isinstance(diff_score, (int, float)) and diff_score >= 4:
         obs.append(StructuralObservation(
@@ -721,7 +721,7 @@ def mechanism_assignment_pass(
     candidates: List[RawMechanism] = []
     seg = l1_values.get("target_segment", "")
 
-    # switching_cost: strong/moderate diff + B2B segment
+    # we assign switching_cost when strong/moderate differentiation is paired with a B2B segment
     if (("strong_differentiation" in signal_set or "moderate_differentiation" in signal_set)
             and seg == "b2b"):
         supporting = obs_for("strong_differentiation", "moderate_differentiation",
@@ -729,63 +729,63 @@ def mechanism_assignment_pass(
         if supporting:
             candidates.append(_build_raw_mechanism("switching_cost", supporting))
 
-    # network_effect: marketplace structure (two-sided network signal required)
+    # we require a two-sided network signal to assign network_effect — marketplace structure alone is not enough
     if "two_sided_network" in signal_set:
         supporting = obs_for("two_sided_network", "strong_differentiation")
         candidates.append(_build_raw_mechanism("network_effect", supporting))
 
-    # cost_advantage: scale efficiency present, high CAC absent
+    # we assign cost_advantage only when scale efficiency is present and high CAC is absent
     if "cost_amortizes_with_scale" in signal_set and "high_acquisition_cost" not in signal_set:
         supporting = obs_for("cost_amortizes_with_scale", "low_operational_complexity",
                              "high_revenue_per_user")
         if supporting:
             candidates.append(_build_raw_mechanism("cost_advantage", supporting))
 
-    # brand_moat: high diff score + low competition
+    # we assign brand_moat when high differentiation score is paired with low competition
     if "high_differentiation_score" in signal_set and "competition_low" in signal_set:
         supporting = obs_for("high_differentiation_score", "strong_differentiation", "competition_low")
         candidates.append(_build_raw_mechanism("brand_moat", supporting))
 
-    # regulatory_moat: high regulatory barrier + differentiation present (barrier protects)
+    # we assign regulatory_moat when a high regulatory barrier is combined with differentiation — the barrier protects the position
     if ("high_regulatory_barrier" in signal_set
             and ("strong_differentiation" in signal_set or "moderate_differentiation" in signal_set)):
         supporting = obs_for("high_regulatory_barrier", "strong_differentiation",
                              "moderate_differentiation")
         candidates.append(_build_raw_mechanism("regulatory_moat", supporting))
 
-    # data_moat: data ownership + differentiation
+    # we assign data_moat when data ownership is paired with differentiation
     if "data_ownership" in signal_set:
         supporting = obs_for("data_ownership", "strong_differentiation", "moderate_differentiation")
         if supporting:
             candidates.append(_build_raw_mechanism("data_moat", supporting))
 
-    # process_efficiency: low complexity + scale efficiency both present
+    # we assign process_efficiency when low operational complexity and scale efficiency are both present
     if ("low_operational_complexity" in signal_set
             and "cost_amortizes_with_scale" in signal_set):
         supporting = obs_for("low_operational_complexity", "cost_amortizes_with_scale")
         candidates.append(_build_raw_mechanism("process_efficiency", supporting))
 
-    # distribution_control: low competition + marketplace structure
+    # we assign distribution_control when low competition is paired with a marketplace structure
     if "competition_low" in signal_set and "two_sided_network" in signal_set:
         supporting = obs_for("competition_low", "two_sided_network")
         candidates.append(_build_raw_mechanism("distribution_control", supporting))
 
-    # api_dependency (constraint): third-party dependency pattern in text
+    # we assign api_dependency as a constraint when a third-party dependency pattern appears in the text
     if "third_party_dependency" in signal_set:
         supporting = obs_for("third_party_dependency")
         candidates.append(_build_raw_mechanism("api_dependency", supporting))
 
-    # platform_dependency (constraint): named platform in text
+    # we assign platform_dependency as a constraint when a named controlling platform appears in the text
     if "platform_controlled_distribution" in signal_set:
         supporting = obs_for("platform_controlled_distribution")
         candidates.append(_build_raw_mechanism("platform_dependency", supporting))
 
-    # regulatory_headwind (constraint): high regulatory + weak differentiation
+    # we assign regulatory_headwind as a constraint when high regulatory burden is paired with weak differentiation
     if "high_regulatory_barrier" in signal_set and "weak_differentiation" in signal_set:
         supporting = obs_for("high_regulatory_barrier", "weak_differentiation")
         candidates.append(_build_raw_mechanism("regulatory_headwind", supporting))
 
-    # Sort by selection_score (impact × evidence_strength × confidence), apply cap
+    # we sort by selection_score (impact × evidence_strength × confidence) and apply the mechanism cap
     candidates.sort(key=lambda m: m.selection_score, reverse=True)
     cap = extractability.mechanism_cap
     return candidates[:cap]
@@ -809,7 +809,7 @@ def evidence_calibration_pass(raw_mechanisms: List[RawMechanism]) -> List[Calibr
     for rm in raw_mechanisms:
         obs = rm.supporting_observations
 
-        # Inference depth and evidence strength
+        # we determine inference depth and evidence strength from observation quality
         max_strength = max((o.observation_strength for o in obs), default=0.0)
         if rm.directly_observed and max_strength >= STRENGTH_STRUCTURAL:
             inference_depth  = "directly_observed"
@@ -821,15 +821,15 @@ def evidence_calibration_pass(raw_mechanisms: List[RawMechanism]) -> List[Calibr
             inference_depth  = "llm_interpretation"
             evidence_strength = 0.50
 
-        # Weighted confidence: 60% quality-weighted signal, 40% count factor
-        # This is the fix for observation_strength weighting (requirement 1 and 11).
+        # we compute weighted confidence as 60% quality-weighted signal and 40% count factor
+        # we added this weighting to fix observation_strength bias (requirement 1 and 11)
         n = len(obs) or 1
         weighted_signal = sum(o.observation_strength * o.extractability_confidence for o in obs)
         mean_quality    = weighted_signal / n
         obs_count_factor = min(1.0, n / 4.0)  # saturates at 4 observations
         raw_confidence   = 0.60 * mean_quality + 0.40 * obs_count_factor
 
-        # Single-field penalty: all observations from one source → fragile
+        # we apply a single-field penalty when all observations come from one source — that's a fragile signal
         sources = {o.field_source for o in obs}
         if len(sources) == 1:
             raw_confidence *= 0.80
@@ -933,7 +933,7 @@ def derive_market_structure(
         "commoditized":      0.0,
     }
 
-    # 1. Competition density
+    # we use competition density as the first market structure signal
     comp_block   = l3_reasoning.get("competition") or {}
     comp_pressure = comp_block.get("competitive_pressure", "") if comp_block.get("available") else ""
     if comp_pressure == "high":
@@ -943,7 +943,7 @@ def derive_market_structure(
         category_scores["concentrated"] += 0.25
         signals.append("low_competitive_pressure → concentrated")
 
-    # 2. Platform dependency → platform_controlled
+    # we score toward platform_controlled when platform or API dependency is present
     if "platform_dependency" in mech_types:
         category_scores["platform_controlled"] += 0.40
         signals.append("platform_dependency mechanism → platform_controlled")
@@ -951,29 +951,29 @@ def derive_market_structure(
         category_scores["platform_controlled"] += 0.20
         signals.append("api_dependency mechanism → platform signal")
 
-    # 3. Regulatory → regulation_gated
+    # we score toward regulation_gated when a regulatory mechanism is detected
     if "regulatory_moat" in mech_types or "regulatory_headwind" in mech_types:
         category_scores["regulation_gated"] += 0.45
         signals.append("regulatory mechanism → regulation_gated")
 
-    # 4. Cost advantage + thin differentiation → commoditized
+    # we score toward commoditized when cost advantage is paired with thin differentiation
     diff_block  = l3_reasoning.get("differentiation") or {}
     diff_verdict = diff_block.get("verdict", "") if diff_block.get("available") else ""
     if "cost_advantage" in mech_types and diff_verdict == "thin":
         category_scores["commoditized"] += 0.35
         signals.append("cost_advantage + thin_differentiation → commoditized")
 
-    # 5. Network effect → concentrated (winner-take-most dynamics)
+    # we score toward concentrated when a network effect is present — winner-take-most dynamics
     if "network_effect" in mech_types:
         category_scores["concentrated"] += 0.20
         signals.append("network_effect → concentrated (winner-take-most)")
 
-    # 6. Distribution control → concentrated
+    # we also score toward concentrated when distribution control is present
     if "distribution_control" in mech_types:
         category_scores["concentrated"] += 0.20
         signals.append("distribution_control → concentrated")
 
-    # Find top two categories
+    # we find the top two categories to decide whether to return a definitive result or mark it ambiguous
     sorted_cats = sorted(category_scores.items(), key=lambda x: x[1], reverse=True)
     top_cat,    top_score    = sorted_cats[0]
     second_cat, second_score = sorted_cats[1] if len(sorted_cats) > 1 else (None, 0.0)
@@ -1063,7 +1063,7 @@ def analyze_replication(mechanisms: List[CalibratedMechanism]) -> List[Replicati
         if not raw_dims:
             continue
 
-        # Apply dependency discounting
+        # we apply dependency discounting so causal signals are not double-counted
         adjusted_dims: Dict[str, float] = {}
         for dim, score in raw_dims.items():
             deps = REPLICATION_DIMENSION_DEPS.get(dim, [])
@@ -1139,7 +1139,7 @@ def apply_contextual_signals(
             raw += 0.04
         if has_readiness_signal and m.mechanism_category in ("advantage_mechanism", "distribution_mechanism"):
             raw += 0.05
-        # Hard cap enforced here — cannot be bypassed by signal accumulation
+        # we enforce the hard cap here — signal accumulation cannot bypass it
         adjustments[m.mechanism_type] = round(
             max(-MAX_CONTEXTUAL_ADJUSTMENT, min(MAX_CONTEXTUAL_ADJUSTMENT, raw)), 3
         )
@@ -1196,7 +1196,7 @@ def run_consistency_check(
     mech_types = {m.mechanism_type for m in mechanisms}
     stage = (l1_values or {}).get("stage", "")
 
-    # 1. Market structure implausibility: brand moat + commoditized market
+    # we flag structural implausibility when brand moat and commoditized market appear together
     if market_structure.category == "commoditized" and "brand_moat" in mech_types:
         brand_m = next((m for m in mechanisms if m.mechanism_type == "brand_moat"), None)
         if brand_m and brand_m.confidence > 0.70:
@@ -1210,7 +1210,7 @@ def run_consistency_check(
                 affected_field="brand_moat × market_structure.commoditized",
             ))
 
-    # 2. Regulatory contradiction: moat and headwind simultaneously
+    # we raise an error when regulatory moat and regulatory headwind are simultaneously present
     if "regulatory_moat" in mech_types and "regulatory_headwind" in mech_types:
         flags.append(ConsistencyFlag(
             flag_type="regulatory_contradiction",
@@ -1222,7 +1222,7 @@ def run_consistency_check(
             affected_field="regulatory_moat × regulatory_headwind",
         ))
 
-    # 3. Causal overextension: strategic_conclusion at idea stage
+    # we warn on causal overextension when strategic_conclusion implication is claimed at idea stage
     if stage == "idea":
         overextended = [
             m.mechanism_type for m in mechanisms
@@ -1240,7 +1240,7 @@ def run_consistency_check(
                 affected_field="implication_ceiling × stage=idea",
             ))
 
-    # 4. Extraction mode mismatch (pipeline routing error)
+    # we raise an error when mechanisms are extracted despite insufficient_information mode — that is a routing error
     if extraction_mode == "insufficient_information" and mechanisms:
         flags.append(ConsistencyFlag(
             flag_type="extraction_mode_mismatch",
@@ -1249,7 +1249,7 @@ def run_consistency_check(
             affected_field="extraction_mode",
         ))
 
-    # 5. High speculation density with elevated uncertainty
+    # we warn when speculation density is high and uncertainty is elevated — synthesis must use hedged language
     speculative_count = sum(1 for m in mechanisms if m.inference_depth == "llm_interpretation")
     if uncertainty >= 0.20 and speculative_count >= 2:
         flags.append(ConsistencyFlag(
@@ -1471,7 +1471,7 @@ def run_mechanism_pipeline(
     _LOG.debug("[MechPipeline] start sector=%s", sector)
 
     try:
-        # Phase 0: Gate
+        # we run the extractability gate before anything else
         extractability = score_extractability(l3_reasoning, l1_values, l1_confidence)
         _LOG.debug(
             "[MechPipeline] mode=%s score=%.3f gaps=%s",
@@ -1512,47 +1512,47 @@ def run_mechanism_pipeline(
                 ),
             )
 
-        # Phase 1A: Structural observations
+        # we run the structural observation pass to translate L3/L1 fields into typed observations
         observations = structural_observation_pass(l3_reasoning, l1_values, idea_text, extractability)
 
-        # Phase 1B: Mechanism assignment (selection by impact × evidence × confidence)
+        # we assign mechanism types using selection by impact × evidence × confidence
         raw_mechs = mechanism_assignment_pass(observations, extractability, l1_values)
 
-        # Phase 1C: Evidence calibration (with observation_strength weighting)
+        # we calibrate evidence with observation_strength weighting applied
         calibrated = evidence_calibration_pass(raw_mechs)
 
-        # Phase 1D: Weight normalization + confidence decay
+        # we normalize weights and apply confidence decay
         adjusted = weight_adjustment_pass(calibrated)
 
-        # Phase 1E: Trace filling (deterministic in v1)
+        # we fill reasoning traces deterministically in v1 — no LLM calls here
         final_mechs = interpretation_enrichment_pass(adjusted, l3_reasoning, l1_values)
 
-        # Phases 2 and 4 are independent — run sequentially
+        # we run phases 2 and 4 sequentially — they are independent of each other but phase 3 needs both
         market_struct  = derive_market_structure(final_mechs, l3_reasoning, l1_values)
         rep_profiles   = analyze_replication(final_mechs)
 
-        # Phase 3: Tensions (requires market_struct)
+        # we classify tensions after market structure is resolved because rules depend on it
         tensions = classify_tensions(final_mechs, market_struct, l1_values)
 
-        # Phase 5: Contextual signals (hard-capped ±0.10)
+        # we apply contextual signal amplifiers here — hard-capped at ±0.10 per mechanism
         ctx_adj = apply_contextual_signals(final_mechs, l3_reasoning, l1_values)
 
-        # Phase 6: Uncertainty propagation
+        # we propagate mechanism uncertainty as a continuous float to feed L4
         uncertainty = propagate_uncertainty(final_mechs, extractability.mode)
 
-        # Phase 7: Consistency check
+        # we run the cross-field consistency check before building the epistemic summary
         consistency = run_consistency_check(
             final_mechs, tensions, market_struct,
             uncertainty, extractability.mode, l1_values,
         )
 
-        # Phase 8: Epistemic summary (always built)
+        # we always build the epistemic summary — it is surfaced even on insufficient_information paths
         epistemic = build_epistemic_summary(
             final_mechs, tensions, extractability.mode,
             consistency, extractability.signal_gaps,
         )
 
-        # Synthesis trace
+        # we build the synthesis trace so every mechanism and tension is tagged with its source
         synthesis_trace: List[str] = []
         for m in final_mechs:
             synthesis_trace.append(
@@ -1565,8 +1565,8 @@ def run_mechanism_pipeline(
                 f"(severity={t.severity})"
             )
 
-        # tension_coverage_state: "no tensions" must not imply "tension-free".
-        # Explicitly names the rule set evaluated and its scope limits.
+        # we set tension_coverage_state explicitly so "no tensions detected" is never read as "tension-free" —
+        # we name the rule set evaluated and its scope limits
         n_rules = len(_TENSION_RULES)
         n_detected = len(tensions)
         if n_detected == 0:

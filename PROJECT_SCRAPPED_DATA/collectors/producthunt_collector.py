@@ -61,13 +61,13 @@ class ProductHuntCollector(BaseCollector):
 
     def _collect_product(self, name: str) -> dict | None:
         """Try to scrape a Product Hunt product page by name."""
-        # Product Hunt URLs are typically /posts/product-name
+        # we build the slug because Product Hunt URLs follow /posts/product-name
         slug = name.lower().replace(" ", "-").replace(".", "-")
         url = f"{self.PH_BASE_URL}/posts/{slug}"
 
         response = fetch_url(url, delay=PRODUCTHUNT_DELAY)
         if response is None:
-            # Try search URL pattern
+            # we try the /products/ URL pattern as a fallback
             url = f"{self.PH_BASE_URL}/products/{slug}"
             response = fetch_url(url, delay=PRODUCTHUNT_DELAY)
             if response is None:
@@ -76,22 +76,22 @@ class ProductHuntCollector(BaseCollector):
         html_content = response.text
         soup = BeautifulSoup(html_content, "lxml")
 
-        # Extract text content
+        # we convert the raw HTML to clean text for extraction
         text = html_to_text(html_content)
         if not text or len(text) < 50:
             return None
 
-        # Extract meta tags for structured data
+        # we pull meta tags here because they carry structured positioning data
         meta = extract_meta(html_content)
 
-        # Extract tagline (usually in og:description or first h2)
+        # we prefer og:description for the tagline since it's the most consistently populated
         tagline = ""
         if meta.get("og_description"):
             tagline = meta["og_description"]
         elif meta.get("description"):
             tagline = meta["description"]
 
-        # Extract topics/categories from page
+        # we extract topic/category tags because they map directly to industry signals
         topics = self._extract_topics(soup)
 
         return self._make_raw_entry(
@@ -110,15 +110,15 @@ class ProductHuntCollector(BaseCollector):
         """Extract topic/category tags from a Product Hunt page."""
         topics = []
 
-        # PH uses various class patterns for topics
+        # we scan all anchors because PH doesn't use a single stable CSS class for topics
         for tag in soup.find_all("a", href=True):
             href = tag.get("href", "")
             text = tag.get_text(strip=True)
-            # Topic links usually point to /topics/something
+            # we identify topic links by their /topics/ path prefix
             if "/topics/" in href and text and len(text) < 50:
                 topics.append(text)
 
-        # Also check for structured topic data
+        # we also check data-test attributes for structured topic data injected by PH's React app
         for tag in soup.find_all(attrs={"data-test": re.compile(r"topic", re.I)}):
             text = tag.get_text(strip=True)
             if text and text not in topics:

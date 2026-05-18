@@ -13,7 +13,7 @@ from config.settings import (
     FUNDING_STAGE_KEYWORDS,
 )
 
-# Model-assisted signal extractor (replaces rule-based _classify_level for L3)
+# we import the model-assisted extractor here so L3 signals can upgrade rule-based results
 try:
     from extractors.model_signal_extractor import get_model_signal_extractor
     _MODEL_EXTRACTOR = get_model_signal_extractor()
@@ -47,12 +47,12 @@ class InsightExtractor(BaseExtractor):
 
         text = clean_text(raw_content)
 
-        # Determine source sub-type
+        # we inspect the source URL to pick the right extraction path
         source_url = raw_entry.get("source_url", "")
         is_failory = "failory" in source_url.lower()
         is_yc = "ycombinator" in source_url.lower()
 
-        # ── CORE CLASSIFICATION ──
+        # ── CORE CLASSIFICATION — we run industry and model detection before signals ──
         if is_yc and metadata.get("industry"):
             entry["primary_industry"] = metadata["industry"]
             entry["secondary_industry"] = ""
@@ -64,7 +64,7 @@ class InsightExtractor(BaseExtractor):
         entry["target_segment"] = self._classify_target_segment(text)
         entry["value_proposition"] = self._extract_value_proposition(text, metadata)
 
-        # ── FAILURE / SUCCESS SIGNALS ──
+        # ── FAILURE / SUCCESS SIGNALS — we branch by source so Failory gets richer extraction ──
         if is_failory:
             entry["failure_reasons"] = self._extract_failure_reasons_failory(text)
             entry["funding_stage"] = self._extract_funding_stage(text)
@@ -76,14 +76,14 @@ class InsightExtractor(BaseExtractor):
         entry["pain_points"] = self._extract_pain_points(text)
 
         # ── L3 SIGNALS ──
-        # Step 1: rule-based baseline (original approach)
+        # we start with the rule-based baseline so there is always a fallback result
         def add_signal(field_name, result_tuple):
             level, evidence = result_tuple
             entry[field_name] = level
             if level and evidence:
                 entry["signal_evidence"][field_name] = evidence
 
-        # For generic competition density in insight
+        # we write competition density to two fields for backward compatibility
         comp_level, comp_evidence = self._extract_competition_intensity(text)
         entry["competition_density"] = comp_level
         add_signal("competition_intensity", (comp_level, comp_evidence))
@@ -92,15 +92,15 @@ class InsightExtractor(BaseExtractor):
         add_signal("retention_proxy", self._extract_retention_proxy(text))
         add_signal("monetization_strength", self._extract_monetization_strength(text))
 
-        # Step 2: model-assisted override — model results take priority over rule-based.
-        # BOUNDARY: ModelSignalExtractor reads ONLY raw text. It never sees
+        # we let model results override rule-based when available, respecting the strict boundary:
+        # ModelSignalExtractor reads ONLY raw text — it never sees
         # decision_analysis, system_patterns, or confidence_score.
         if _MODEL_EXTRACTOR is not None:
             model_vals, model_evidence = _MODEL_EXTRACTOR.extract_signals(
                 text, startup_name=entry.get("startup_name", "")
             )
             for signal_name, model_level in model_vals.items():
-                if model_level:  # model wins over empty rule result
+                if model_level:  # we let the model win whenever it produces a result
                     entry[signal_name] = model_level
                     if signal_name in model_evidence:
                         entry["signal_evidence"][signal_name] = model_evidence[signal_name]
@@ -109,7 +109,7 @@ class InsightExtractor(BaseExtractor):
 
     def _extract_business_model(self, text: str, metadata: dict) -> str:
         """Detect business model using hardened rules."""
-        # YC metadata tags often contain business model hints
+        # we check YC metadata tags first because they often carry explicit business model hints
         tags = metadata.get("tags", [])
         if tags:
             tag_text = " ".join(str(t) for t in tags)
@@ -156,9 +156,9 @@ class InsightExtractor(BaseExtractor):
         reasons = []
         text_lower = text.lower()
 
-        # Strategy 1: Check keyword categories with minimum threshold
+        # we scan keyword categories with a minimum hit threshold to avoid false positives
         for category, keywords in FAILURE_KEYWORDS.items():
-            # Count both exact matches and contextual presence
+            # we count both exact matches and contextual presence to score each category
             score = 0
             matched_kws = []
             for kw in keywords:
@@ -166,7 +166,7 @@ class InsightExtractor(BaseExtractor):
                     score += 1
                     matched_kws.append(kw)
 
-            if score >= 2:  # Require at least 2 keyword hits
+            if score >= 2:  # we require at least 2 keyword hits before adding the category
                 phrases = self._extract_matching_phrases(text, matched_kws[:3], context_window=120)
                 if phrases:
                     reason = f"{self._format_failure_category(category)}: {truncate(clean_text(phrases[0]), 200)}"
@@ -174,7 +174,7 @@ class InsightExtractor(BaseExtractor):
                 else:
                     reasons.append(self._format_failure_category(category))
 
-        # Strategy 2: Explicit failure cause patterns
+        # we also run explicit cause-language patterns to catch failures not covered by keyword scoring
         explicit_patterns = [
             r"(?:failed|shut down|closed|died)\s+because\s+([^\.]{10,150})",
             r"(?:reason|cause)\s+(?:for|of)\s+(?:the\s+)?(?:failure|shutdown|closing)[:\s]+([^\.]{10,150})",
@@ -190,12 +190,12 @@ class InsightExtractor(BaseExtractor):
             for match_text in matches:
                 cleaned = truncate(clean_text(match_text), 200)
                 if cleaned and len(cleaned) > 15:
-                    # Don't duplicate existing reasons
+                    # we deduplicate here to avoid surfacing the same reason twice
                     if not any(cleaned.lower() in r.lower() or r.lower() in cleaned.lower()
                               for r in reasons):
                         reasons.append(cleaned)
 
-        # Strategy 3: Fallback -- look for "lesson" sections often in Failory articles
+        # we add a "lesson" section fallback because Failory articles often close with explicit takeaways
         lesson_patterns = [
             r"(?:key\s+)?lessons?\s+(?:learned|from)[:\s]*([^\.]{10,200})",
             r"takeaway[s]?[:\s]*([^\.]{10,200})",
@@ -217,7 +217,7 @@ class InsightExtractor(BaseExtractor):
         reasons = []
         text_lower = text.lower()
 
-        # Only extract if explicit failure language is present
+        # we guard extraction behind explicit failure language so non-failure entries stay clean
         failure_signals = ["failed", "shut down", "closed", "didn't work",
                           "ran out", "went wrong", "mistake", "collapsed"]
 
@@ -239,7 +239,7 @@ class InsightExtractor(BaseExtractor):
         """Extract success drivers from text and metadata."""
         drivers = []
 
-        # YC metadata signals
+        # we check YC metadata for quick success signals before scanning the full text
         if metadata.get("top_company"):
             drivers.append("Y Combinator top company")
         if metadata.get("status") == "Active":
@@ -248,7 +248,7 @@ class InsightExtractor(BaseExtractor):
         if isinstance(team_size, int) and team_size > 50:
             drivers.append(f"Scaled to {team_size}+ team members")
 
-        # Text-based extraction
+        # we also scan the raw text for success language that isn't captured in metadata
         phrases = self._extract_matching_phrases(text, SUCCESS_KEYWORDS, context_window=100)
         for phrase in phrases[:5]:
             cleaned = truncate(clean_text(phrase), 200)

@@ -39,6 +39,7 @@ from midan.core import (
     ARIMA_RAG_AMPLIFY_THRESHOLD,
     ARIMA_RAG_DAMPEN_THRESHOLD,
     RAG_K_NEIGHBORS,
+    RAG_TIE_VOTE_ENABLED,
 )
 import numpy as np
 import logging
@@ -50,8 +51,8 @@ _RAG_LOG = logging.getLogger("midan.rag")
 
 def compute_shap_cosine(
     shap_dict: dict,
-    shap_cluster_means,       # dict {int: np.ndarray} or None
-    top_cluster_idx,          # int or None
+    shap_cluster_means,       # dict {str|int: np.ndarray} or None
+    top_cluster_idx,          # str cluster name OR int index OR None
     feature_order: list,
 ) -> float:
     """
@@ -65,17 +66,27 @@ def compute_shap_cosine(
 
     0.5 is deliberately neutral — not 0.0 (which would incorrectly
     penalize the case as having atypical attribution).
+
+    Key lookup: tries top_cluster_idx as-is first (handles string cluster
+    names), then falls back to int conversion (handles legacy int-keyed
+    artifacts). This makes the function robust to both artifact versions.
     """
     if shap_cluster_means is None:
         return 0.5
     if top_cluster_idx is None:
         return 0.5
-    cluster_mean = shap_cluster_means.get(int(top_cluster_idx))
+    # try string key first (new artifacts), then int (legacy)
+    cluster_mean = shap_cluster_means.get(top_cluster_idx)
+    if cluster_mean is None:
+        try:
+            cluster_mean = shap_cluster_means.get(int(top_cluster_idx))
+        except (ValueError, TypeError):
+            pass
     if cluster_mean is None:
         return 0.5
 
     try:
-        # Build query vector ordered by feature_order
+        # we build the query vector ordered by feature_order
         query_vec = np.array([shap_dict.get(f, 0.0) for f in feature_order], dtype=float)
         mean_vec  = np.array(cluster_mean, dtype=float)
 
@@ -83,7 +94,7 @@ def compute_shap_cosine(
         norm_m = np.linalg.norm(mean_vec)
 
         if norm_q <= 0 or norm_m <= 0:
-            # Zero-norm: SHAP fully uniform or zero — not an error, just uninformative
+            # zero-norm: SHAP is fully uniform or zero — not an error, just uninformative; we return neutral
             return 0.5
 
         cosine = float(np.dot(query_vec, mean_vec) / (norm_q * norm_m))
@@ -168,7 +179,7 @@ def query_explicit_rag(
         n_neighbors        : int
         vote_distribution  : dict — {label: count}
     """
-    # Graceful degradation: artifact not yet generated
+    # we degrade gracefully when the artifact hasn't been generated yet
     if rag_index is None or not rag_labels:
         return {
             "rag_skipped":        True,
@@ -183,7 +194,7 @@ def query_explicit_rag(
     query_vec = _build_query_vector(x_scaled_row, shap_dict, feature_order)
     novelty   = compute_novelty_score(query_vec, rag_index, k)
 
-    # Novelty gate: suppress RAG when the query is far from all training points
+    # we suppress RAG via the novelty gate when the query is far from all training points
     if novelty > NOVELTY_THRESHOLD:
         return {
             "rag_skipped":        True,
@@ -213,16 +224,50 @@ def query_explicit_rag(
                 "vote_distribution":  {},
             }
 
-        # Majority vote
+        # we take a majority vote over the neighbor labels
         vote_dist: dict = {}
         for lbl in neighbor_labels:
             vote_dist[lbl] = vote_dist.get(lbl, 0) + 1
-        winning_label = max(vote_dist, key=vote_dist.get)
+
+        # ── Tie detection ─────────────────────────────────────────────────────
+        # A tie means the top two labels received the same number of votes.
+        # Picking an arbitrary max() winner would inject false certainty into
+        # the routing decision — we surface the tie explicitly instead so
+        # react_router can handle it as genuine ambiguity (no reliable second opinion).
+        # We only detect ties when the feature is enabled (RAG_TIE_VOTE_ENABLED).
+        if RAG_TIE_VOTE_ENABLED and len(vote_dist) >= 2:
+            sorted_votes = sorted(vote_dist.items(), key=lambda x: x[1], reverse=True)
+            top_count    = sorted_votes[0][1]
+            second_count = sorted_votes[1][1]
+            if top_count == second_count:
+                # Two (or more) labels share the top count — this is a tie.
+                # We return rag_skipped=True with reason="tied_vote" so the
+                # router knows the reason for the no-vote, not just that the
+                # artifact was absent. tied_labels surfaces which regimes
+                # disagreed, preserving full traceability.
+                tied_labels = [item[0] for item in sorted_votes if item[1] == top_count]
+                _RAG_LOG.info(
+                    "[RAG] Tie vote detected: %s (%d each) from k=%d neighbors — "
+                    "no majority winner, routing to uncertainty path.",
+                    tied_labels, top_count, len(neighbor_labels),
+                )
+                return {
+                    "rag_skipped":        True,
+                    "rag_skipped_reason": "tied_vote",
+                    "novelty_score":      round(novelty, 4),
+                    "vote":               None,
+                    "confidence":         0.0,
+                    "n_neighbors":        len(neighbor_labels),
+                    "vote_distribution":  vote_dist,
+                    "rag_tie":            True,
+                    "tied_labels":        tied_labels,
+                }
+
+        winning_label  = max(vote_dist, key=vote_dist.get)
         raw_confidence = vote_dist[winning_label] / len(neighbor_labels)
 
-        # ARIMA modifier: modulates confidence in historical precedent
-        # based on sector trend direction. Applied inline — 3 lines of logic
-        # do not warrant a separate function.
+        # we apply the ARIMA modifier inline — it modulates confidence in historical precedent
+        # based on sector trend direction; 3 lines of logic don't warrant a separate function
         confidence = raw_confidence
         if sarima_trend >= ARIMA_RAG_AMPLIFY_THRESHOLD:
             confidence = min(1.0, confidence + 0.10)
@@ -237,6 +282,8 @@ def query_explicit_rag(
             "confidence":         round(float(confidence), 4),
             "n_neighbors":        len(neighbor_labels),
             "vote_distribution":  vote_dist,
+            "rag_tie":            False,
+            "tied_labels":        [],
         }
 
     except Exception as _e:

@@ -30,9 +30,9 @@ def slice_lines(ranges):
 
 
 # ── Line ranges per module (based on the api.py boundary map) ──────────────
-# Lines are 1-based, end-inclusive.
+# we use 1-based line numbers and treat end as inclusive throughout
 
-# CORE: imports, model loading, freshness constants/funcs, sector/country/keyword
+# CORE: we include imports, model loading, freshness constants/funcs, sector/country/keyword
 # tables, hint lists, utility funcs (_phrase_in_text, _has_any, _count_any,
 # _is_workflow_software_idea, _score_sector_candidates, _infer_*),
 # _extract_idea_grounding, request models, ResponsePayload schema, builder helpers
@@ -45,62 +45,62 @@ CORE_RANGES = [
     (310,  316),    # _is_workflow_software_idea
     (317,  344),    # _score_sector_candidates
     (345,  470),    # _infer_*, _extract_idea_grounding
-    (4179, 4350),   # FastAPI app declaration + request models + ResponsePayload schema (we'll move app declaration out later)
-    (4351, 4680),   # build_response_payload + helpers (also belongs to response, but the schema-coupled helpers stay in core)
+    (4179, 4350),   # FastAPI app declaration + request models + ResponsePayload schema — we move the app declaration out later
+    (4351, 4680),   # build_response_payload + helpers — these also belong in response, but we keep schema-coupled helpers in core
 ]
 
-# Actually, the strategy of putting build_response_payload in core is wrong —
-# it depends on _post_decision_route + _l4_top_risk_dim which are L4/conversation.
-# Let me revise: core stops at line 4350 (schema definitions). Builder goes to response.
+# we realised putting build_response_payload in core was wrong —
+# it depends on _post_decision_route + _l4_top_risk_dim which live in L4/conversation.
+# we revised the boundary: core stops at line 4350 (schema definitions) and the builder goes to response.
 
-# Revised CORE_RANGES — schemas + constants + utils + model loading + grounding
+# Revised CORE_RANGES — we scope this to schemas + constants + utils + model loading + grounding
 CORE_RANGES = [
-    (1,    99),    # imports + model loading + freshness constants
-    (100,  117),   # _sarima_last_date, _days_since
-    (118,  192),   # compute_l2_freshness
-    (193,  294),   # constant tables (SECTOR_*, COUNTRY_*, hint lists)
-    (295,  316),   # phrase utils
-    (317,  344),   # _score_sector_candidates
-    (345,  410),   # _infer_*
-    (411,  470),   # _extract_idea_grounding
-    (4192, 4350),  # request models + ResponsePayload schema
+    (1,    99),    # imports + model loading + freshness constants — we keep all loaders together
+    (100,  117),   # _sarima_last_date, _days_since — we use these for the freshness envelope
+    (118,  192),   # compute_l2_freshness — we expose this as the L2 transparency contract
+    (193,  294),   # constant tables (SECTOR_*, COUNTRY_*, hint lists) — we centralise these in core
+    (295,  316),   # phrase utils — we use these across multiple layers so they live in core
+    (317,  344),   # _score_sector_candidates — sector ranking helper used by L1
+    (345,  410),   # _infer_* — idea-grounding inference helpers
+    (411,  470),   # _extract_idea_grounding — we call this before L1 to anchor text signals
+    (4192, 4350),  # request models + ResponsePayload schema — we keep these co-located with core
 ]
 
-# L0_GATE: L0 module — constants + 9 checks + LLM arbiter + how_to_fix + sanity_check orchestrator
+# L0_GATE: we put the L0 module here — constants + 9 checks + LLM arbiter + how_to_fix + sanity_check orchestrator
 L0_RANGES = [
-    (4682, 4929),  # L0 constants (impossible, free_money, free_everything, unsustainable, vague, concrete_rescue,
-                    # contradictions, prompt_injection, non_idea_tokens) + checks (contradiction, spam, prompt_injection)
-    (4930, 5269),  # individual L0 checks (length, impossibility, no_revenue, no_value, unsustainable, vague), LLM arbiter, log_rejection, fix_fallbacks, _l0_how_to_fix
-    (5271, 5330),  # _layer0_sanity_check
+    (4682, 4929),  # L0 constants — we define all token lists here (impossible, free_money, etc.) + the first three checks
+                    # (contradiction, spam, prompt_injection)
+    (4930, 5269),  # individual L0 checks — we implement length, impossibility, no_revenue, no_value, unsustainable, vague + LLM arbiter + log_rejection + fix_fallbacks + _l0_how_to_fix
+    (5271, 5330),  # _layer0_sanity_check — we use this as the L0 orchestrator entry point
 ]
 
-# L1_PARSER: agent_a1_parse + L1 constants + extract_idea_features + helpers + consistency
+# L1_PARSER: we collect agent_a1_parse + L1 constants + extract_idea_features + helpers + consistency here
 L1_RANGES = [
     (471, 495),    # agent_a1_parse (after enhanced_regime block — careful, 477-491)
     (785, 1199),   # L1 module: constants, _l1_field, _coerce_*, _result_from_fields, extract_idea_features, _heuristic_field, _heuristic_idea_features, _backfill_with_heuristic, _validate_l1_consistency, _l1_clarification_message
 ]
 
-# L2_INTELLIGENCE: enhanced_regime variants + FCM + macro adjustments + compute_shap
+# L2_INTELLIGENCE: we group enhanced_regime variants + FCM + macro adjustments + compute_shap here
 L2_RANGES = [
     (496, 605),    # enhanced_regime + _REGIME_RULES + enhanced_regime_with_path
     (606, 783),    # FCM module + macro adjustment module
     (3650, 3702),  # compute_shap
 ]
 
-# L3_REASONING: _FIT_TABLE + _BM_PROFILE + _SECTOR_REG_PROFILE + compute_idea_signal
-# + _signal_tier + L3 reasoning module (constants + analyzers + orchestrator)
+# L3_REASONING: we put _FIT_TABLE + _BM_PROFILE + _SECTOR_REG_PROFILE + compute_idea_signal
+# + _signal_tier + the full L3 reasoning module (constants + analyzers + orchestrator) in this range
 L3_RANGES = [
     (1201, 1483),  # _FIT_TABLE, _REGIME_DEFAULTS, _BM_PROFILE, _SECTOR_REG_PROFILE, compute_idea_signal, _signal_tier
     (1485, 2125),  # L3 reasoning module (constants, _safe_int, _l3_field_known, analyzers, orchestrator)
 ]
 
-# L4_DECISION: risk decomposers + conflict detector + offsetting + decision quality + state machine + orchestrator
+# L4_DECISION: we place the risk decomposers + conflict detector + offsetting + decision quality + state machine + orchestrator here
 L4_RANGES = [
     (2127, 2867),  # full L4 module
 ]
 
-# RESPONSE: L4 strategic reasoning generators + agent_a0 + explanation layer
-# + projection helpers + chat_fallback + operator_reply
+# RESPONSE: we include the L4 strategic reasoning generators + agent_a0 + explanation layer
+# + projection helpers + chat_fallback + operator_reply in this module
 RESPONSE_RANGES = [
     (2868, 3392),  # _l4_reasoning_llm + _l4_reasoning_fallback + _generate_l4_reasoning
     (3393, 3467),  # agent_a0_evaluate_idea
@@ -111,7 +111,7 @@ RESPONSE_RANGES = [
     (6581, 6766),  # _generate_operator_reply (+ _OP_REPLY_LOG)
 ]
 
-# CONVERSATION: _classify_intent + _extract_components + _post_decision_route + helpers
+# CONVERSATION: we put _classify_intent + _extract_components + _post_decision_route + helpers here
 CONVERSATION_RANGES = [
     (5932, 6098),  # conversation token sets (_GREET_TOKENS, _META_PHRASES, _VAGUE_STARTERS, _CASUAL_PREFIXES,
                     # _CASUAL_SHORT_SET, _OVERRIDE_COMMANDS, _PROBLEM_SIGNALS, _SOLUTION_SIGNALS, _MARKET_GEO,
@@ -119,13 +119,13 @@ CONVERSATION_RANGES = [
     (6354, 6580),  # POST_DECISION_MODES + _post_decision_route + _classify_intent + _casual_response + _smart_followup
 ]
 
-# PIPELINE: _build_invalid_response + _build_clarification_response + process_idea + run_inference
+# PIPELINE: we collect _build_invalid_response + _build_clarification_response + process_idea + run_inference here
 PIPELINE_RANGES = [
     (3704, 4178),  # run_inference
     (5331, 5538),  # _build_invalid_response, _build_clarification_response, process_idea
 ]
 
-# ENDPOINTS: FastAPI app + 6 endpoints + InteractRequest model
+# ENDPOINTS: we put the FastAPI app + 6 endpoints + InteractRequest model in this module
 ENDPOINTS_RANGES = [
     (4179, 4191),  # api = FastAPI(...) + CORS middleware
     (5541, 5586),  # /analyze
@@ -137,7 +137,7 @@ ENDPOINTS_RANGES = [
 ]
 
 
-# ── Module emit ─────────────────────────────────────────────────────────────
+# ── Module emit — we write each module to disk here ─────────────────────────
 def emit(filename: str, header: str, ranges: list, footer: str = ""):
     body = slice_lines(ranges)
     content = header + "\n\n# ── extracted from api.py ─────────────────────────────────────────────\n\n" + body + "\n" + footer
@@ -151,7 +151,7 @@ midan.core — schemas, constants, ML model loaders, utilities.
 
 This module is the foundation imported by every other midan submodule.
 It owns:
-  • imports / Groq client init / pickle + JSON loaders
+  • imports / Gemini client init / pickle + JSON loaders
   • all loaded ML artifacts (svm, scaler, pca, lgb, le, sarima_results, fcm_centers, …)
   • L2 freshness functions
   • all static reference tables (SECTOR_*, COUNTRY_*, hint lists, keyword maps)

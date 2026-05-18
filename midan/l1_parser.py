@@ -48,11 +48,11 @@ MONETIZATION_TYPES = ['subscription', 'commission', 'one-time', 'freemium', 'ad-
 STAGES             = ['idea', 'validation', 'mvp', 'growth']
 INTENSITY_LEVELS   = ['low', 'medium', 'high']
 
-# Required L1 fields — the pipeline halts if any of these are UNKNOWN after extraction.
-# Unrequired fields can be UNKNOWN without blocking analysis (they degrade gracefully downstream).
+# we halt the pipeline if any of these required fields are still UNKNOWN after extraction
+# we let non-required fields stay UNKNOWN without blocking — they degrade gracefully downstream
 L1_REQUIRED_FIELDS = ['business_model', 'target_segment', 'stage']
-# L1_MIN_FIELD_CONFIDENCE, L1_MIN_AGGREGATE_CONFIDENCE and UNKNOWN_VALUE are
-# owned by midan.config and reach this module via `from midan.core import *`.
+# we pull L1_MIN_FIELD_CONFIDENCE, L1_MIN_AGGREGATE_CONFIDENCE and UNKNOWN_VALUE
+# from midan.config via `from midan.core import *` — they are not defined here
 
 _L1_LOG = __import__('logging').getLogger("midan.l1")
 
@@ -129,10 +129,10 @@ def _result_from_fields(fields: dict, sector: str, idea_text: str) -> dict:
         and consistency["ok"]
     )
 
-    # Runtime view: required UNKNOWN are NOT defaulted (they halt the gate).
-    # Non-required UNKNOWN get a documented neutral default so L2/L3/L4
-    # arithmetic does not see None — but `values` and `source` still report
-    # UNKNOWN so the API response remains honest.
+    # we do not default required UNKNOWN fields — they halt the gate.
+    # for non-required UNKNOWN we apply a documented neutral default so L2/L3/L4
+    # arithmetic never sees None, but `values` and `source` still report
+    # UNKNOWN so the API response stays honest
     runtime_values: dict = {}
     for k, v in values.items():
         if v in (UNKNOWN_VALUE, None) and k not in L1_REQUIRED_FIELDS:
@@ -173,8 +173,8 @@ def extract_idea_features(idea_text: str, sector: str) -> dict:
     they are marked UNKNOWN. The pipeline halts upstream when is_sufficient=False.
     """
     if not idea_text or len(idea_text.strip()) < 8:
-        # Too little text for any meaningful extraction. Mark every field UNKNOWN
-        # so the gate halts the pipeline.
+        # we mark every field UNKNOWN here when input is too short for meaningful extraction,
+        # so the gate halts the pipeline before anything runs on garbage input
         fields = {name: _l1_unknown_field(name, "input_too_short") for name in (
             'business_model', 'target_segment', 'monetization', 'stage',
             'differentiation_score', 'competitive_intensity',
@@ -182,10 +182,8 @@ def extract_idea_features(idea_text: str, sector: str) -> dict:
         )}
         return _result_from_fields(fields, sector, idea_text)
 
-    groq_key = os.environ.get("GROQ_API_KEY", "")
-    if GROQ_CLIENT and groq_key and groq_key != "dummy":
-        try:
-            prompt = dedent(f"""
+    try:
+        prompt = dedent(f"""
                 Extract structured startup features from this idea description.
                 Return ONLY valid JSON matching the exact schema. No explanation.
 
@@ -225,44 +223,43 @@ def extract_idea_features(idea_text: str, sector: str) -> dict:
                   confidence rather than guessing — UNKNOWN is preferable to a wrong default.
             """).strip()
 
-            resp = GROQ_CLIENT.chat.completions.create(
-                messages=[{"role": "user", "content": prompt}],
-                model=GROQ_MODEL,
-                temperature=0.0,
-                max_tokens=1500,
-                response_format={"type": "json_object"},
-            )
-            data = json.loads(resp.choices[0].message.content.strip())
+        response = LLM_CLIENT.chat.completions.create(
+            model=_LLM_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.0,
+            max_tokens=4096,
+        )
+        data = json.loads(response.choices[0].message.content.strip())
 
-            def _conf(name: str, default: float = 0.0) -> float:
-                try:
-                    c = float(data.get(f"{name}_confidence", default))
-                except (TypeError, ValueError):
-                    return 0.0
-                return max(0.0, min(1.0, c))
+        def _conf(name: str, default: float = 0.0) -> float:
+            try:
+                c = float(data.get(f"{name}_confidence", default))
+            except (TypeError, ValueError):
+                return 0.0
+            return max(0.0, min(1.0, c))
 
-            fields = {
-                'business_model':        _coerce_enum(data.get('business_model'),        BUSINESS_MODELS,    'business_model',        _conf('business_model')),
-                'target_segment':        _coerce_enum(data.get('target_segment'),        TARGET_SEGMENTS,    'target_segment',        _conf('target_segment')),
-                'monetization':          _coerce_enum(data.get('monetization'),          MONETIZATION_TYPES, 'monetization',          _conf('monetization')),
-                'stage':                 _coerce_enum(data.get('stage'),                 STAGES,             'stage',                 _conf('stage')),
-                'competitive_intensity': _coerce_enum(data.get('competitive_intensity'), INTENSITY_LEVELS,   'competitive_intensity', _conf('competitive_intensity')),
-                'regulatory_risk':       _coerce_enum(data.get('regulatory_risk'),       INTENSITY_LEVELS,   'regulatory_risk',       _conf('regulatory_risk')),
-                'differentiation_score': _coerce_score(data.get('differentiation_score'), 'differentiation_score', _conf('differentiation_score')),
-                'market_readiness':      _coerce_score(data.get('market_readiness'),      'market_readiness',      _conf('market_readiness')),
-            }
-            result = _result_from_fields(fields, sector, idea_text)
+        fields = {
+            'business_model':        _coerce_enum(data.get('business_model'),        BUSINESS_MODELS,    'business_model',        _conf('business_model')),
+            'target_segment':        _coerce_enum(data.get('target_segment'),        TARGET_SEGMENTS,    'target_segment',        _conf('target_segment')),
+            'monetization':          _coerce_enum(data.get('monetization'),          MONETIZATION_TYPES, 'monetization',          _conf('monetization')),
+            'stage':                 _coerce_enum(data.get('stage'),                 STAGES,             'stage',                 _conf('stage')),
+            'competitive_intensity': _coerce_enum(data.get('competitive_intensity'), INTENSITY_LEVELS,   'competitive_intensity', _conf('competitive_intensity')),
+            'regulatory_risk':       _coerce_enum(data.get('regulatory_risk'),       INTENSITY_LEVELS,   'regulatory_risk',       _conf('regulatory_risk')),
+            'differentiation_score': _coerce_score(data.get('differentiation_score'), 'differentiation_score', _conf('differentiation_score')),
+            'market_readiness':      _coerce_score(data.get('market_readiness'),      'market_readiness',      _conf('market_readiness')),
+        }
+        result = _result_from_fields(fields, sector, idea_text)
 
-            # Low-confidence required fields → degrade with heuristic ONLY when
-            # the heuristic has stronger keyword evidence. Otherwise leave UNKNOWN.
-            if result["unknown_required"]:
-                result = _backfill_with_heuristic(result, idea_text, sector)
-            return result
-        except Exception as llm_err:
-            _L1_LOG.warning(
-                f"[L1] extract_idea_features LLM failed "
-                f"({type(llm_err).__name__}: {llm_err!r}) — falling back to heuristic"
-            )
+        # we backfill with heuristic ONLY when it has stronger keyword evidence —
+        # otherwise we leave required fields UNKNOWN rather than guess
+        if result["unknown_required"]:
+            result = _backfill_with_heuristic(result, idea_text, sector)
+        return result
+    except Exception as llm_err:
+        _L1_LOG.warning(
+            f"[L1] extract_idea_features LLM failed "
+            f"({type(llm_err).__name__}: {llm_err!r}) — falling back to heuristic"
+        )
 
     return _heuristic_idea_features(idea_text, sector)
 
@@ -289,9 +286,9 @@ def _heuristic_idea_features(idea_text: str, sector: str) -> dict:
     stage_raw = _infer_stage(t)
     diff_raw  = _infer_differentiation_score(t)
 
-    # Evidence strength per field — strong only when explicit signal in text.
-    # Weak when only sector-fallback (no in-text signal at all) — that's the
-    # silent-default trap the audit flagged.
+    # we set evidence strength per field — strong only when an explicit signal is in the text.
+    # we use weak when we're falling back to sector-only inference with no in-text signal —
+    # that's the silent-default trap the audit flagged, and we want it visible
     explicit_seg   = any(tok in t for tok in ('b2b', 'b2c', 'b2g', 'enterprise', 'consumer'))
     explicit_bm    = any(tok in t for tok in ('subscription', 'marketplace', 'commission', 'saas', 'platform'))
     explicit_stage = any(tok in t for tok in ('mvp', 'beta', 'pilot', 'launched', 'live customers', 'mrr'))
@@ -300,7 +297,7 @@ def _heuristic_idea_features(idea_text: str, sector: str) -> dict:
         'similar to', 'clone', 'like uber', 'like amazon',
     ))
 
-    # Implicit-signal channels — softer than explicit but still in-text, not sector-only.
+    # we check implicit-signal channels next — softer than explicit keyword hits but still in-text, not sector-only defaults
     has_segment_signal = (
         _count_any(t, BUSINESS_CUSTOMER_HINTS) > 0
         or _count_any(t, CONSUMER_HINTS) > 0
@@ -312,23 +309,22 @@ def _heuristic_idea_features(idea_text: str, sector: str) -> dict:
         or _has_any(t, AGRITECH_STRONG_HINTS)
         or _has_any(t, SERVICE_HINTS)
         or _has_any(t, HARDWARE_HINTS)
-        # Sector-anchoring operational tokens: when the text uses sector-typical
-        # vocabulary (invoice, lending, payments, etc.), the business-model
-        # inference is at least medium-evidence even without an explicit
-        # "subscription"/"marketplace"-style word.
+        # we treat sector-anchoring operational tokens as medium evidence — when the text uses
+        # sector-typical vocabulary (invoice, lending, payments, etc.) the business-model
+        # inference is at least medium even without an explicit "subscription"/"marketplace" word
         or any(_phrase_in_text(t, kw) for kw in SECTOR_KEYWORDS.get(sector, []))
     )
 
     seg_strength = 'strong' if explicit_seg else ('medium' if has_segment_signal else 'weak')
     bm_strength  = 'strong' if explicit_bm  else ('medium' if has_bm_signal      else 'weak')
-    stage_strength = 'strong' if explicit_stage else 'medium'  # 'idea' default is weak but acceptable
+    stage_strength = 'strong' if explicit_stage else 'medium'  # we treat 'idea' default as medium since no-signal ideas are still at idea stage
 
     seg   = _heuristic_field('target_segment',  seg_raw,   seg_strength,   TARGET_SEGMENTS)
     bm    = _heuristic_field('business_model',  bm_raw,    bm_strength,    BUSINESS_MODELS)
     stage = _heuristic_field('stage',           stage_raw, stage_strength, STAGES)
     diff  = _heuristic_field('differentiation_score', diff_raw, 'strong' if explicit_diff else 'weak')
 
-    # Competitive intensity / regulatory risk — sector-typical inference (medium evidence)
+    # we infer competitive intensity and regulatory risk from sector — medium evidence since it's sector-typical, not text-explicit
     comp_val = {'fintech': 'high', 'ecommerce': 'high', 'healthtech': 'medium',
                 'saas': 'medium', 'edtech': 'medium', 'logistics': 'medium',
                 'agritech': 'low', 'other': 'medium'}.get(sector, 'medium')
@@ -341,7 +337,7 @@ def _heuristic_idea_features(idea_text: str, sector: str) -> dict:
     comp = _heuristic_field('competitive_intensity', comp_val, 'medium', INTENSITY_LEVELS)
     reg  = _heuristic_field('regulatory_risk',       reg_val,  'medium', INTENSITY_LEVELS)
 
-    # Market readiness — only strong when text gives explicit pull/push signal
+    # we only mark market_readiness strong when the text gives explicit pull/push signal — otherwise medium or weak
     ready_val = 3
     explicit_ready = False
     if any(w in t for w in ['proven market', 'large demand', 'everyone needs', 'mass market', 'high demand']):
@@ -352,7 +348,7 @@ def _heuristic_idea_features(idea_text: str, sector: str) -> dict:
         ready_val = max(ready_val, 4); explicit_ready = True
     ready = _heuristic_field('market_readiness', ready_val, 'medium' if explicit_ready else 'weak')
 
-    # Heuristic monetization mirrors business_model (weaker signal)
+    # we mirror monetization from business_model in the heuristic path — it's a weaker signal than a direct text mention
     mon = _heuristic_field('monetization', bm_raw, 'medium' if explicit_bm else 'weak', MONETIZATION_TYPES)
 
     fields = {
@@ -406,19 +402,19 @@ def _validate_l1_consistency(values: dict, sector: str, idea_text: str) -> dict:
     def _known(*xs):
         return all(x not in (UNKNOWN_VALUE, None) for x in xs)
 
-    # Sector × business_model
+    # we check sector × business_model compatibility first
     if _known(bm) and sec == 'agritech' and bm == 'saas' and 'farm' not in (idea_text or '').lower():
         violations.append("agritech_saas_without_farm_signal")
     if _known(bm) and sec == 'healthtech' and bm == 'marketplace' and seg == 'b2c':
         violations.append("healthtech_b2c_marketplace_regulatory_conflict")
 
-    # Business_model × target_segment
+    # we then check business_model × target_segment conflicts
     if _known(bm, seg) and bm == 'hardware' and seg == 'b2c' and mon == 'freemium':
         violations.append("hardware_b2c_freemium_unviable")
     if _known(bm, seg) and bm == 'saas' and seg == 'b2c' and mon == 'commission':
         violations.append("saas_b2c_commission_mismatch")
 
-    # Monetization × segment
+    # we close with monetization × segment checks — some combos are structurally unviable
     if _known(seg, mon) and seg == 'b2g' and mon == 'ad-based':
         violations.append("b2g_ad_based_unviable")
     if _known(bm, mon) and bm == 'marketplace' and mon == 'subscription' and seg == 'b2c':
@@ -453,6 +449,5 @@ def _l1_clarification_message(result: dict) -> dict:
 
 
 
-# Export everything defined in this module — including underscore-prefixed
-# helpers — so other midan submodules can wildcard-import the full surface.
+# we export everything here — underscore helpers too — so submodules can wildcard-import the full surface
 __all__ = [name for name in list(globals().keys()) if not name.startswith('__')]

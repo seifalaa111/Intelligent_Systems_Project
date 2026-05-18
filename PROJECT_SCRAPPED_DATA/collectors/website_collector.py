@@ -76,22 +76,22 @@ class WebsiteCollector(BaseCollector):
             html_content = response.text
             source_urls.append(url)
 
-            # Extract text
+            # we convert HTML to plain text and tag it with the page path for traceability
             text = html_to_text(html_content)
             if text:
                 all_text_parts.append(f"[PAGE: {page_path or '/'}]\n{text}")
 
-            # Extract meta tags (prioritize homepage meta)
+            # we prioritize homepage meta but merge in any missing keys from sub-pages
             meta = extract_meta(html_content)
             if not all_meta:
                 all_meta = meta
             else:
-                # Merge without overwriting existing keys
+                # we merge without overwriting so the homepage values stay authoritative
                 for k, v in meta.items():
                     if k not in all_meta:
                         all_meta[k] = v
 
-            # Extract headings
+            # we collect headings from every page to build a richer structure picture
             headings = extract_headings(html_content)
             all_headings.extend(headings)
 

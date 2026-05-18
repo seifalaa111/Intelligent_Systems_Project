@@ -30,16 +30,16 @@ class FailoryCollector(BaseCollector):
         log_stage(self.logger, "FAILORY COLLECTOR", "Starting collection")
         results = []
 
-        # Step 1: Get article URLs from index pages
+        # we kick off by pulling article URLs from the index pages
         article_urls = self._get_article_urls()
         self.logger.info(f"Found {len(article_urls)} article URLs from index")
 
         if not article_urls:
-            # Fallback: try known Failory URL patterns
+            # we fall back to known Failory URL patterns when the index returns nothing
             article_urls = self._get_fallback_urls()
             self.logger.info(f"Using {len(article_urls)} fallback URLs")
 
-        # Step 2: Fetch and parse each article
+        # we now fetch and parse each discovered article
         for url in article_urls:
             try:
                 entry = self._collect_article(url)
@@ -68,17 +68,17 @@ class FailoryCollector(BaseCollector):
 
             soup = BeautifulSoup(response.text, "lxml")
 
-            # Find links to individual startup case study pages
+            # we scan every anchor looking for individual startup case study pages
             for link in soup.find_all("a", href=True):
                 href = link["href"]
 
-                # Failory article URLs typically look like /cemetery/startup-name
+                # we expect article URLs to look like /cemetery/startup-name
                 # or /blog/startup-name or /interview/startup-name
                 if self._is_article_url(href):
                     full_url = href if href.startswith("http") else f"{FAILORY_BASE_URL}{href}"
                     urls.add(full_url)
 
-            # Check for pagination
+            # we also check for pagination so we don't miss additional pages
             for page_num in range(2, FAILORY_MAX_PAGES + 1):
                 paginated_url = f"{index_url}?page={page_num}"
                 response = fetch_url(paginated_url, delay=FAILORY_DELAY)
@@ -96,13 +96,13 @@ class FailoryCollector(BaseCollector):
                             new_links = True
 
                 if not new_links:
-                    break  # No new articles on this page
+                    break  # we stop paginating when a page adds nothing new
 
         return list(urls)
 
     def _is_article_url(self, href: str) -> bool:
         """Check if a URL looks like a Failory article / case study."""
-        # Skip generic navigation links
+        # we skip generic navigation links that aren't article content
         skip_patterns = [
             "/blog$", "/cemetery$", "/interviews$",
             "/newsletter", "/about", "/contact", "/privacy",
@@ -113,7 +113,7 @@ class FailoryCollector(BaseCollector):
             if pat in href:
                 return False
 
-        # Must be a Failory path with a slug
+        # we require a Failory path with a proper slug to confirm it's an article
         article_patterns = [
             r"/cemetery/[\w-]+",
             r"/blog/[\w-]+-startup",
@@ -149,18 +149,18 @@ class FailoryCollector(BaseCollector):
         html_content = response.text
         soup = BeautifulSoup(html_content, "lxml")
 
-        # Extract startup name from title or h1
+        # we pull the startup name from the title or h1 tag
         startup_name = self._extract_startup_name(soup, url)
         if not startup_name:
             return None
 
-        # Extract article body text
+        # we extract the full article body text for downstream processing
         article_text = self._extract_article_text(soup)
         if not article_text or len(article_text) < 100:
             self.logger.warning(f"Insufficient content for {url}")
             return None
 
-        # Extract headings for structure
+        # we grab headings to preserve document structure
         headings = extract_headings(html_content)
 
         return self._make_raw_entry(
@@ -176,23 +176,23 @@ class FailoryCollector(BaseCollector):
 
     def _extract_startup_name(self, soup: BeautifulSoup, url: str) -> str | None:
         """Extract startup name from the page."""
-        # Try h1
+        # we try the h1 first as the most reliable name source
         h1 = soup.find("h1")
         if h1:
             text = h1.get_text(strip=True)
-            # Clean common prefixes like "Why X Failed" or "How X Succeeded"
+            # we strip common prefixes like "Why X Failed" or "How X Succeeded" to isolate the name
             name = re.sub(r"^(Why|How|The Rise and Fall of|What Happened to)\s+", "", text, flags=re.I)
             name = re.sub(r"\s+(Failed|Succeeded|Shut Down|Closed|Story).*$", "", name, flags=re.I)
             if name and len(name) < 80:
                 return name.strip()
 
-        # Fall back to URL slug
+        # we fall back to deriving the name from the URL slug
         slug = url.rstrip("/").split("/")[-1]
         return slug.replace("-", " ").title()
 
     def _extract_article_text(self, soup: BeautifulSoup) -> str:
         """Extract the main article body text from a Failory page."""
-        # Try to find the main content area
+        # we look for the main content area using common semantic tags
         article = (
             soup.find("article") or
             soup.find("div", class_=re.compile(r"(content|article|post|entry|blog)", re.I)) or
@@ -200,13 +200,13 @@ class FailoryCollector(BaseCollector):
         )
 
         if article:
-            # Remove non-content elements within article
+            # we strip non-content noise (scripts, navs, footers) before extracting text
             for tag in article.find_all(["script", "style", "nav", "footer",
                                           "aside", "form", "iframe"]):
                 tag.decompose()
             return article.get_text(separator="\n", strip=True)
 
-        # Fallback: get all paragraph text
+        # we fall back to collecting all paragraph tags when no article container is found
         paragraphs = soup.find_all("p")
         if paragraphs:
             return "\n".join(p.get_text(strip=True) for p in paragraphs if len(p.get_text(strip=True)) > 20)

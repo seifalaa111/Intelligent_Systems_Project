@@ -26,8 +26,8 @@ def enhanced_regime(svm_regime, svm_conf, inflation, gdp_growth, macro_friction,
     return final["regime"], final["confidence"]
 
 
-# Hand-coded macro thresholds. Evaluated in priority order; first match wins
-# and overrides the SVM. Surfaced verbatim in the response so consumers can
+# we hard-coded these macro thresholds — they're evaluated in priority order, first match wins
+# and overrides the SVM. we surface them verbatim in the response so consumers can
 # see exactly which rule (if any) replaced the model output.
 _REGIME_RULES = [
     {
@@ -142,12 +142,11 @@ def compute_fcm_membership(x_pca_row, centers, fuzziness: float = 2.0) -> dict:
         return {"available": False}
     pt = np.asarray(x_pca_row, dtype=float).reshape(-1)
     K  = centers.shape[0]
-    # Distance to each center; epsilon avoids division-by-zero for points
-    # that coincide exactly with a center.
+    # we add epsilon to avoid division-by-zero when a point coincides exactly with a center.
     dists = np.array([np.linalg.norm(pt - centers[k]) for k in range(K)])
     eps = 1e-9
     dists = np.maximum(dists, eps)
-    # Standard FCM membership formula: u_ik = 1 / Σ_j (d_ik / d_jk)^(2/(m-1))
+    # we use the standard FCM formula here: u_ik = 1 / Σ_j (d_ik / d_jk)^(2/(m-1))
     exp = 2.0 / (fuzziness - 1.0) if fuzziness > 1.0 else 2.0
     inv = 1.0 / (dists ** exp)
     membership = inv / inv.sum()
@@ -158,7 +157,7 @@ def compute_fcm_membership(x_pca_row, centers, fuzziness: float = 2.0) -> dict:
     }
     membership_named = {labels[i]: float(round(membership[i], 4)) for i in range(K)}
     top_idx = int(np.argmax(membership))
-    # Shannon entropy normalized by log(K) — 0 = peaked, 1 = flat.
+    # we normalize Shannon entropy by log(K) — 0 means peaked, 1 means totally flat.
     entropy = float(-(membership * np.log(membership + eps)).sum() / np.log(K))
     return {
         "available":      True,
@@ -184,8 +183,8 @@ def compute_fcm_membership(x_pca_row, centers, fuzziness: float = 2.0) -> dict:
 #     response so consumers can distinguish observed vs inferred.
 # ═══════════════════════════════════════════════════════════════
 
-# L1_ADJUSTMENT_CONFIDENCE_FLOOR and ENABLE_IDEA_ADJUSTMENTS are owned by
-# midan.config and reach this module via `from midan.core import *`.
+# we pull L1_ADJUSTMENT_CONFIDENCE_FLOOR and ENABLE_IDEA_ADJUSTMENTS from
+# midan.config — they reach this module via `from midan.core import *`.
 
 def _idea_macro_adjustments(
     base_macro: dict,
@@ -216,7 +215,7 @@ def _idea_macro_adjustments(
 
     adjustments: list = []
 
-    # B2C consumer-velocity bias — mass-market consumer ideas inherit a
+    # we apply a B2C consumer-velocity bias — mass-market consumer ideas inherit a
     # slightly higher capital velocity signal than the sector default.
     if _has('target_segment', 'b2c'):
         adjustments.append({
@@ -229,7 +228,7 @@ def _idea_macro_adjustments(
             "source":      "inferred",
         })
 
-    # B2G regulatory friction — government-customer ideas inherit higher
+    # we add B2G regulatory friction — government-customer ideas inherit higher
     # friction even if the country baseline is neutral.
     if _has('target_segment', 'b2g'):
         adjustments.append({
@@ -242,7 +241,7 @@ def _idea_macro_adjustments(
             "source":      "inferred",
         })
 
-    # High regulatory_risk → friction bump
+    # we bump friction when regulatory_risk is high
     if _has('regulatory_risk', 'high'):
         adjustments.append({
             "feature":     "macro_friction",
@@ -254,8 +253,8 @@ def _idea_macro_adjustments(
             "source":      "inferred",
         })
 
-    # Growth-stage momentum — late-stage ideas operate in a more crowded
-    # field; nudge velocity up slightly to reflect higher transaction tempo.
+    # we nudge velocity up for growth-stage ideas — they operate in a more crowded
+    # field and empirically show higher transaction tempo than earlier stages.
     if _has('stage', 'growth'):
         adjustments.append({
             "feature":     "velocity_yoy",
@@ -267,7 +266,7 @@ def _idea_macro_adjustments(
             "source":      "inferred",
         })
 
-    # High competitive_intensity → small inflation drag (proxy for pricing pressure)
+    # we apply a small inflation drag when competitive_intensity is high — proxy for pricing pressure
     if _has('competitive_intensity', 'high'):
         adjustments.append({
             "feature":     "inflation",
@@ -289,12 +288,12 @@ def apply_idea_adjustments(base_macro: dict, adjustments: list) -> dict:
 
     Returns a new dict {feature: adjusted_value}; base_macro is unchanged.
     """
-    # Conservative caps — total absolute deviation per feature.
+    # we use conservative caps here to limit total absolute deviation per feature.
     caps = {
         "inflation":             3.0,
         "gdp_growth":            1.0,
         "macro_friction":       10.0,
-        "capital_concentration": 0.0,  # no idea-level adjustments to capital stock
+        "capital_concentration": 0.0,  # we don't apply idea-level adjustments to capital stock
         "velocity_yoy":          0.08,
     }
     deltas = {f: 0.0 for f in base_macro}
@@ -323,14 +322,14 @@ def compute_shap(lgb_model, x_scaled_row, predicted_class_idx: int = None):
     sv = explainer.shap_values(x_scaled_row)
 
     if isinstance(sv, list):
-        # Old SHAP API: list of arrays per class
+        # we handle the old SHAP API here — it returns a list of arrays, one per class
         if predicted_class_idx is not None and predicted_class_idx < len(sv):
             arr = np.abs(sv[predicted_class_idx][0])
         else:
             arr = np.mean([np.abs(s) for s in sv], axis=0)[0]
     elif hasattr(sv, 'ndim') and sv.ndim == 3:
-        # New SHAP API: shape (n_samples, n_features, n_classes)
-        # Use the predicted class's SHAP values for the single input row
+        # we handle the new SHAP API here — shape is (n_samples, n_features, n_classes)
+        # so we index into the predicted class's SHAP values for the single input row
         if predicted_class_idx is not None and predicted_class_idx < sv.shape[2]:
             arr = np.abs(sv[0, :, predicted_class_idx])
         else:
@@ -345,8 +344,8 @@ def compute_shap(lgb_model, x_scaled_row, predicted_class_idx: int = None):
 
     shares = {k: v / total for k, v in raw.items()}
 
-    # Soft-cap: redistribute overflow above MAX_SHARE to uncapped features
-    # preserving the relative ranking while preventing a single-bar collapse
+    # we redistribute overflow above MAX_SHARE to uncapped features — prevents a single bar from
+    # dominating the chart while preserving relative ranking
     MAX_SHARE = 0.65
     overcapped = {k: v for k, v in shares.items() if v > MAX_SHARE}
     if overcapped:
@@ -361,6 +360,6 @@ def compute_shap(lgb_model, x_scaled_row, predicted_class_idx: int = None):
 
 
 
-# Export everything defined in this module — including underscore-prefixed
+# we export everything defined in this module — including underscore-prefixed
 # helpers — so other midan submodules can wildcard-import the full surface.
 __all__ = [name for name in list(globals().keys()) if not name.startswith('__')]

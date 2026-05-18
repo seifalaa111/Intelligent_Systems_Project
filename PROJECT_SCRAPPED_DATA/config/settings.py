@@ -20,7 +20,7 @@ STRUCTURED_DIR = DATA_DIR / "structured"
 LOGS_DIR = DATA_DIR / "logs"
 TARGETS_DIR = BASE_DIR / "targets"
 
-# Ensure directories exist
+# we create all required directories up front so collectors never hit missing-path errors
 for d in [RAW_DIR, STRUCTURED_DIR, LOGS_DIR,
           RAW_DIR / "websites", RAW_DIR / "failory", RAW_DIR / "yc",
           RAW_DIR / "reddit", RAW_DIR / "producthunt"]:
@@ -38,7 +38,7 @@ HTTP_USER_AGENT = (
     "Chrome/124.0.0.0 Safari/537.36"
 )
 
-# Rate limiting -- minimum delay between requests per domain
+# we enforce a minimum delay per domain here to stay polite and avoid bans
 RATE_LIMIT_DELAY = 2.0  # seconds
 
 # ──────────────────────────────────────────────
@@ -95,7 +95,7 @@ PRODUCTHUNT_DELAY = 2.0
 # ──────────────────────────────────────────────
 # BUSINESS MODEL CLASSIFICATION (Phase 2 -- HARDENED)
 # ──────────────────────────────────────────────
-# Each model requires:
+# we structure each model with the following fields so the scoring engine stays consistent:
 #   - primary_keywords: strong indicators (high weight)
 #   - secondary_keywords: supporting indicators (low weight)
 #   - negative_keywords: disqualifiers that reduce score
@@ -197,7 +197,7 @@ BUSINESS_MODEL_RULES = {
                       "premium", "basic plan", "pro plan", "enterprise plan"],
         "negative": [],
         "min_score": 3,
-        "priority": 10,  # lowest priority -- freemium is a pricing strategy, not a model
+        "priority": 10,  # we set lowest priority here because freemium is a pricing strategy, not a model
     },
     "Hardware": {
         "primary": ["hardware product", "physical device", "iot device",
@@ -492,7 +492,7 @@ COMPETITION_KEYWORDS = {
 # NORMALIZED ENUM VALUES
 # ──────────────────────────────────────────────
 
-# Canonical business model labels (display format)
+# we use canonical labels here so every display layer always sees the same casing
 BUSINESS_MODEL_CANONICAL = {
     "saas": "SaaS",
     "marketplace": "Marketplace",
@@ -506,7 +506,7 @@ BUSINESS_MODEL_CANONICAL = {
     "hardware": "Hardware",
 }
 
-# Canonical industry labels (display format)
+# we define canonical industry labels so normalization and display stay in sync
 INDUSTRY_CANONICAL = {
     "fintech": "Fintech",
     "healthtech": "Healthtech",
@@ -531,7 +531,7 @@ INDUSTRY_CANONICAL = {
     "legal": "Legal",
 }
 
-# Switching cost canonical values
+# we pin switching cost to these three values so validation has a fixed set to check against
 SWITCHING_COST_CANONICAL = {"high", "medium", "low"}
 
 # ──────────────────────────────────────────────

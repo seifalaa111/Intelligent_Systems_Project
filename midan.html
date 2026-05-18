@@ -18,7 +18,7 @@
     }
 
     html {
-      scroll-behavior: smooth;
+      scroll-behavior: auto; /* Lenis handles smooth scroll */
     }
 
     :root {
@@ -59,11 +59,28 @@
       --micro: 120ms;
       --trans: 250ms;
       --reveal: 400ms;
+
+      /* ── WORLD (dark intelligence environment) ── */
+      --w-void:     #080706;
+      --w-surface:  rgba(255,255,255,0.025);
+      --w-border:   rgba(255,255,255,0.06);
+      --w-border-a: rgba(196,255,71,0.18);
+      --w-text:     rgba(255,255,255,0.92);
+      --w-text-dim: rgba(255,255,255,0.45);
+      --w-text-sub: rgba(255,255,255,0.22);
+
+      /* ── SIGNAL (lime extended) ── */
+      --signal:     #C4FF47;
+      --signal-80:  rgba(196,255,71,0.80);
+      --signal-40:  rgba(196,255,71,0.40);
+      --signal-15:  rgba(196,255,71,0.15);
+      --signal-06:  rgba(196,255,71,0.06);
+      --signal-03:  rgba(196,255,71,0.03);
     }
 
     body {
       font-family: 'Inter', -apple-system, sans-serif;
-      background: var(--bg);
+      background: var(--w-void);
       color: var(--t1);
       overflow-x: hidden;
     }
@@ -225,7 +242,50 @@
     #landing-screen {
       display: none;
       min-height: 100vh;
-      background: var(--bg);
+      background: var(--w-void);
+    }
+
+    /* ── WORLD CANVAS ── */
+    #world-canvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* All landing sections float above canvas */
+    .l-nav,
+    .l-hero,
+    .intel-brief,
+    .pressure-test,
+    .engine-section,
+    .analysis-protocol,
+    .l-outputs,
+    .l-cta,
+    .l-footer {
+      position: relative;
+      z-index: 1;
+    }
+
+    /* CSS fallback when WebGL unavailable */
+    .world-fallback {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background: radial-gradient(ellipse at 50% 40%, rgba(196,255,71,0.04) 0%, #080706 60%);
+      pointer-events: none;
+    }
+
+    /* Regime bands — atmospheric depth */
+    .regime-band {
+      position: fixed;
+      left: 0; right: 0;
+      height: 1px;
+      background: rgba(196,255,71,0.018);
+      pointer-events: none;
+      z-index: 0;
+      will-change: transform;
     }
 
     #landing-screen.show {
@@ -245,14 +305,14 @@
       justify-content: space-between;
       padding: 0 48px;
       border-bottom: 1px solid transparent;
-      transition: all .3s ease;
+      transition: background .3s ease, border-color .3s ease, backdrop-filter .3s ease;
       background: transparent;
     }
 
     .l-nav.scrolled {
-      background: rgba(10, 10, 11, .88);
-      backdrop-filter: blur(24px);
-      border-bottom-color: var(--br);
+      background: rgba(8,7,6,0.88);
+      backdrop-filter: blur(20px);
+      border-bottom-color: var(--w-border);
     }
 
     .l-nav-logo {
@@ -265,11 +325,12 @@
     .l-nav-mark {
       width: 26px;
       height: 26px;
-      background: var(--ac);
+      background: var(--signal);
       border-radius: 6px;
       display: flex;
       align-items: center;
       justify-content: center;
+      overflow: visible;
     }
 
     .l-nav-mark svg {
@@ -277,12 +338,20 @@
       height: 13px;
     }
 
+    /* Hexagon border trace on load */
+    .l-nav-mark-hex {
+      stroke-dasharray: 62;
+      stroke-dashoffset: 62;
+      animation: hexTrace 600ms cubic-bezier(0.16,1,0.3,1) 0.3s forwards;
+    }
+    @keyframes hexTrace { to { stroke-dashoffset: 0; } }
+
     .l-nav-name {
       font-family: 'Syne', sans-serif;
       font-weight: 800;
       font-size: 16px;
       letter-spacing: .06em;
-      color: var(--t1);
+      color: var(--w-text);
     }
 
     .l-nav-links {
@@ -291,35 +360,62 @@
       list-style: none;
     }
 
+    .l-nav-links li {
+      position: relative;
+    }
+
     .l-nav-links a {
       font-size: 13px;
-      color: var(--t3);
+      color: var(--w-text-dim);
       text-decoration: none;
       letter-spacing: .01em;
       transition: color .2s;
+      display: flex;
+      align-items: center;
+      gap: 0;
     }
 
     .l-nav-links a:hover {
-      color: var(--t1);
+      color: var(--w-text);
+    }
+
+    .l-nav-links a::before {
+      content: '›';
+      opacity: 0;
+      transform: translateX(-4px);
+      transition: opacity .2s, transform .2s;
+      color: var(--signal);
+      margin-right: 0;
+      font-size: 14px;
+      width: 0;
+      overflow: hidden;
+      display: inline-block;
+    }
+
+    .l-nav-links a:hover::before {
+      opacity: 1;
+      transform: translateX(0);
+      width: 10px;
     }
 
     .l-nav-cta {
-      background: var(--ac);
-      color: #000;
-      border: none;
+      background: transparent;
+      color: var(--signal);
+      border: 1px solid rgba(196,255,71,0.35);
       padding: 9px 20px;
-      border-radius: var(--rx);
+      border-radius: 5px;
       font-size: 12px;
-      font-weight: 700;
+      font-weight: 600;
       font-family: 'Inter', sans-serif;
       letter-spacing: .04em;
       cursor: pointer;
-      transition: all .2s;
+      transition: background .2s, color .2s, border-color .2s;
     }
 
     .l-nav-cta:hover {
-      opacity: .88;
-      transform: translateY(-1px);
+      background: var(--signal);
+      color: #000;
+      border-color: var(--signal);
     }
 
     /* Container */
@@ -337,211 +433,328 @@
       align-items: center;
       justify-content: center;
       text-align: center;
-      padding: 120px 24px 80px;
+      padding: 120px 48px 80px;
       position: relative;
+      background: transparent;
       overflow: hidden;
     }
 
-    .l-hero-grid {
-      position: absolute;
-      inset: 0;
-      background-image: linear-gradient(var(--br) 1px, transparent 1px), linear-gradient(90deg, var(--br) 1px, transparent 1px);
-      background-size: 80px 80px;
-      mask-image: radial-gradient(ellipse 70% 70% at 50% 50%, #000 20%, transparent 100%);
-      pointer-events: none;
+    .l-hero-content {
+      position: relative;
+      z-index: 2;
+      max-width: 900px;
+      will-change: transform, opacity;
     }
 
-    .l-hero-glow {
+    /* Scanning line */
+    .hero-scan-line {
       position: absolute;
-      top: 20%;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 800px;
-      height: 400px;
-      background: radial-gradient(ellipse, rgba(200, 255, 87, .04) 0%, transparent 68%);
+      left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(196,255,71,0.06) 40%, rgba(196,255,71,0.06) 60%, transparent);
+      animation: heroScan 14s linear infinite;
       pointer-events: none;
+      z-index: 3;
+      top: 0;
+    }
+    @keyframes heroScan {
+      0%   { top: 0%;   opacity: 0; }
+      5%   { opacity: 1; }
+      95%  { opacity: 1; }
+      100% { top: 100%; opacity: 0; }
     }
 
-    .l-eyebrow {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      border: 1px solid var(--ac-border);
-      padding: 7px 16px;
-      border-radius: 100px;
+    /* Hero sys label */
+    .hero-sys-label {
+      font-family: 'JetBrains Mono', monospace;
       font-size: 11px;
-      font-weight: 600;
-      letter-spacing: .12em;
+      color: rgba(196,255,71,0.5);
+      letter-spacing: .14em;
       text-transform: uppercase;
-      color: var(--ac);
       margin-bottom: 40px;
+      opacity: 0;
     }
 
-    .l-eyebrow-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--ac);
-      animation: pulse 2s ease infinite;
-    }
-
-    @keyframes pulse {
-
-      0%,
-      100% {
-        opacity: 1;
-      }
-
-      50% {
-        opacity: .25;
-      }
-    }
-
-    .l-hero h1 {
+    /* Hero headline */
+    .hero-headline {
       font-family: 'Syne', sans-serif;
-      font-size: clamp(48px, 8vw, 108px);
+      font-size: clamp(56px, 9vw, 124px);
       font-weight: 800;
       letter-spacing: -4px;
-      line-height: .95;
+      line-height: 0.95;
       margin-bottom: 32px;
-      max-width: 960px;
+      color: var(--w-text);
+      overflow: hidden;
     }
 
-    .l-hero h1 .out {
-      -webkit-text-stroke: 1.5px rgba(240, 238, 248, .18);
-      color: transparent;
+    .hero-headline .word {
+      display: inline-block;
+      clip-path: inset(0 100% 0 0);
+      opacity: 0;
     }
 
-    .l-hero h1 .hi {
-      color: var(--ac);
+    .hero-headline .word-real {
+      color: var(--signal);
     }
 
-    .l-hero-sub {
+    /* Blinking cursor */
+    .hero-cursor {
+      display: inline-block;
+      width: 3px;
+      height: 0.85em;
+      background: var(--signal);
+      margin-left: 4px;
+      vertical-align: middle;
+      opacity: 0;
+      animation: cursorBlink 1s step-end infinite;
+    }
+    @keyframes cursorBlink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
+
+    /* Hero sub-copy */
+    .hero-sub {
       font-size: 17px;
-      color: var(--t3);
+      color: var(--w-text-dim);
       max-width: 460px;
       line-height: 1.72;
       font-weight: 300;
-      margin-bottom: 52px;
+      margin: 0 auto 56px;
+      opacity: 0;
     }
 
-    .l-hero-btns {
+    /* Hero metrics row */
+    .hero-metrics {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--w-text-sub);
+      letter-spacing: .08em;
+      margin-bottom: 48px;
+      opacity: 0;
+    }
+
+    .hero-metrics-sep {
+      display: inline-block;
+      margin: 0 16px;
+      color: rgba(255,255,255,0.12);
+    }
+
+    /* Hero CTA row */
+    .hero-cta-row {
       display: flex;
       gap: 12px;
       flex-wrap: wrap;
       justify-content: center;
-      margin-bottom: 72px;
+      opacity: 0;
     }
 
     .btn-primary {
-      background: var(--ac);
+      background: var(--signal);
       color: #000;
       border: none;
       padding: 15px 36px;
-      border-radius: var(--rx);
+      border-radius: 5px;
       font-size: 14px;
       font-weight: 700;
       font-family: 'Inter', sans-serif;
       cursor: pointer;
-      transition: all .2s;
       letter-spacing: .02em;
+      position: relative;
+      overflow: hidden;
     }
 
     .btn-primary:hover {
       transform: translateY(-2px);
-      box-shadow: 0 0 32px rgba(200, 255, 87, .22);
+      box-shadow: 0 0 32px rgba(196,255,71,0.22);
     }
 
     .btn-ghost {
       background: transparent;
-      color: var(--t2);
-      border: 1px solid var(--br2);
+      color: var(--w-text-dim);
+      border: 1px solid var(--w-border);
       padding: 15px 32px;
-      border-radius: var(--rx);
+      border-radius: 5px;
       font-size: 14px;
-      font-weight: 500;
+      font-weight: 400;
       font-family: 'Inter', sans-serif;
       cursor: pointer;
       transition: all .2s;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .btn-ghost:hover {
-      background: var(--s1);
-      border-color: var(--br2);
-      color: var(--t1);
+      border-color: var(--w-border-a);
+      color: var(--w-text);
     }
 
-    .l-hero-proof {
-      display: flex;
-      align-items: center;
-      gap: 32px;
-      color: var(--t4);
-      font-size: 12px;
-      letter-spacing: .06em;
-      text-transform: uppercase;
+    /* Legacy eyebrow (hidden, kept for markup compat) */
+    .l-eyebrow { display: none; }
+    .l-hero-grid { display: none; }
+    .l-hero-glow { display: none; }
+    .l-hero-proof { display: none; }
+    .l-hero-btns { display: none; }
+    .l-hero-sub-old { display: none; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: .25; }
     }
 
-    .l-hero-proof-divider {
-      width: 1px;
-      height: 20px;
-      background: var(--br2);
+    /* ── INTELLIGENCE BRIEF ── */
+    .intel-brief {
+      padding: 72px 48px;
+      background: transparent;
     }
 
-    .l-hero-proof span strong {
-      color: var(--t2);
-      font-weight: 600;
-    }
-
-    /* ── STRIP ── */
-    .l-strip {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      border-top: 1px solid var(--br);
-      border-bottom: 1px solid var(--br);
-      background: var(--bg);
-    }
-
-    .l-strip-cell {
-      padding: 40px;
-      border-right: 1px solid var(--br);
-    }
-
-    .l-strip-cell:last-child {
-      border-right: none;
-    }
-
-    .l-strip-n {
+    .intel-brief-statement {
       font-family: 'Syne', sans-serif;
-      font-size: 48px;
+      font-size: clamp(28px, 4vw, 52px);
       font-weight: 800;
       letter-spacing: -2px;
+      line-height: 1.05;
+      color: var(--w-text);
+      max-width: 860px;
+      margin: 0 auto 56px;
+      text-align: center;
+    }
+
+    .intel-brief-statement .word { display: inline-block; opacity: 0; transform: translateY(16px); }
+
+    .intel-brief-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1px;
+      background: var(--w-border);
+      max-width: 1140px;
+      margin: 0 auto;
+    }
+
+    .intel-brief-cell {
+      background: var(--w-void);
+      padding: 40px 48px;
+      position: relative;
+    }
+
+    .intel-brief-tri {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--signal-40);
+      margin-bottom: 16px;
+      opacity: 0;
+    }
+
+    .intel-brief-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: clamp(48px, 6vw, 80px);
+      font-weight: 500;
+      color: var(--w-text);
       line-height: 1;
-      color: var(--t1);
-      margin-bottom: 8px;
+      margin-bottom: 14px;
     }
 
-    .l-strip-n em {
-      font-style: normal;
-      color: var(--ac);
-    }
-
-    .l-strip-l {
+    .intel-brief-label {
       font-size: 13px;
-      color: var(--t3);
+      color: var(--w-text-dim);
       line-height: 1.55;
+      font-weight: 300;
+      opacity: 0;
     }
 
-    /* ── PROBLEM ── */
-    .l-problem {
-      padding: 120px 0;
+    .intel-brief-sep {
+      color: var(--signal);
+      opacity: 0;
+      font-size: 18px;
+      margin: 0 8px;
+      display: inline-block;
     }
 
+    /* Triangulation SVG */
+    .tri-svg {
+      position: absolute;
+      top: 16px; right: 16px;
+      opacity: 0.6;
+      pointer-events: none;
+    }
+
+    .tri-line {
+      stroke: rgba(196,255,71,0.25);
+      stroke-width: 0.5;
+      fill: none;
+    }
+
+    /* Legacy strip hidden */
+    .l-strip { display: none; }
+
+    /* ── PRESSURE TEST ── */
+    .pressure-test {
+      padding: 48px 0;
+      background: transparent;
+    }
+
+    .pressure-panel {
+      max-width: 1140px;
+      margin: 0 auto;
+      padding: 0 48px;
+      display: grid;
+      grid-template-columns: 1fr 280px;
+      gap: 48px;
+      align-items: center;
+      padding-bottom: 36px;
+      border-bottom: 1px solid var(--w-border);
+    }
+
+    .pressure-panel:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .pressure-question {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(44px, 7vw, 96px);
+      font-weight: 800;
+      letter-spacing: -3px;
+      line-height: 0.95;
+      color: var(--w-text);
+    }
+
+    .pressure-question .word { display: inline-block; opacity: 0; clip-path: inset(0 100% 0 0); }
+
+    .pressure-answer {
+      font-size: 14px;
+      color: var(--w-text-dim);
+      line-height: 1.72;
+      font-weight: 300;
+      margin-top: 24px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .pressure-answer-chevron {
+      color: var(--signal);
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .pressure-illustration svg {
+      width: 100%;
+      height: auto;
+      opacity: 0;
+    }
+
+    /* Legacy sections hidden */
+    .l-problem { display: none; }
+    .l-how { display: none; }
+    .l-pipeline { display: none; }
+
+    /* Legacy shared */
     .l-section-tag {
       font-size: 11px;
       font-weight: 700;
       letter-spacing: .14em;
       text-transform: uppercase;
-      color: var(--ac);
+      color: var(--signal);
       margin-bottom: 18px;
     }
 
@@ -552,7 +765,741 @@
       letter-spacing: -2px;
       line-height: 1.05;
       margin-bottom: 0;
+      color: var(--w-text);
     }
+
+    /* ── ENGINE SECTION ── */
+    .engine-section {
+      padding: 72px 48px;
+      background: transparent;
+    }
+
+    .engine-header {
+      text-align: center;
+      max-width: 1140px;
+      margin: 0 auto 48px;
+    }
+
+    .engine-boot-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--signal-40);
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      justify-content: center;
+    }
+
+    .engine-boot-label::after {
+      content: '';
+      flex: 0 0 120px;
+      height: 1px;
+      background: var(--w-border);
+    }
+    .engine-boot-label::before {
+      content: '';
+      flex: 0 0 120px;
+      height: 1px;
+      background: var(--w-border);
+    }
+
+    .engine-headline {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(40px, 6vw, 84px);
+      font-weight: 800;
+      letter-spacing: -3px;
+      line-height: 1.0;
+      color: var(--w-text);
+      margin-bottom: 16px;
+    }
+
+    .engine-sub {
+      font-size: 17px;
+      color: var(--w-text-dim);
+      font-weight: 300;
+    }
+
+    /* SVG topology wrapper */
+    .engine-topology {
+      max-width: 760px;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    .engine-topology svg {
+      width: 100%;
+      height: auto;
+      overflow: visible;
+    }
+
+    /* Agent nodes */
+    .agent-node {
+      cursor: pointer;
+      transition: all .3s ease;
+    }
+
+    .agent-node circle {
+      fill: rgba(8,7,6,0.9);
+      stroke: rgba(255,255,255,0.12);
+      stroke-width: 1;
+      transition: stroke .3s, fill .3s, filter .3s;
+    }
+
+    .agent-node .node-glyph {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      fill: rgba(255,255,255,0.5);
+      text-anchor: middle;
+      dominant-baseline: central;
+      transition: fill .3s;
+    }
+
+    .agent-node .node-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      fill: rgba(255,255,255,0.3);
+      letter-spacing: .08em;
+      text-anchor: middle;
+      transition: fill .3s;
+    }
+
+    /* Node states */
+    .agent-node.dormant circle {
+      stroke: rgba(255,255,255,0.06);
+      fill: rgba(8,7,6,0.95);
+    }
+
+    .agent-node.active circle {
+      stroke: rgba(196,255,71,0.4);
+      fill: rgba(196,255,71,0.06);
+      filter: drop-shadow(0 0 8px rgba(196,255,71,0.2));
+    }
+
+    .agent-node.active .node-glyph { fill: rgba(196,255,71,0.8); }
+    .agent-node.active .node-label { fill: rgba(196,255,71,0.5); }
+
+    .agent-node.peak circle {
+      stroke: var(--signal);
+      fill: rgba(196,255,71,0.12);
+      filter: drop-shadow(0 0 16px rgba(196,255,71,0.4));
+    }
+
+    .agent-node.peak .node-glyph { fill: var(--signal); }
+    .agent-node.peak .node-label { fill: rgba(196,255,71,0.7); }
+
+    /* L4 node always larger, always lime glyph */
+    #node-l4 circle { r: 32px; }
+    #node-l4 .node-glyph { fill: var(--signal); font-size: 14px; }
+
+    /* Connection paths */
+    .agent-path {
+      fill: none;
+      stroke: rgba(255,255,255,0.07);
+      stroke-width: 1;
+      stroke-dasharray: 400;
+      stroke-dashoffset: 400;
+      transition: stroke .4s;
+    }
+
+    .agent-path.lit {
+      stroke: rgba(196,255,71,0.2);
+    }
+
+    /* Chevron signal markers on paths */
+    .path-chevron {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      fill: rgba(196,255,71,0.5);
+      opacity: 0;
+    }
+
+    /* Agent tooltip */
+    .agent-tooltip {
+      position: fixed;
+      z-index: 600;
+      background: rgba(8,7,6,0.95);
+      border: 1px solid var(--w-border-a);
+      border-radius: 6px;
+      padding: 12px 16px;
+      pointer-events: none;
+      display: none;
+      max-width: 200px;
+    }
+
+    .agent-tooltip-id {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--signal);
+      letter-spacing: .1em;
+      margin-bottom: 4px;
+    }
+
+    .agent-tooltip-name {
+      font-family: 'Syne', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--w-text);
+      margin-bottom: 6px;
+    }
+
+    .agent-tooltip-desc {
+      font-size: 11px;
+      color: var(--w-text-dim);
+      line-height: 1.5;
+    }
+
+    /* ── ANALYSIS PROTOCOL (5 pinned panels) ── */
+    .analysis-protocol {
+      background: transparent;
+    }
+
+    .protocol-panel {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      background: rgba(8,7,6,0.97);
+      padding: 72px 48px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .protocol-panel:last-child {
+      border-bottom: none;
+    }
+
+    .protocol-panel-inner {
+      max-width: 520px;
+      width: 100%;
+    }
+
+    /* Terminal line */
+    .terminal-line {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: rgba(255,255,255,0.45);
+      margin-bottom: 6px;
+      opacity: 0;
+    }
+
+    .terminal-line.signal {
+      color: rgba(196,255,71,0.7);
+    }
+
+    .terminal-line.input-label {
+      color: rgba(196,255,71,0.5);
+      margin-bottom: 12px;
+    }
+
+    .terminal-input-text {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(22px, 3vw, 32px);
+      font-weight: 800;
+      letter-spacing: -1px;
+      color: var(--w-text);
+      line-height: 1.2;
+      margin-bottom: 24px;
+      opacity: 0;
+    }
+
+    /* Token orbit (panel 2) */
+    .orbit-container {
+      position: relative;
+      width: 360px;
+      height: 360px;
+      margin: 0 auto;
+    }
+
+    .orbit-token {
+      position: absolute;
+      border: 1px solid rgba(196,255,71,0.2);
+      background: rgba(8,7,6,0.9);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: rgba(196,255,71,0.7);
+      padding: 5px 10px;
+      border-radius: 4px;
+      white-space: nowrap;
+      opacity: 0;
+      transform: translate(-50%, -50%);
+    }
+
+    /* Risk bars (panel 4) */
+    .risk-bar-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+      opacity: 0;
+    }
+
+    .risk-bar-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--w-text-dim);
+      letter-spacing: .06em;
+      width: 100px;
+      flex-shrink: 0;
+    }
+
+    .risk-bar-track {
+      flex: 1;
+      height: 4px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .risk-bar-fill {
+      height: 100%;
+      width: 0;
+      background: linear-gradient(90deg, rgba(196,255,71,0.7), rgba(196,255,71,0.4));
+      border-radius: 2px;
+      transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    .risk-bar-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: rgba(196,255,71,0.5);
+      width: 36px;
+      text-align: right;
+    }
+
+    /* Verdict card (panel 5) */
+    .verdict-card {
+      border: 1px solid rgba(196,255,71,0.2);
+      border-radius: 8px;
+      padding: 32px;
+      background: rgba(8,7,6,0.95);
+      clip-path: inset(50%);
+      position: relative;
+    }
+
+    .verdict-card-field {
+      margin-bottom: 16px;
+      opacity: 0;
+    }
+
+    .verdict-field-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      color: var(--w-text-sub);
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .verdict-field-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      color: var(--signal);
+    }
+
+    .verdict-ready {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--signal);
+      letter-spacing: .1em;
+      margin-top: 20px;
+      opacity: 0;
+    }
+
+    /* ── CONVERGENCE PULSE RINGS ── */
+    .convergence-ring {
+      position: fixed;
+      pointer-events: none;
+      z-index: 200;
+      border-radius: 6px;
+      border: 1px solid rgba(196,255,71,0.5);
+      width: 44px;
+      height: 44px;
+    }
+
+    /* Permanent rings (CTA) */
+    .permanent-ring {
+      position: absolute;
+      left: 50%;
+      top: 42%;
+      width: 60px;
+      height: 60px;
+      border: 1px solid rgba(196,255,71,0.25);
+      border-radius: 7px;
+      transform: translate(-50%, -50%);
+      animation: permanentPulse 3s ease-out infinite;
+      pointer-events: none;
+    }
+
+    .permanent-ring:nth-child(2) { animation-delay: 1s; }
+    .permanent-ring:nth-child(3) { animation-delay: 2s; }
+
+    @keyframes permanentPulse {
+      0%   { transform: translate(-50%,-50%) scale(0.8); opacity: 0.4; }
+      100% { transform: translate(-50%,-50%) scale(4.0); opacity: 0; }
+    }
+
+    /* ── OUTPUTS (dark context) ── */
+    .l-outputs {
+      padding: 72px 0 96px;
+      background: transparent;
+    }
+
+    .l-out-card {
+      background: var(--w-surface);
+      border: 1px solid var(--w-border);
+      border-radius: 12px;
+      padding: 40px;
+      clip-path: circle(0% at 50% 50%);
+      transition: border-color .25s, transform .25s;
+    }
+
+    .l-out-card.revealed {
+      clip-path: circle(120% at 50% 50%);
+      transition: clip-path .6s cubic-bezier(0.16,1,0.3,1), border-color .25s, transform .25s;
+    }
+
+    .l-out-card:hover {
+      border-color: var(--w-border-a);
+      transform: translateY(-2px);
+    }
+
+    .l-out-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--signal);
+      margin-bottom: 20px;
+    }
+
+    .l-out-card h3 {
+      font-family: 'Syne', sans-serif;
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -.5px;
+      margin-bottom: 16px;
+      color: var(--w-text);
+      line-height: 1.1;
+    }
+
+    .l-out-card p {
+      font-size: 15px;
+      color: var(--w-text-dim);
+      line-height: 1.75;
+      font-weight: 300;
+    }
+
+    .l-out-preview {
+      margin-top: 24px;
+      padding: 14px 18px;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid var(--w-border);
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: var(--w-text-dim);
+    }
+
+    .l-out-preview .hi {
+      color: var(--signal);
+    }
+
+    /* Sparkline */
+    .card-sparkline {
+      margin-top: 10px;
+    }
+
+    .card-sparkline polyline {
+      fill: none;
+      stroke: rgba(196,255,71,0.4);
+      stroke-width: 1.5;
+      stroke-dasharray: 200;
+      stroke-dashoffset: 200;
+    }
+
+    .card-sparkline polyline.drawn {
+      transition: stroke-dashoffset .7s cubic-bezier(0.4,0,0.2,1);
+      stroke-dashoffset: 0;
+    }
+
+    /* ── OUTPUT CARD VISUAL BLOCKS ── */
+    .lov {
+      margin-top: 24px;
+      border-top: 1px solid var(--w-border);
+      padding-top: 16px;
+    }
+    .lov-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 9px;
+    }
+    .lov-lbl {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      letter-spacing: .05em;
+      color: var(--w-text-sub);
+      width: 112px;
+      flex-shrink: 0;
+      text-transform: uppercase;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .lov-track {
+      flex: 1;
+      height: 6px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .lov-fill {
+      height: 100%;
+      background: rgba(196,255,71,0.35);
+      border-radius: 3px;
+      width: 0;
+    }
+    .lov-fill.hi { background: var(--signal); }
+    .lov-pct {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--signal-40);
+      width: 34px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+    .lov-formula {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: var(--w-text-sub);
+      line-height: 2.1;
+    }
+    .lov-formula span { color: var(--signal); }
+    .lov-formula .lov-fline { display: flex; align-items: center; gap: 8px; }
+    .lov-formula .lov-divider { border-top: 1px solid var(--w-border); margin: 6px 0; }
+    .lov-formula .lov-note { font-size: 11px; color: var(--w-text-sub); margin-top: 4px; }
+    .lov-parts { display: flex; flex-direction: column; gap: 2px; }
+    .lov-part-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--w-text-sub);
+      padding: 7px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .lov-part-row:last-child { border-bottom: none; }
+    .lov-part-num { color: var(--signal-40); width: 16px; flex-shrink: 0; font-size: 12px; }
+    .lov-part-label { text-transform: uppercase; letter-spacing: .05em; font-size: 12px; }
+
+    /* ── OUTPUTS DEPTH ── */
+    .l-out-depth {
+      max-width: 1140px;
+      margin: 56px auto 0;
+      padding: 0 48px;
+      border-top: 1px solid var(--w-border);
+      padding-top: 56px;
+    }
+    .l-out-depth-statement {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(22px, 3vw, 36px);
+      font-weight: 800;
+      letter-spacing: -1px;
+      line-height: 1.2;
+      color: var(--w-text);
+      max-width: 760px;
+      margin: 0 auto 48px;
+      text-align: center;
+    }
+    .l-out-depth-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 40px;
+      margin-bottom: 48px;
+    }
+    .l-out-depth-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--signal);
+      letter-spacing: .12em;
+      margin-bottom: 16px;
+    }
+    .l-out-depth-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--w-text);
+      letter-spacing: -.2px;
+      line-height: 1.2;
+      margin-bottom: 14px;
+    }
+    .l-out-depth-txt {
+      font-size: 14px;
+      color: var(--w-text-dim);
+      line-height: 1.75;
+      font-weight: 300;
+    }
+    .l-out-depth-band {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      border: 1px solid var(--w-border);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 56px;
+    }
+    .l-out-depth-band-item {
+      flex: 1;
+      padding: 28px 24px;
+      text-align: center;
+    }
+    .l-out-depth-band-sep {
+      width: 1px;
+      height: 60px;
+      background: var(--w-border);
+      flex-shrink: 0;
+    }
+    .l-out-depth-band-val {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(28px, 3vw, 48px);
+      font-weight: 800;
+      letter-spacing: -1px;
+      color: var(--w-text);
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+    .l-out-depth-band-lbl {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--w-text-sub);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      line-height: 1.4;
+    }
+    .l-out-depth-quote {
+      display: flex;
+      align-items: flex-start;
+      gap: 20px;
+      padding: 32px 40px;
+      border: 1px solid var(--w-border-a);
+      border-radius: 10px;
+      background: rgba(196,255,71,0.03);
+    }
+    .l-out-depth-quote-mark {
+      font-size: 20px;
+      color: var(--signal);
+      flex-shrink: 0;
+      margin-top: 4px;
+    }
+    .l-out-depth-quote-text {
+      font-size: 16px;
+      color: var(--w-text);
+      line-height: 1.7;
+      font-weight: 300;
+      font-style: italic;
+      letter-spacing: -.1px;
+    }
+
+    /* ── FINAL CTA (verdict state) ── */
+    .l-cta {
+      padding: 100px 0;
+      background: transparent;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .l-cta-inner {
+      background: transparent;
+      border: none;
+      padding: 0;
+      position: relative;
+      overflow: visible;
+    }
+
+    .cta-stop {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(40px, 6vw, 84px);
+      font-weight: 800;
+      letter-spacing: -3px;
+      line-height: 1;
+      color: rgba(255,255,255,0.30);
+      display: block;
+      margin-bottom: 8px;
+      opacity: 0;
+    }
+
+    .cta-start {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(40px, 6vw, 84px);
+      font-weight: 800;
+      letter-spacing: -3px;
+      line-height: 1;
+      color: rgba(255,255,255,0.93);
+      display: block;
+      margin-bottom: 56px;
+      opacity: 0;
+    }
+
+    .cta-main-btn {
+      background: var(--signal);
+      color: #000;
+      border: none;
+      padding: 20px 80px;
+      border-radius: 5px;
+      font-size: 15px;
+      font-weight: 700;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      letter-spacing: .03em;
+    }
+
+    .cta-disclaimer {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: rgba(255,255,255,0.30);
+      margin-top: 20px;
+      letter-spacing: .04em;
+    }
+
+    /* Legacy CTA inner overrides for dark */
+    .l-cta-inner::before { display: none; }
+    .l-cta-inner h2 { display: none; }
+    .l-cta-inner p { display: none; }
+
+    /* ── FOOTER (dark) ── */
+    .l-footer {
+      border-top: 1px solid var(--w-border);
+      padding: 32px 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: transparent;
+    }
+
+    .l-footer-logo {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 14px;
+      color: var(--w-text);
+      letter-spacing: .06em;
+    }
+
+    .l-footer-copy {
+      font-size: 11px;
+      color: var(--w-text-sub);
+    }
+
+    .l-footer a {
+      color: var(--w-text-sub);
+      text-decoration: none;
+      transition: color .2s;
+    }
+
+    .l-footer a:hover { color: var(--w-text-dim); }
 
     .l-problem-grid {
       display: grid;
@@ -764,21 +1711,21 @@
 
     /* ── OUTPUTS ── */
     .l-outputs {
-      padding: 120px 0;
+      padding: 72px 0 96px;
     }
 
     .l-out-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-      margin-top: 64px;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      margin-top: 48px;
     }
 
     .l-out-card {
       background: var(--s1);
       border: 1px solid var(--br);
       border-radius: var(--r);
-      padding: 32px;
+      padding: 40px;
       transition: all .2s;
     }
 
@@ -788,37 +1735,37 @@
     }
 
     .l-out-tag {
-      font-size: 10px;
+      font-size: 11px;
       font-weight: 700;
-      letter-spacing: .1em;
+      letter-spacing: .12em;
       text-transform: uppercase;
       color: var(--ac);
-      margin-bottom: 14px;
+      margin-bottom: 20px;
     }
 
     .l-out-card h3 {
       font-family: 'Syne', sans-serif;
-      font-size: 18px;
-      font-weight: 700;
-      letter-spacing: -.2px;
-      margin-bottom: 10px;
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -.5px;
+      margin-bottom: 16px;
     }
 
     .l-out-card p {
-      font-size: 13px;
+      font-size: 15px;
       color: var(--t3);
-      line-height: 1.7;
+      line-height: 1.75;
       font-weight: 300;
     }
 
     .l-out-preview {
-      margin-top: 16px;
-      padding: 12px 14px;
+      margin-top: 24px;
+      padding: 14px 18px;
       background: var(--bg);
       border: 1px solid var(--br);
       border-radius: var(--rx);
       font-family: 'JetBrains Mono', monospace;
-      font-size: 11px;
+      font-size: 13px;
       color: var(--t3);
     }
 
@@ -828,7 +1775,7 @@
 
     /* ── CTA FINAL ── */
     .l-cta {
-      padding: 120px 0;
+      padding: 80px 0;
     }
 
     .l-cta-inner {
@@ -931,6 +1878,7 @@
       display: none;
       height: 100vh;
       overflow: hidden;
+      background: var(--bg);
     }
 
     #chat-screen.show {
@@ -1200,7 +2148,74 @@
       gap: 0;
     }
 
-    /* Welcome */
+    /* Welcome card — distinct from chat bubbles */
+    .c-welcome-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 48px 32px 36px;
+      margin: 32px auto 8px;
+      max-width: 520px;
+      width: 100%;
+      background: rgba(255,255,255,0.72);
+      border: 1px solid rgba(28,24,12,0.1);
+      border-radius: 20px;
+      box-shadow: 0 2px 24px -6px rgba(28,24,12,0.08), 0 1px 0 rgba(255,255,255,0.9) inset;
+    }
+
+    .cwc-mark {
+      width: 44px;
+      height: 44px;
+      background: var(--ac);
+      border-radius: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+      box-shadow: 0 0 32px rgba(196,255,71,0.18);
+    }
+
+    .cwc-mark svg {
+      width: 22px;
+      height: 22px;
+    }
+
+    .cwc-name {
+      font-family: 'Syne', sans-serif;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: var(--t3);
+      margin-bottom: 18px;
+    }
+
+    .cwc-body {
+      font-size: 15px;
+      color: var(--t2);
+      line-height: 1.72;
+      max-width: 400px;
+      margin-bottom: 10px;
+      letter-spacing: -.01em;
+    }
+
+    .cwc-invite {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--t1);
+      margin-bottom: 24px;
+      letter-spacing: -.01em;
+    }
+
+    .cwc-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      justify-content: center;
+    }
+
+    /* Welcome — legacy (unused, kept for safety) */
     .c-welcome {
       display: flex;
       flex-direction: column;
@@ -1514,7 +2529,7 @@
     }
 
     .ac-sc {
-      padding: 14px 16px;
+      padding: 20px 18px;
       border-right: 1px solid var(--br);
     }
 
@@ -1527,15 +2542,16 @@
       color: var(--t4);
       text-transform: uppercase;
       letter-spacing: .08em;
-      margin-bottom: 5px;
+      margin-bottom: 6px;
       font-weight: 600;
     }
 
     .ac-sc-val {
       font-family: 'Syne', sans-serif;
-      font-size: 18px;
+      font-size: 26px;
       font-weight: 800;
-      letter-spacing: -.4px;
+      letter-spacing: -.5px;
+      line-height: 1.1;
     }
 
     .cg {
@@ -1558,7 +2574,7 @@
     }
 
     .ac-signals {
-      padding: 14px 18px;
+      padding: 10px 18px 12px;
       border-bottom: 1px solid var(--br);
     }
 
@@ -1568,19 +2584,19 @@
       color: var(--t4);
       text-transform: uppercase;
       letter-spacing: .08em;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
     }
 
     .sig-row {
       display: flex;
       align-items: center;
       gap: 8px;
-      margin-bottom: 5px;
-      font-size: 11px;
+      margin-bottom: 4px;
+      font-size: 12px;
     }
 
     .sig-l {
-      width: 120px;
+      width: 130px;
       color: var(--t3);
       flex-shrink: 0;
       font-weight: 500;
@@ -1616,7 +2632,7 @@
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 10px;
-      padding: 14px 18px;
+      padding: 10px 18px 14px;
     }
 
     .idf-item {
@@ -1631,10 +2647,11 @@
       color: var(--t4);
       text-transform: uppercase;
       letter-spacing: .08em;
+      margin-bottom: 2px;
     }
 
     .idf-val {
-      font-size: 12px;
+      font-size: 14px;
       font-weight: 600;
       color: var(--t2);
     }
@@ -1652,7 +2669,7 @@
     }
 
     .ac-idea {
-      padding: 14px 18px;
+      padding: 10px 18px 14px;
       border-bottom: 1px solid var(--br);
     }
 
@@ -1799,14 +2816,14 @@
 
     /* L4 Strategic Reasoning — 7-part card */
     .ac-l4 {
-      padding: 14px 18px;
+      padding: 10px 18px 12px;
     }
 
     .l4-row {
       display: flex;
-      gap: 10px;
+      gap: 12px;
       align-items: flex-start;
-      padding: 10px 0;
+      padding: 13px 0;
     }
 
     .l4-row+.l4-row {
@@ -1866,18 +2883,18 @@
     }
 
     .l4-txt {
-      font-size: 12px;
+      font-size: 13.5px;
       color: var(--t2);
-      line-height: 1.6;
+      line-height: 1.62;
     }
 
     /* Action plan card — with decision badge */
     .ac-action {
-      margin: 10px 18px 14px;
+      margin: 6px 14px 12px;
       background: rgba(200, 255, 87, .05);
       border: 1px solid rgba(200, 255, 87, .15);
       border-radius: 8px;
-      padding: 12px 14px;
+      padding: 14px 16px;
     }
 
     .ac-action-head {
@@ -1931,9 +2948,78 @@
     }
 
     .ac-action-txt {
-      font-size: 12px;
+      font-size: 13px;
       color: var(--t2);
-      line-height: 1.6;
+      line-height: 1.65;
+    }
+
+    /* Analysis card footer — score summary + action steps */
+    .ac-footer {
+      padding: 16px 18px 20px;
+      border-top: 2px solid rgba(200,255,87,0.14);
+      background: rgba(200,255,87,0.025);
+    }
+    .ac-footer-scores {
+      display: flex;
+      align-items: stretch;
+      border: 1px solid var(--br);
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+    .ac-footer-sc {
+      flex: 1;
+      padding: 14px 12px 12px;
+      border-right: 1px solid var(--br);
+      text-align: center;
+    }
+    .ac-footer-sc:last-child { border-right: none; }
+    .ac-footer-sc-val {
+      font-family: 'Syne', sans-serif;
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      line-height: 1;
+    }
+    .ac-footer-sc-lbl {
+      font-size: 8px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--t4);
+      margin-top: 5px;
+    }
+    .ac-footer-actions-lbl {
+      font-size: 8px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--ac-on);
+      margin-bottom: 9px;
+    }
+    .ac-footer-step {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      margin-bottom: 7px;
+      font-size: 12.5px;
+      color: var(--t2);
+      line-height: 1.5;
+    }
+    .ac-footer-step:last-child { margin-bottom: 0; }
+    .ac-footer-step-num {
+      min-width: 20px;
+      height: 20px;
+      border-radius: 5px;
+      background: rgba(200,255,87,0.10);
+      color: var(--ac);
+      font-size: 9px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 2px;
     }
 
     /* Explanation layer — per dimension ── */
@@ -2046,6 +3132,11 @@
       right: 0;
       padding: 0 24px 20px;
       background: linear-gradient(transparent, var(--bg) 30%);
+      pointer-events: none;
+    }
+
+    .c-input-box {
+      pointer-events: auto;
     }
 
     .c-input-box {
@@ -2771,7 +3862,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 10px 18px;
+      padding: 7px 18px;
       cursor: pointer;
       user-select: none;
       transition: background .15s;
@@ -2813,26 +3904,17 @@
     }
 
     /* ═══════════════════════════════════════════════
-   COGNITIVE INTERFACE — LIGHT MODE OVERRIDES
-   Hard-coded dark values that don't use CSS vars
+   COGNITIVE INTERFACE — CHAT LIGHT MODE OVERRIDES
+   These only apply to chat (.c-*) classes — landing is dark
 ═══════════════════════════════════════════════ */
+    /* Nav dark world override (landing is dark, chat has no nav) */
     .l-nav.scrolled {
-      background: rgba(247, 245, 240, .92) !important;
-      backdrop-filter: blur(24px);
+      background: rgba(8,7,6,0.88) !important;
+      backdrop-filter: blur(20px);
+      border-bottom-color: var(--w-border);
     }
 
-    .l-hero h1 .out {
-      -webkit-text-stroke: 1.5px rgba(28, 24, 12, .14);
-    }
-
-    /* All var(--ac) text usages → readable dark-lime on light bg */
-    .l-section-tag,
-    .l-eyebrow,
-    .l-agent-tag,
-    .l-out-tag,
-    .l-out-preview .hi,
-    .l-strip-n em,
-    .l-p-a strong,
+    /* Chat-only lime overrides — reading dark lime on parchment */
     .c-topbar-badge,
     .c-sidebar-foot-link,
     .ac-tag,
@@ -2971,11 +4053,12 @@
     }
 
     .c-msg-ai-body {
+      font-family: 'Times New Roman', Times, serif;
       font-size: 15.5px;
       /* Near-black on parchment for instantly-readable primary content. */
       color: #1A1814;
       line-height: 1.72;
-      letter-spacing: -.005em;
+      letter-spacing: 0;
       font-weight: 400;
     }
 
@@ -3125,23 +4208,11 @@
       color: var(--warn);
     }
 
-    /* ═══════════════════════════════════════════════
-   INPUT COMPLETENESS RING
-═══════════════════════════════════════════════ */
-    .c-input-complete-bar {
-      height: 2px;
-      margin: 0 4px 0;
-      border-radius: 2px;
-      overflow: hidden;
-      background: transparent;
-    }
-
-    .c-input-complete-fill {
-      height: 100%;
-      width: 0%;
-      background: var(--ac);
-      border-radius: 2px;
-      transition: width var(--trans) var(--spring);
+    /* Completeness bar and gather bar — permanently hidden */
+    .c-input-complete-bar,
+    #c-gather-bar,
+    #signal-chips {
+      display: none !important;
     }
 
     /* ═══════════════════════════════════════════════
@@ -3286,41 +4357,59 @@
     }
 
     /* ═══════════════════════════════════════════════
-   LANDING — light mode surface adjustments
+   LANDING — DARK WORLD final overrides
+   These win over all previous l-* definitions
 ═══════════════════════════════════════════════ */
-    .l-p-card:hover,
-    .l-step:hover {
-      background: var(--s1);
+    .l-out-card {
+      background: var(--w-surface) !important;
+      border-color: var(--w-border) !important;
+      clip-path: circle(0% at 50% 50%);
     }
 
-    .l-out-card {
-      background: var(--s1);
+    .l-out-card.revealed {
+      clip-path: circle(120% at 50% 50%) !important;
     }
 
     .l-out-card:hover {
-      border-color: var(--ac-border);
+      border-color: var(--w-border-a) !important;
+    }
+
+    .l-out-card h3 {
+      color: var(--w-text) !important;
+    }
+
+    .l-out-card p {
+      color: var(--w-text-dim) !important;
     }
 
     .l-out-preview {
-      background: var(--bg3);
-      border-color: var(--br);
+      background: rgba(0,0,0,0.3) !important;
+      border-color: var(--w-border) !important;
+      color: var(--w-text-dim) !important;
+    }
+
+    .l-out-preview .hi {
+      color: var(--signal) !important;
+    }
+
+    .l-section-tag {
+      color: var(--signal) !important;
+    }
+
+    .l-section-h {
+      color: var(--w-text) !important;
     }
 
     .l-cta-inner {
-      background: var(--s1);
+      background: transparent !important;
+      border: none !important;
     }
 
-    .l-cta-inner::before {
-      background: radial-gradient(ellipse, rgba(196, 255, 71, .08) 0%, transparent 70%);
-    }
+    .l-cta-inner::before { display: none !important; }
 
-    .l-agent {
-      background: var(--s1);
-    }
-
-    .l-agent:hover {
-      background: var(--s2);
-    }
+    .l-agent { display: none; }
+    .l-agents { display: none; }
+    .l-pipeline { display: none; }
 
     /* Responsive */
     @media(max-width:1024px) {
@@ -3861,6 +4950,7 @@
 
   <!-- ═══════════════════ LANDING ═══════════════════ -->
   <div id="landing-screen">
+    <canvas id="world-canvas"></canvas>
     <nav class="l-nav" id="l-nav">
       <a href="#" class="l-nav-logo">
         <div class="l-nav-mark"><svg viewBox="0 0 14 14" fill="none">
@@ -3877,238 +4967,465 @@
     </nav>
 
     <!-- HERO -->
-    <section class="l-hero">
-      <div class="l-hero-grid"></div>
-      <div class="l-hero-glow"></div>
-      <div class="l-eyebrow">
-        <div class="l-eyebrow-dot"></div>AI Decision Engine — MENA & Global
-      </div>
-      <h1>Your idea <span class="out">deserves</span><br>a real <span class="hi">answer.</span></h1>
-      <p class="l-hero-sub">Describe your startup idea. 8 AI agents read the live market, classify the regime, forecast
-        90 days, evaluate your concept — and give you one clear verdict in 30 seconds.</p>
-      <div class="l-hero-btns">
-        <button class="btn-primary" onclick="enterChat()">Analyze My Idea Free →</button>
-        <a href="#how" class="btn-ghost"
-          style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">See How It Works
-          ↓</a>
-      </div>
-      <div class="l-hero-proof">
-        <span><strong>8</strong> AI Agents</span>
-        <div class="l-hero-proof-divider"></div>
-        <span><strong>8</strong> Markets</span>
-        <div class="l-hero-proof-divider"></div>
-        <span><strong>30s</strong> Verdict</span>
-        <div class="l-hero-proof-divider"></div>
-        <span><strong>5</strong> Idea Dimensions</span>
-      </div>
-    </section>
-
-    <!-- STAT STRIP -->
-    <div class="l-strip rev">
-      <div class="l-strip-cell">
-        <div class="l-strip-n">8<em>+</em></div>
-        <div class="l-strip-l">AI models running in parallel on every single analysis</div>
-      </div>
-      <div class="l-strip-cell">
-        <div class="l-strip-n">90</div>
-        <div class="l-strip-l">Days forecasted so you know what's coming, not just what's now</div>
-      </div>
-      <div class="l-strip-cell">
-        <div class="l-strip-n">5</div>
-        <div class="l-strip-l">Idea evaluation dimensions scored by Agent A0</div>
-      </div>
-      <div class="l-strip-cell">
-        <div class="l-strip-n">30<em>s</em></div>
-        <div class="l-strip-l">From description to full market intelligence report</div>
-      </div>
-    </div>
-
-    <!-- PROBLEM -->
-    <section id="questions">
-      <div class="lc">
-        <div class="l-problem">
-          <div class="rev">
-            <div class="l-section-tag">The questions every founder asks at 2am</div>
-            <h2 class="l-section-h">We built MIDAN<br>to answer these.</h2>
-          </div>
-          <div class="l-problem-grid rev rev-d1">
-            <div class="l-p-card">
-              <div class="l-p-num">01</div>
-              <div class="l-p-q">Is the timing right for my idea?</div>
-              <p class="l-p-a">We read <strong>live economic signals</strong> — inflation, GDP, investment velocity —
-                and tell you if the market is heating up or cooling down right now. Not last year. Now.</p>
-            </div>
-            <div class="l-p-card">
-              <div class="l-p-num">02</div>
-              <div class="l-p-q">Is my idea itself strong enough?</div>
-              <p class="l-p-a">Agent A0 scores your concept across <strong>5 dimensions</strong>: problem clarity,
-                solution fit, differentiation, business model, and scalability — then combines it with market data into
-                one viability score.</p>
-            </div>
-            <div class="l-p-card">
-              <div class="l-p-num">03</div>
-              <div class="l-p-q">What should I actually do first?</div>
-              <p class="l-p-a">Not a percentage. A <strong>3-point action plan</strong> — what to prioritize, who to
-                target, and how to move in the next 90 days, specific to your sector, your market, right now.</p>
-            </div>
-          </div>
+    <section class="l-hero" id="hero">
+      <div class="hero-scan-line"></div>
+      <div class="l-hero-content" id="hero-content">
+        <div class="hero-sys-label" id="hero-sys-label">SYSTEM_ONLINE · MIDAN_v2 · STRATEGIC_DECISION_ENGINE</div>
+        <h1 class="hero-headline" id="hero-headline">
+          <span class="word">Your</span> <span class="word">idea</span> <span class="word">meets</span><br>
+          <span class="word">the</span> <span class="word word-real" id="hero-real">real</span><span class="hero-cursor" id="hero-cursor"></span><br>
+          <span class="word">market.</span>
+        </h1>
+        <p class="hero-sub" id="hero-sub">Describe your startup. 8 AI agents read live economic signals, classify the regime, forecast 90 days — and return one clear verdict in 30 seconds.</p>
+        <div class="hero-metrics" id="hero-metrics">
+          <span>08_AGENTS</span>
+          <span class="hero-metrics-sep">·</span>
+          <span>08_MARKETS</span>
+          <span class="hero-metrics-sep">·</span>
+          <span>30s_VERDICT</span>
+          <span class="hero-metrics-sep">·</span>
+          <span>05_DIMENSIONS</span>
+        </div>
+        <div class="hero-cta-row" id="hero-cta-row">
+          <button class="btn-primary" id="hero-cta-primary" onclick="enterChat()">Analyze My Idea ›</button>
+          <a href="#intel-brief" class="btn-ghost" id="hero-cta-secondary">See How It Works ›</a>
         </div>
       </div>
     </section>
 
-    <!-- HOW IT WORKS -->
-    <section id="how" class="l-how" style="border-top:1px solid var(--br);">
-      <div class="lc">
-        <div class="rev">
-          <div class="l-section-tag">How it works</div>
-          <h2 class="l-section-h">Three steps.<br>One clear verdict.</h2>
+    <!-- INTELLIGENCE BRIEF -->
+    <section class="intel-brief" id="intel-brief">
+      <div class="intel-brief-statement" id="intel-brief-statement">
+        MIDAN processes 8 simultaneous dimensions of market reality.
+      </div>
+      <div class="intel-brief-grid">
+        <div class="intel-brief-cell" id="brief-cell-0">
+          <div class="intel-brief-tri">△ ──────────</div>
+          <div class="intel-brief-value" id="brief-val-0">0</div>
+          <div class="intel-brief-label">agents running<br>in parallel</div>
         </div>
-        <div class="l-steps rev rev-d1">
-          <div class="l-step">
-            <div class="l-step-n">01</div>
-            <h3>You describe your idea</h3>
-            <p>Write it in plain language — what you want to build and where. No forms. No dropdowns. MIDAN extracts
-              sector, country, and context automatically from what you type.</p>
-          </div>
-          <div class="l-step">
-            <div class="l-step-n">02</div>
-            <h3>8 agents read the market</h3>
-            <p>MIDAN runs NLP parsing, macro vector construction, SVM regime classification, SARIMA trend forecasting,
-              SHAP explainability, idea evaluation, LLM synthesis — all in parallel.</p>
-          </div>
-          <div class="l-step">
-            <div class="l-step-n">03</div>
-            <h3>You get a verdict + advisor</h3>
-            <p>A market regime, opportunity score, Startup Viability Score, and a quadrant verdict: GO, Wait, Wrong
-              Idea, or STOP. Then keep chatting — MIDAN becomes your on-demand VC advisor.</p>
-          </div>
+        <div class="intel-brief-cell" id="brief-cell-1">
+          <div class="intel-brief-tri">△ ──────────</div>
+          <div class="intel-brief-value" id="brief-val-1">0</div>
+          <div class="intel-brief-label">days of market<br>forecast horizon</div>
+        </div>
+        <div class="intel-brief-cell" id="brief-cell-2">
+          <div class="intel-brief-tri">△ ──────────</div>
+          <div class="intel-brief-value" id="brief-val-2">0</div>
+          <div class="intel-brief-label">idea evaluation<br>dimensions scored</div>
+        </div>
+        <div class="intel-brief-cell" id="brief-cell-3">
+          <div class="intel-brief-tri">△ ──────────</div>
+          <div class="intel-brief-value" id="brief-val-3">0s</div>
+          <div class="intel-brief-label">from description<br>to verdict</div>
         </div>
       </div>
     </section>
 
-    <!-- AGENT PIPELINE -->
-    <section id="engine" class="l-pipeline">
-      <div class="lc">
-        <div class="rev">
-          <div class="l-section-tag">The engine</div>
-          <h2 class="l-section-h">8 agents. Running<br>in parallel.</h2>
+    <!-- PRESSURE TEST -->
+    <section class="pressure-test" id="questions">
+      <div class="pressure-panel">
+        <div>
+          <div class="pressure-question" id="pq-0">
+            <span class="word">Is</span> <span class="word">the</span> <span class="word">timing</span> <span class="word">right?</span>
+          </div>
+          <div class="pressure-answer">
+            <span class="pressure-answer-chevron">›</span>
+            MIDAN maps live macroeconomic regime states and sector cycle positioning — giving you a 90-day forward signal, not a guess.
+          </div>
         </div>
-        <div class="l-agents rev rev-d1">
-          <div class="l-agent">
-            <div class="l-agent-tag">Agent A0</div>
-            <div class="l-agent-name">Idea Evaluator</div>
-            <div class="l-agent-desc">Scores 5 dimensions using LLM + keyword heuristics</div>
-            <div class="l-agent-arrow">›</div>
+        <div class="pressure-illustration" id="pi-0">
+          <svg viewBox="0 0 240 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <polyline id="wave-0" points="0,80 30,60 60,90 90,40 120,70 150,30 180,55 210,45 240,65"
+              stroke="rgba(196,255,71,0.15)" stroke-width="1.5" fill="none"
+              stroke-dasharray="400" stroke-dashoffset="400"/>
+            <text x="0" y="155" font-family="JetBrains Mono,monospace" font-size="9" fill="rgba(255,255,255,0.2)" letter-spacing="2">ECONOMIC_CYCLE</text>
+          </svg>
+        </div>
+      </div>
+      <div class="pressure-panel">
+        <div>
+          <div class="pressure-question" id="pq-1">
+            <span class="word">Is</span> <span class="word">my</span> <span class="word">idea</span> <span class="word">strong</span> <span class="word">enough?</span>
           </div>
-          <div class="l-agent">
-            <div class="l-agent-tag">Agent A1</div>
-            <div class="l-agent-name">NLP Parser</div>
-            <div class="l-agent-desc">Extracts sector, country, and context from free text</div>
-            <div class="l-agent-arrow">›</div>
+          <div class="pressure-answer">
+            <span class="pressure-answer-chevron">›</span>
+            Agent A0 scores 5 dimensions: problem clarity, solution fit, differentiation, business model, scalability — combined into one viability signal.
           </div>
-          <div class="l-agent">
-            <div class="l-agent-tag">Macro</div>
-            <div class="l-agent-name">Vector Builder</div>
-            <div class="l-agent-desc">Constructs 5-feature economic vector per market</div>
-            <div class="l-agent-arrow">›</div>
+        </div>
+        <div class="pressure-illustration" id="pi-1">
+          <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <polygon id="pent-0" points="100,20 180,75 150,165 50,165 20,75"
+              stroke="rgba(196,255,71,0.15)" stroke-width="1" fill="none"
+              stroke-dasharray="380" stroke-dashoffset="380"/>
+            <polygon id="pent-1" points="100,45 155,88 133,150 67,150 45,88"
+              stroke="rgba(196,255,71,0.08)" stroke-width="0.5" fill="none"
+              stroke-dasharray="300" stroke-dashoffset="300"/>
+          </svg>
+        </div>
+      </div>
+      <div class="pressure-panel">
+        <div>
+          <div class="pressure-question" id="pq-2">
+            <span class="word">What</span> <span class="word">do</span> <span class="word">I</span> <span class="word">do</span> <span class="word">first?</span>
           </div>
-          <div class="l-agent">
-            <div class="l-agent-tag">SVM RBF</div>
-            <div class="l-agent-name">Classifier</div>
-            <div class="l-agent-desc">Classifies market regime with confidence score</div>
-            <div class="l-agent-arrow">›</div>
+          <div class="pressure-answer">
+            <span class="pressure-answer-chevron">›</span>
+            Not a dashboard metric. A 3-point action plan specific to your sector, market, and 90-day window — with reasoning you can act on.
           </div>
-          <div class="l-agent">
-            <div class="l-agent-tag">SARIMA</div>
-            <div class="l-agent-name">Forecaster</div>
-            <div class="l-agent-desc">90-day sector deal-volume trend prediction</div>
-            <div class="l-agent-arrow">›</div>
+        </div>
+        <div class="pressure-illustration" id="pi-2">
+          <svg viewBox="0 0 200 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <line id="tree-0" x1="100" y1="20" x2="100" y2="60" stroke="rgba(196,255,71,0.15)" stroke-width="1" stroke-dasharray="60" stroke-dashoffset="60"/>
+            <line id="tree-1" x1="100" y1="60" x2="50"  y2="110" stroke="rgba(196,255,71,0.12)" stroke-width="1" stroke-dasharray="80" stroke-dashoffset="80"/>
+            <line id="tree-2" x1="100" y1="60" x2="150" y2="110" stroke="rgba(196,255,71,0.12)" stroke-width="1" stroke-dasharray="80" stroke-dashoffset="80"/>
+            <line id="tree-3" x1="50"  y1="110" x2="20"  y2="155" stroke="rgba(196,255,71,0.08)" stroke-width="0.5" stroke-dasharray="60" stroke-dashoffset="60"/>
+            <line id="tree-4" x1="50"  y1="110" x2="75"  y2="155" stroke="rgba(196,255,71,0.08)" stroke-width="0.5" stroke-dasharray="60" stroke-dashoffset="60"/>
+            <line id="tree-5" x1="150" y1="110" x2="125" y2="155" stroke="rgba(196,255,71,0.08)" stroke-width="0.5" stroke-dasharray="60" stroke-dashoffset="60"/>
+            <line id="tree-6" x1="150" y1="110" x2="180" y2="155" stroke="rgba(196,255,71,0.08)" stroke-width="0.5" stroke-dasharray="60" stroke-dashoffset="60"/>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- ENGINE SECTION -->
+    <section id="engine" class="engine-section">
+      <div class="engine-header">
+        <div class="engine-boot-label" id="engine-boot-label">SYSTEM_BOOT</div>
+        <h2 class="engine-headline" id="engine-headline">Intelligence<br>Engine</h2>
+        <p class="engine-sub" id="engine-sub">8 agents · L0→L4 analysis pipeline · One synthesized verdict.</p>
+      </div>
+
+      <div class="engine-topology">
+        <svg id="engine-svg" viewBox="0 0 760 760" xmlns="http://www.w3.org/2000/svg" style="overflow:visible;">
+          <!-- Connection paths -->
+          <path id="path-a0-a1" class="agent-path" d="M380,80 L380,140"/>
+          <path id="path-a1-mc" class="agent-path" d="M380,172 Q280,220 185,252"/>
+          <path id="path-a1-sv" class="agent-path" d="M380,172 Q360,220 340,252"/>
+          <path id="path-a1-sa" class="agent-path" d="M380,172 Q400,220 510,252"/>
+          <path id="path-mc-sh" class="agent-path" d="M185,284 Q280,330 380,352"/>
+          <path id="path-sv-sh" class="agent-path" d="M340,284 L380,352"/>
+          <path id="path-sa-sh" class="agent-path" d="M510,284 Q440,330 380,352"/>
+          <path id="path-sh-l2" class="agent-path" d="M380,392 L380,420"/>
+          <path id="path-l2-l3" class="agent-path" d="M380,468 L380,500"/>
+          <path id="path-l3-l4" class="agent-path" d="M380,548 L380,582"/>
+          <path id="path-l4-a7" class="agent-path" d="M380,646 L380,678"/>
+
+          <!-- Agent A0 — Idea Evaluator -->
+          <g class="agent-node dormant" id="node-a0" data-id="A0" data-name="Idea Evaluator" data-desc="Scores 5 dimensions using LLM + keyword heuristics">
+            <circle cx="380" cy="48" r="24"/>
+            <text class="node-glyph" x="380" y="48">⊕</text>
+            <text class="node-label" x="380" y="82">A0</text>
+          </g>
+
+          <!-- Agent A1 — NLP Parser -->
+          <g class="agent-node dormant" id="node-a1" data-id="A1" data-name="NLP Parser" data-desc="Extracts sector, country, and context from free text">
+            <circle cx="380" cy="156" r="24"/>
+            <text class="node-glyph" x="380" y="156">≡</text>
+            <text class="node-label" x="380" y="190">A1</text>
+          </g>
+
+          <!-- Macro Vector Builder -->
+          <g class="agent-node dormant" id="node-mc" data-id="MACRO" data-name="Macro Vector" data-desc="Constructs 5-feature economic vector per market">
+            <circle cx="185" cy="268" r="24"/>
+            <text class="node-glyph" x="185" y="268">∿</text>
+            <text class="node-label" x="185" y="302">MACRO</text>
+          </g>
+
+          <!-- SVM RBF Classifier -->
+          <g class="agent-node dormant" id="node-sv" data-id="SVM" data-name="SVM Classifier" data-desc="Classifies market regime with confidence score">
+            <circle cx="340" cy="268" r="24"/>
+            <text class="node-glyph" x="340" y="268">∑</text>
+            <text class="node-label" x="340" y="302">SVM</text>
+          </g>
+
+          <!-- SARIMA Forecaster -->
+          <g class="agent-node dormant" id="node-sa" data-id="SARIMA" data-name="SARIMA Forecaster" data-desc="90-day sector deal-volume trend prediction">
+            <circle cx="510" cy="268" r="24"/>
+            <text class="node-glyph" x="510" y="268">⌇</text>
+            <text class="node-label" x="510" y="302">SARIMA</text>
+          </g>
+
+          <!-- SHAP XAI -->
+          <g class="agent-node dormant" id="node-sh" data-id="SHAP" data-name="SHAP XAI" data-desc="Explains which signals drove the regime verdict">
+            <circle cx="380" cy="368" r="24"/>
+            <text class="node-glyph" x="380" y="368">△</text>
+            <text class="node-label" x="380" y="402">SHAP</text>
+          </g>
+
+          <!-- L2 Transparency Layer -->
+          <g class="agent-node dormant" id="node-l2" data-id="L2" data-name="L2 Transparency" data-desc="Exposes macro_base vs adjusted signals, decision path, FCM membership, and data freshness envelope">
+            <circle cx="380" cy="444" r="24"/>
+            <text class="node-glyph" x="380" y="444">◎</text>
+            <text class="node-label" x="380" y="478">L2</text>
+          </g>
+
+          <!-- L3 Structured Reasoning -->
+          <g class="agent-node dormant" id="node-l3" data-id="L3" data-name="L3 Reasoning" data-desc="Structured analysis across differentiation, competition, business model, unit economics, and strategic interactions">
+            <circle cx="380" cy="524" r="24"/>
+            <text class="node-glyph" x="380" y="524">≋</text>
+            <text class="node-label" x="380" y="558">L3</text>
+          </g>
+
+          <!-- L4 Strategic Core — LARGEST NODE -->
+          <g class="agent-node dormant" id="node-l4" data-id="L4" data-name="L4 Strategic Core" data-desc="Decision state machine: risk decomposition, conflict severity, offsetting analysis — produces the final GO/NO-GO verdict">
+            <circle cx="380" cy="614" r="32"/>
+            <text class="node-glyph" x="380" y="614">◈</text>
+            <text class="node-label" x="380" y="658">L4_CORE</text>
+          </g>
+
+          <!-- Agent A7 — LLM Synthesis -->
+          <g class="agent-node dormant" id="node-a7" data-id="A7" data-name="LLM Synthesis" data-desc="Groq/Llama3 final synthesis and follow-up advisor">
+            <circle cx="380" cy="702" r="24"/>
+            <text class="node-glyph" x="380" y="702">›</text>
+            <text class="node-label" x="380" y="736">A7</text>
+          </g>
+        </svg>
+      </div>
+
+      <!-- Agent tooltip -->
+      <div class="agent-tooltip" id="agent-tooltip">
+        <div class="agent-tooltip-id" id="tt-id"></div>
+        <div class="agent-tooltip-name" id="tt-name"></div>
+        <div class="agent-tooltip-desc" id="tt-desc"></div>
+      </div>
+    </section>
+
+    <!-- ANALYSIS PROTOCOL (5 pinned panels) -->
+    <section class="analysis-protocol" id="how">
+      <!-- Panel 1: Entry -->
+      <div class="protocol-panel" id="panel-entry">
+        <div class="protocol-panel-inner">
+          <div class="terminal-line signal" id="p1-l1">MIDAN ANALYSIS REQUEST</div>
+          <div class="terminal-line" id="p1-l2">──────────────────────────────</div>
+          <div class="terminal-line input-label" id="p1-l3">INPUT ›</div>
+          <div class="terminal-input-text" id="p1-input">"B2B logistics SaaS targeting<br>MENA freight SMEs"</div>
+          <div class="terminal-line" id="p1-l4">L0_GATE: COHERENCE_CHECK...</div>
+          <div class="terminal-line signal" id="p1-l5">L0_GATE: VALID › PROCEEDING</div>
+        </div>
+      </div>
+
+      <!-- Panel 2: Signal Extraction -->
+      <div class="protocol-panel" id="panel-signals">
+        <div class="orbit-container" id="orbit-container">
+          <!-- Tokens injected by JS -->
+        </div>
+      </div>
+
+      <!-- Panel 3: Intelligence Engagement -->
+      <div class="protocol-panel" id="panel-engage">
+        <div class="protocol-panel-inner" style="text-align:center;">
+          <div class="terminal-line signal" id="p3-label" style="justify-content:center;">INTELLIGENCE_ENGAGEMENT</div>
+          <div id="mini-network" style="margin:32px auto;width:200px;height:200px;position:relative;">
+            <!-- Mini topology injected by JS -->
           </div>
-          <div class="l-agent">
-            <div class="l-agent-tag">LightGBM</div>
-            <div class="l-agent-name">SHAP XAI</div>
-            <div class="l-agent-desc">Explains which signals drove the regime verdict</div>
-            <div class="l-agent-arrow">›</div>
+        </div>
+      </div>
+
+      <!-- Panel 4: Reasoning -->
+      <div class="protocol-panel" id="panel-reasoning">
+        <div class="protocol-panel-inner" style="max-width:640px;">
+          <div class="terminal-line signal" id="p4-classified" style="font-size:13px;margin-bottom:24px;">L4_STRATEGIC_CORE: ACTIVE ──</div>
+          <div class="terminal-line" id="p4-r1">[01] Regime: EXPANSION</div>
+          <div class="terminal-line" id="p4-r2">[02] Sector: +22% › forecast</div>
+          <div class="terminal-line" id="p4-r3">[03] Competition: MODERATE</div>
+          <div class="terminal-line" id="p4-r4">[04] Unit econ: VIABLE</div>
+          <div class="terminal-line" id="p4-r5" style="margin-top:16px;margin-bottom:8px;">[05] Risk decomposition:</div>
+          <div class="risk-bar-row" id="rb-timing">
+            <div class="risk-bar-label">TIMING</div>
+            <div class="risk-bar-track"><div class="risk-bar-fill" data-width="82"></div></div>
+            <div class="risk-bar-val">0.82</div>
           </div>
-          <div class="l-agent">
-            <div class="l-agent-tag">L4 Reasoning</div>
-            <div class="l-agent-name">Strategic Engine</div>
-            <div class="l-agent-desc">Strategic read → Key driver → Risk → Counterpoint → Differentiation</div>
-            <div class="l-agent-arrow">›</div>
+          <div class="risk-bar-row" id="rb-comp">
+            <div class="risk-bar-label">COMPETITION</div>
+            <div class="risk-bar-track"><div class="risk-bar-fill" data-width="61"></div></div>
+            <div class="risk-bar-val">0.61</div>
           </div>
-          <div class="l-agent">
-            <div class="l-agent-tag">Agent A7</div>
-            <div class="l-agent-name">LLM Synthesis</div>
-            <div class="l-agent-desc">Groq/Llama3 final synthesis + follow-up advisor</div>
+          <div class="risk-bar-row" id="rb-unit">
+            <div class="risk-bar-label">UNIT_ECON</div>
+            <div class="risk-bar-track"><div class="risk-bar-fill" data-width="74"></div></div>
+            <div class="risk-bar-val">0.74</div>
           </div>
+          <div class="terminal-line signal" id="p4-synth" style="margin-top:20px;">[06] Synthesizing verdict...</div>
+        </div>
+      </div>
+
+      <!-- Panel 5: Verdict -->
+      <div class="protocol-panel" id="panel-verdict">
+        <div class="protocol-panel-inner">
+          <div class="verdict-card" id="verdict-card">
+            <div class="verdict-card-field" id="vf-regime">
+              <div class="verdict-field-label">REGIME</div>
+              <div class="verdict-field-val">EXPANSION · 81% confidence</div>
+            </div>
+            <div class="verdict-card-field" id="vf-scores">
+              <div class="verdict-field-label">SCORES</div>
+              <div class="verdict-field-val">TAS: 74 · SVS: 68 · IDEA: 64</div>
+            </div>
+            <div class="verdict-card-field" id="vf-verdict">
+              <div class="verdict-field-label">STRATEGIC ASSESSMENT</div>
+              <div class="verdict-field-val" style="color:var(--w-text);font-size:12px;line-height:1.6;">GO — CONDITIONAL. Sign 3 paying pilots within 30 days.</div>
+            </div>
+          </div>
+          <div class="verdict-ready" id="verdict-ready">VERDICT READY ›</div>
         </div>
       </div>
     </section>
 
     <!-- OUTPUTS -->
-    <section id="outputs" class="l-outputs" style="border-top:1px solid var(--br);">
+    <section id="outputs" class="l-outputs">
       <div class="lc">
         <div class="rev">
-          <div class="l-section-tag">What you get</div>
+          <div class="l-section-tag">[INTELLIGENCE REPORT] ——————————————————</div>
           <h2 class="l-section-h">Six outputs.<br>One decision.</h2>
         </div>
         <div class="l-out-grid rev rev-d1">
           <div class="l-out-card">
             <div class="l-out-tag">Market Regime</div>
             <h3>Where your market sits right now</h3>
-            <p>GROWTH, EMERGING, HIGH_FRICTION, or CONTRACTING — computed from live macro data, not historical averages.
-            </p>
+            <p>GROWTH, EMERGING, HIGH_FRICTION, or CONTRACTING — computed from live macro data, not historical averages.</p>
             <div class="l-out-preview"><span class="hi">GROWTH_MARKET</span> · 81% confidence</div>
+            <div class="lov">
+              <div class="lov-row"><span class="lov-lbl">GROWTH</span><div class="lov-track"><div class="lov-fill hi" style="width:81%"></div></div><span class="lov-pct">81%</span></div>
+              <div class="lov-row"><span class="lov-lbl">EMERGING</span><div class="lov-track"><div class="lov-fill" style="width:12%"></div></div><span class="lov-pct">12%</span></div>
+              <div class="lov-row"><span class="lov-lbl">HIGH_FRICTION</span><div class="lov-track"><div class="lov-fill" style="width:5%"></div></div><span class="lov-pct">5%</span></div>
+              <div class="lov-row"><span class="lov-lbl">CONTRACTING</span><div class="lov-track"><div class="lov-fill" style="width:2%"></div></div><span class="lov-pct">2%</span></div>
+            </div>
           </div>
           <div class="l-out-card">
             <div class="l-out-tag">Opportunity Score (TAS)</div>
             <h3>One number for the market</h3>
-            <p>Total Addressable Signal — combines market temperature, 90-day forecast, and SHAP signal weight into a
-              0–100 score.</p>
+            <p>Total Addressable Signal — combines market temperature, 90-day forecast, and SHAP signal weight into a 0–100 score.</p>
             <div class="l-out-preview">TAS: <span class="hi">74</span>/100 · Threshold: 68</div>
+            <div class="lov">
+              <div class="lov-row"><span class="lov-lbl">TAS SCORE</span><div class="lov-track"><div class="lov-fill hi" style="width:74%"></div></div><span class="lov-pct">74</span></div>
+              <div class="lov-row"><span class="lov-lbl">THRESHOLD</span><div class="lov-track"><div class="lov-fill" style="width:68%"></div></div><span class="lov-pct">68</span></div>
+              <div class="lov-formula" style="margin-top:6px;"><span>+6 pts</span> above threshold · window OPEN</div>
+            </div>
           </div>
           <div class="l-out-card">
             <div class="l-out-tag">Startup Viability Score</div>
             <h3>Market + idea, combined</h3>
-            <p>SVS = TAS × 50% + Idea Score × 50%. The only score that tells you whether <em>you specifically</em>
-              should build this, in this market, right now.</p>
-            <div class="l-out-preview">SVS: <span class="hi">68</span>/100 · Verdict: GO</div>
+            <p>SVS = TAS × 50% + Idea Score × 50%. The only score that tells you whether <em>you specifically</em> should build this, in this market, right now.</p>
+            <div class="l-out-preview">SVS: <span class="hi">69</span>/100 · Verdict: GO</div>
+            <div class="lov">
+              <div class="lov-formula">
+                <div class="lov-fline"><span>TAS</span>&nbsp;74 × 0.50 = 37.0</div>
+                <div class="lov-fline"><span>IDEA</span>&nbsp;64 × 0.50 = 32.0</div>
+                <div class="lov-divider"></div>
+                <div class="lov-fline"><span>SVS</span>&nbsp;= 69 / 100 &nbsp;·&nbsp;<span>GO</span></div>
+              </div>
+            </div>
           </div>
           <div class="l-out-card">
             <div class="l-out-tag">Idea Evaluation (Agent A0)</div>
             <h3>Your concept, stress-tested</h3>
-            <p>5 dimensions scored 0–10: Problem Clarity, Solution Fit, Differentiation, Business Model, Scalability —
-              each with a specific reason.</p>
+            <p>5 dimensions scored 0–10: Problem Clarity, Solution Fit, Differentiation, Business Model, Scalability — each with a specific reason.</p>
             <div class="l-out-preview">Avg: <span class="hi">6.4</span>/10 · Idea Score: 64</div>
+            <div class="lov">
+              <div class="lov-row"><span class="lov-lbl">Problem Clarity</span><div class="lov-track"><div class="lov-fill hi" style="width:80%"></div></div><span class="lov-pct">8</span></div>
+              <div class="lov-row"><span class="lov-lbl">Solution Fit</span><div class="lov-track"><div class="lov-fill hi" style="width:70%"></div></div><span class="lov-pct">7</span></div>
+              <div class="lov-row"><span class="lov-lbl">Differentiation</span><div class="lov-track"><div class="lov-fill" style="width:50%"></div></div><span class="lov-pct">5</span></div>
+              <div class="lov-row"><span class="lov-lbl">Business Model</span><div class="lov-track"><div class="lov-fill" style="width:60%"></div></div><span class="lov-pct">6</span></div>
+              <div class="lov-row"><span class="lov-lbl">Scalability</span><div class="lov-track"><div class="lov-fill" style="width:60%"></div></div><span class="lov-pct">6</span></div>
+            </div>
           </div>
           <div class="l-out-card">
             <div class="l-out-tag">SHAP Signal Weights</div>
             <h3>Why the verdict is what it is</h3>
-            <p>LightGBM + SHAP shows exactly which economic signals drove the regime classification — so you trust the
-              verdict, not just accept it.</p>
+            <p>LightGBM + SHAP shows exactly which economic signals drove the regime classification — so you trust the verdict, not just accept it.</p>
             <div class="l-out-preview">Top signal: <span class="hi">velocity_yoy</span> (82%)</div>
+            <div class="lov">
+              <div class="lov-row"><span class="lov-lbl">velocity_yoy</span><div class="lov-track"><div class="lov-fill hi" style="width:82%"></div></div><span class="lov-pct">82%</span></div>
+              <div class="lov-row"><span class="lov-lbl">gdp_growth</span><div class="lov-track"><div class="lov-fill" style="width:61%"></div></div><span class="lov-pct">61%</span></div>
+              <div class="lov-row"><span class="lov-lbl">deal_volume</span><div class="lov-track"><div class="lov-fill" style="width:48%"></div></div><span class="lov-pct">48%</span></div>
+              <div class="lov-row"><span class="lov-lbl">inflation_rate</span><div class="lov-track"><div class="lov-fill" style="width:37%"></div></div><span class="lov-pct">37%</span></div>
+            </div>
           </div>
           <div class="l-out-card">
             <div class="l-out-tag">L4 Strategic Engine</div>
             <h3>5-Part Reasoning Output</h3>
-            <p>Strategic interpretation, key driver, main risk, counterpoint, and differentiation insight — each from a
-              different angle, each challenging the comfortable read.</p>
+            <p>Strategic interpretation, key driver, main risk, counterpoint, and differentiation insight — each from a different angle, each challenging the comfortable read.</p>
             <div class="l-out-preview">Verdict: <span class="hi">Operator-level</span> analysis, not a dashboard</div>
+            <div class="lov">
+              <div class="lov-parts">
+                <div class="lov-part-row"><span class="lov-part-num">01</span><span class="lov-part-label">Strategic Interpretation</span></div>
+                <div class="lov-part-row"><span class="lov-part-num">02</span><span class="lov-part-label">Key Economic Driver</span></div>
+                <div class="lov-part-row"><span class="lov-part-num">03</span><span class="lov-part-label">Primary Risk</span></div>
+                <div class="lov-part-row"><span class="lov-part-num">04</span><span class="lov-part-label">Counterpoint</span></div>
+                <div class="lov-part-row"><span class="lov-part-num">05</span><span class="lov-part-label">Differentiation Path</span></div>
+              </div>
+            </div>
           </div>
         </div>
+      </div>
+
+      <!-- ─── OUTPUTS DEPTH SECTION ─── -->
+      <div class="l-out-depth rev">
+
+        <div class="l-out-depth-statement">
+          Most tools give you a score. MIDAN gives you a position — where your idea sits inside the current market, why that matters, and what to do about it in the next 30 days.
+        </div>
+
+        <div class="l-out-depth-grid">
+          <div class="l-out-depth-col">
+            <div class="l-out-depth-num">01</div>
+            <h4 class="l-out-depth-title">Live economic data, not historical averages</h4>
+            <p class="l-out-depth-txt">World Bank, IMF, and sector databases — weighted by recency. SARIMA models the next 90 days from actual deal-flow and GDP trajectory, not static 3-year averages. Your timing window is computed, not estimated.</p>
+          </div>
+          <div class="l-out-depth-col">
+            <div class="l-out-depth-num">02</div>
+            <h4 class="l-out-depth-title">Explainable AI, not a black box</h4>
+            <p class="l-out-depth-txt">SHAP values expose exactly which economic signal drove your regime classification — velocity_yoy, gdp_growth, deal_volume and their weights. You see the reasoning, not just the conclusion. If you disagree, you know which assumption to challenge.</p>
+          </div>
+          <div class="l-out-depth-col">
+            <div class="l-out-depth-num">03</div>
+            <h4 class="l-out-depth-title">Sector-specific to MENA, not generic</h4>
+            <p class="l-out-depth-txt">The model was trained on MENA deal-flow across 12 sectors and 15 countries. Fintech in Egypt behaves differently from logistics in the UAE — the model knows this. Generic global benchmarks are actively misleading in this market.</p>
+          </div>
+        </div>
+
+        <div class="l-out-depth-band">
+          <div class="l-out-depth-band-item">
+            <div class="l-out-depth-band-val">12</div>
+            <div class="l-out-depth-band-lbl">sectors modelled</div>
+          </div>
+          <div class="l-out-depth-band-sep"></div>
+          <div class="l-out-depth-band-item">
+            <div class="l-out-depth-band-val">15</div>
+            <div class="l-out-depth-band-lbl">MENA markets covered</div>
+          </div>
+          <div class="l-out-depth-band-sep"></div>
+          <div class="l-out-depth-band-item">
+            <div class="l-out-depth-band-val">8</div>
+            <div class="l-out-depth-band-lbl">economic signals weighted per analysis</div>
+          </div>
+          <div class="l-out-depth-band-sep"></div>
+          <div class="l-out-depth-band-item">
+            <div class="l-out-depth-band-val">90-day</div>
+            <div class="l-out-depth-band-lbl">forward signal window</div>
+          </div>
+        </div>
+
+        <div class="l-out-depth-quote">
+          <div class="l-out-depth-quote-mark">◈</div>
+          <blockquote class="l-out-depth-quote-text">The verdict isn't a recommendation. It's a diagnostic — based on where the market actually is, not where founders hope it will be. Every score can be challenged by asking MIDAN a follow-up question.</blockquote>
+        </div>
+
       </div>
     </section>
 
     <!-- FINAL CTA -->
-    <div class="l-cta">
-      <div class="lc">
-        <div class="l-cta-inner rev">
-          <div class="l-section-tag" style="margin-bottom:20px">Start now — it's free</div>
-          <h2>Stop wondering.<br>Start <em>knowing.</em></h2>
-          <p>Describe your idea. Get your market verdict in 30 seconds. Then keep the conversation going with your
-            on-demand AI advisor.</p>
-          <button class="btn-primary" style="font-size:15px;padding:17px 44px;" onclick="enterChat()">Analyze My Idea
-            →</button>
+    <div class="l-cta" id="final-cta">
+      <div class="permanent-ring"></div>
+      <div class="permanent-ring"></div>
+      <div class="permanent-ring"></div>
+      <div class="lc" style="position:relative;z-index:2;">
+        <div class="l-cta-inner">
+          <span class="cta-stop" id="cta-stop">Stop wondering.</span>
+          <span class="cta-start" id="cta-start">Start knowing.</span>
+          <button class="cta-main-btn btn-primary" id="cta-main-btn" onclick="enterChat()">Analyze My Idea ›</button>
+          <div class="cta-disclaimer">Free · No account required · 30 seconds</div>
         </div>
       </div>
     </div>
@@ -4234,44 +5551,53 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lenis@1.1.14/dist/lenis.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/motion@12.37.0/dist/motion.js"></script>
   <script>
     /* ═══════════════════════════════════════
        THREE.JS INTRO
     ═══════════════════════════════════════ */
-    const canvas3 = document.getElementById('three-canvas');
-    const renderer = new THREE.WebGLRenderer({ canvas: canvas3, antialias: true, alpha: true });
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setSize(innerWidth, innerHeight); renderer.setClearColor(0x000000, 1);
-    const scene3 = new THREE.Scene();
-    const cam3 = new THREE.PerspectiveCamera(65, innerWidth / innerHeight, .1, 1000);
-    cam3.position.set(0, 0, 28);
-    const N = 2200, pos = new Float32Array(N * 3), col = new Float32Array(N * 3);
-    for (let i = 0; i < N; i++) {
-      const th = Math.random() * Math.PI * 2, ph = Math.acos(2 * Math.random() - 1), r = 18 + Math.random() * 55;
-      pos[i * 3] = r * Math.sin(ph) * Math.cos(th); pos[i * 3 + 1] = r * Math.sin(ph) * Math.sin(th); pos[i * 3 + 2] = r * Math.cos(ph);
-      if (Math.random() > .88) { col[i * 3] = .78; col[i * 3 + 1] = 1; col[i * 3 + 2] = .34; }
-      else { const b = .08 + Math.random() * .22; col[i * 3] = b; col[i * 3 + 1] = b; col[i * 3 + 2] = b + .04; }
+    // running must be declared before try so exitIntro() can always access it
+    let running = true;
+    let t3 = 0, si = 0;
+    try {
+      const canvas3 = document.getElementById('three-canvas');
+      const renderer = new THREE.WebGLRenderer({ canvas: canvas3, antialias: true, alpha: true });
+      renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setSize(innerWidth, innerHeight); renderer.setClearColor(0x000000, 1);
+      const scene3 = new THREE.Scene();
+      const cam3 = new THREE.PerspectiveCamera(65, innerWidth / innerHeight, .1, 1000);
+      cam3.position.set(0, 0, 28);
+      const N = 2200, pos = new Float32Array(N * 3), col = new Float32Array(N * 3);
+      for (let i = 0; i < N; i++) {
+        const th = Math.random() * Math.PI * 2, ph = Math.acos(2 * Math.random() - 1), r = 18 + Math.random() * 55;
+        pos[i * 3] = r * Math.sin(ph) * Math.cos(th); pos[i * 3 + 1] = r * Math.sin(ph) * Math.sin(th); pos[i * 3 + 2] = r * Math.cos(ph);
+        if (Math.random() > .88) { col[i * 3] = .78; col[i * 3 + 1] = 1; col[i * 3 + 2] = .34; }
+        else { const b = .08 + Math.random() * .22; col[i * 3] = b; col[i * 3 + 1] = b; col[i * 3 + 2] = b + .04; }
+      }
+      const pgeo = new THREE.BufferGeometry();
+      pgeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      pgeo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      const pmat = new THREE.PointsMaterial({ size: .45, vertexColors: true, transparent: true, opacity: 0, sizeAttenuation: true, depthWrite: false });
+      const pts = new THREE.Points(pgeo, pmat); scene3.add(pts);
+      const aw = (geo, op) => { const m = new THREE.MeshBasicMaterial({ color: 0xc8ff57, wireframe: true, transparent: true, opacity: op }); const mesh = new THREE.Mesh(geo, m); scene3.add(mesh); return mesh; };
+      const oct = aw(new THREE.OctahedronGeometry(10, 1), 0);
+      const ico = aw(new THREE.IcosahedronGeometry(5, 1), 0);
+      window.addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); cam3.aspect = innerWidth / innerHeight; cam3.updateProjectionMatrix(); });
+      (function a3() {
+        if (!running) return;
+        requestAnimationFrame(a3); t3 += .007;
+        pmat.opacity += (Math.min(si / 1.5, 1) - pmat.opacity) * .018;
+        if (si >= 2) { oct.material.opacity += (.06 - oct.material.opacity) * .015; ico.material.opacity += (.04 - ico.material.opacity) * .015; }
+        pts.rotation.y = t3 * .04; pts.rotation.x = Math.sin(t3 * .025) * .08;
+        oct.rotation.x = t3 * .06; oct.rotation.y = t3 * .04; oct.rotation.z = t3 * .02;
+        ico.rotation.x = -t3 * .09; ico.rotation.y = t3 * .07;
+        cam3.position.x = Math.sin(t3 * .09) * 2.5; cam3.position.y = Math.cos(t3 * .07) * 1.8;
+        cam3.lookAt(0, 0, 0); renderer.render(scene3, cam3);
+      })();
+    } catch(e) {
+      console.warn('[MIDAN] Intro WebGL unavailable, continuing without animation:', e);
     }
-    const pgeo = new THREE.BufferGeometry();
-    pgeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    pgeo.setAttribute('color', new THREE.BufferAttribute(col, 3));
-    const pmat = new THREE.PointsMaterial({ size: .45, vertexColors: true, transparent: true, opacity: 0, sizeAttenuation: true, depthWrite: false });
-    const pts = new THREE.Points(pgeo, pmat); scene3.add(pts);
-    const aw = (geo, op) => { const m = new THREE.MeshBasicMaterial({ color: 0xc8ff57, wireframe: true, transparent: true, opacity: op }); const mesh = new THREE.Mesh(geo, m); scene3.add(mesh); return mesh; };
-    const oct = aw(new THREE.OctahedronGeometry(10, 1), 0);
-    const ico = aw(new THREE.IcosahedronGeometry(5, 1), 0);
-    window.addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); cam3.aspect = innerWidth / innerHeight; cam3.updateProjectionMatrix(); });
-    let t3 = 0, si = 0, running = true;
-    (function a3() {
-      requestAnimationFrame(a3); t3 += .007;
-      pmat.opacity += (Math.min(si / 1.5, 1) - pmat.opacity) * .018;
-      if (si >= 2) { oct.material.opacity += (.06 - oct.material.opacity) * .015; ico.material.opacity += (.04 - ico.material.opacity) * .015; }
-      pts.rotation.y = t3 * .04; pts.rotation.x = Math.sin(t3 * .025) * .08;
-      oct.rotation.x = t3 * .06; oct.rotation.y = t3 * .04; oct.rotation.z = t3 * .02;
-      ico.rotation.x = -t3 * .09; ico.rotation.y = t3 * .07;
-      cam3.position.x = Math.sin(t3 * .09) * 2.5; cam3.position.y = Math.cos(t3 * .07) * 1.8;
-      cam3.lookAt(0, 0, 0); renderer.render(scene3, cam3);
-    })();
 
     /* ═══════════════════════════════════════
        INTRO SEQUENCER
@@ -4294,13 +5620,13 @@
       document.getElementById('landing-screen').classList.add('show');
       document.body.style.overflow = 'auto';
       initReveal();
-      // Sticky nav
-      window.addEventListener('scroll', () => {
-        document.getElementById('l-nav').classList.toggle('scrolled', window.scrollY > 40);
-      });
+      initWorld();
+      initLandingAnimations();
     }
 
     function enterChat() {
+      suspendWorld();
+      if (lenisInstance) lenisInstance.stop();
       document.body.style.overflow = 'hidden';
       document.getElementById('landing-screen').classList.remove('show');
       document.getElementById('chat-screen').classList.add('show');
@@ -4311,10 +5637,12 @@
       document.body.style.overflow = 'auto';
       document.getElementById('chat-screen').classList.remove('show');
       document.getElementById('landing-screen').classList.add('show');
+      if (lenisInstance) lenisInstance.start();
+      resumeWorld();
     }
 
     /* ═══════════════════════════════════════
-       SCROLL REVEAL
+       SCROLL REVEAL (legacy .rev elements)
     ═══════════════════════════════════════ */
     function initReveal() {
       const els = document.querySelectorAll('.rev');
@@ -4325,7 +5653,29 @@
     /* ═══════════════════════════════════════
        CHAT STATE
     ═══════════════════════════════════════ */
-    const API_BASE = window.MIDAN_API_URL || 'http://localhost:8000';
+    const API_BASE = (function () {
+      const explicit = (window.MIDAN_API_URL || '').trim().replace(/\/+$/, '');
+      if (explicit) return explicit;
+      // When served by FastAPI, window.location.origin already carries the correct host+port.
+      // Fallback covers direct file:// opens only.
+      if (window.location.protocol !== 'file:') return window.location.origin;
+      return 'http://localhost:8002';
+    })();
+
+    // Startup connectivity check — runs once, logs result to console, never blocks UI.
+    (async function checkApiHealth() {
+      try {
+        const r = await fetch(API_BASE + '/health', { method: 'GET' });
+        if (r.ok) {
+          const j = await r.json();
+          console.info('[MIDAN] API connected:', API_BASE, '| status:', j.status, '| models_loaded:', j.models_loaded);
+        } else {
+          console.warn('[MIDAN] API responded but non-OK:', r.status, 'at', API_BASE);
+        }
+      } catch (e) {
+        console.error('[MIDAN] API unreachable at', API_BASE, '— error:', e.message);
+      }
+    })();
     let chatHistory = [], internalContext = {}, analysisComplete = false;
     let currentConvId = 0, conversations = [], isProcessing = false;
     let sessionId = null;
@@ -4360,24 +5710,30 @@
        EMPTY STATE
     ═══════════════════════════════════════ */
     function showEmptyState() {
-      // Initial assistant turn — the system initiates the conversation as a
-      // consultant would. Three steps: ground who they're talking to, set the
-      // expectation, then offer a few lightweight openers.
-      document.getElementById('c-msgs').innerHTML = `
-    <div class="c-empty-state" id="c-empty-state">
-      <div class="ces-eyebrow">MIDAN</div>
-      <div class="ces-icon"><svg viewBox="0 0 14 14" fill="none"><polygon points="7,1 13,4 13,10 7,13 1,10 1,4" fill="#000"/></svg></div>
-      <h2 class="ces-head">Tell me your idea — I'll help you shape it and evaluate it.</h2>
-      <p class="ces-sub">Walk me through what you're working on. Even a rough sketch is fine. I'll ask a few targeted questions, and once the picture is clear I'll run the analysis and stay on as your advisor.</p>
-      <div class="ces-chips">
-        <button class="ces-chip" onclick="useSuggestion('An invoice financing platform for Egyptian SMEs to solve the payment gap and get paid faster on their invoices')">Fintech · Egypt</button>
-        <button class="ces-chip" onclick="useSuggestion('A health clinic booking and telemedicine platform for patients in Dubai and Abu Dhabi with subscription revenue')">Healthtech · UAE</button>
-        <button class="ces-chip" onclick="useSuggestion('An online tutoring platform connecting students with expert teachers in Cairo using AI-matched sessions')">EdTech · Cairo</button>
-        <button class="ces-chip" onclick="useSuggestion('A SaaS CRM tool built for small businesses across Saudi Arabia to manage customers, invoices and sales pipelines')">SaaS · Saudi</button>
-      </div>
-    </div>`;
+      const g = document.createElement('div');
+      g.className = 'c-welcome-card';
+      g.innerHTML = `
+        <div class="cwc-mark">
+          <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M10 2L17.5 6.25V13.75L10 18L2.5 13.75V6.25L10 2Z" stroke="#000" stroke-width="1.6" stroke-linejoin="round"/>
+            <circle cx="10" cy="10" r="2.5" fill="#000"/>
+          </svg>
+        </div>
+        <div class="cwc-name">MIDAN</div>
+        <p class="cwc-body">I look at startup ideas before founders spend months building the wrong thing. Tell me about yours — the problem you spotted, how you're thinking of fixing it, and which market you're going after.</p>
+        <p class="cwc-invite">What are you working on?</p>
+        <div class="cwc-chips">
+          <button class="ces-chip" onclick="useSuggestion('An invoice financing platform for Egyptian SMEs to solve the payment gap and get paid faster on their invoices')">Fintech · Egypt</button>
+          <button class="ces-chip" onclick="useSuggestion('A health clinic booking and telemedicine platform for patients in Dubai and Abu Dhabi with subscription revenue')">Healthtech · UAE</button>
+          <button class="ces-chip" onclick="useSuggestion('An online tutoring platform connecting students with expert teachers in Cairo using AI-matched sessions')">EdTech · Cairo</button>
+          <button class="ces-chip" onclick="useSuggestion('A SaaS CRM tool built for small businesses across Saudi Arabia to manage customers, invoices and sales pipelines')">SaaS · Saudi</button>
+        </div>`;
+      document.getElementById('c-msgs').appendChild(g);
+      // Welcome card is UI only — NOT added to chatHistory.
+      // The LLM must not see it as a leading assistant turn.
+      scrollBottom();
     }
-    function hideEmptyState() { const e = document.getElementById('c-empty-state'); if (e) e.remove(); }
+    function hideEmptyState() { /* no-op — welcome bubble stays in DOM */ }
 
     /* ═══════════════════════════════════════
        DYNAMIC INPUT HINT
@@ -4729,6 +6085,33 @@
       // What Matters Most banner
       const wmmBanner = d.what_matters_most ? `<div class="ac-wmm ac-s2"><div class="ac-wmm-lbl">What Matters Most</div><div class="ac-wmm-txt">${d.what_matters_most}</div></div>` : '';
 
+      // ── Footer: score summary + action steps ──────────────────
+      const actionText = d.action || '';
+      const actionSteps = [];
+      // Try splitting on explicit numbered items: "1)", "2)", etc.
+      const numMatches = actionText.match(/\d+\)\s+[^.?!]+[.?!]/g) || [];
+      if (numMatches.length >= 2) {
+        numMatches.slice(0, 3).forEach(s => actionSteps.push(s.replace(/^\d+\)\s+/, '').trim()));
+      } else {
+        // Fallback: sentence split, skip opener sentence, take next 3
+        const sents = actionText.split(/\.\s+/).filter(s => s.trim().length > 20);
+        sents.slice(0, 3).forEach(s => actionSteps.push(s.trim().replace(/\.$/, '') + '.'));
+      }
+      const footerStepsHtml = actionSteps.length ? `
+        <div class="ac-footer-actions-lbl">Immediate Actions</div>
+        ${actionSteps.map((s, i) => `<div class="ac-footer-step"><div class="ac-footer-step-num">${i + 1}</div><span>${esc(s)}</span></div>`).join('')}` : '';
+      const tasC = tas >= 68 ? 'cg' : tas >= 50 ? 'ca' : 'cr';
+      const trendArrow = d.sarima_trend > 0.55 ? '↑' : d.sarima_trend > 0.35 ? '→' : '↓';
+      const footerHtml = `<div class="ac-footer">
+        <div class="ac-footer-scores">
+          <div class="ac-footer-sc"><div class="ac-footer-sc-val ${svsC}">${svs}</div><div class="ac-footer-sc-lbl">Viability</div></div>
+          <div class="ac-footer-sc"><div class="ac-footer-sc-val ${tasC}">${tas}</div><div class="ac-footer-sc-lbl">Market Signal</div></div>
+          <div class="ac-footer-sc"><div class="ac-footer-sc-val ${confC}">${d.confidence}%</div><div class="ac-footer-sc-lbl">Confidence</div></div>
+          <div class="ac-footer-sc"><div class="ac-footer-sc-val ${trendC}">${trendArrow}</div><div class="ac-footer-sc-lbl">90-Day Trend</div></div>
+        </div>
+        ${footerStepsHtml}
+      </div>`;
+
       return `<div class="ac">
     <div class="ac-head ac-s1">
       <div class="ac-head-l"><span class="ac-tag">Market Intelligence Report</span><div class="ac-verdict ${vClass}"><div class="vd"></div>${vTxt}</div></div>
@@ -4816,6 +6199,7 @@
         <div class="ac-action-txt">${d.action || '—'}</div>
       </div>
     </div>
+    ${footerHtml}
   </div>`;
     }
 
@@ -5222,7 +6606,7 @@
           const incompleteNote = d.l0_flag === 'INCOMPLETE'
             ? `<div class="c-l0-warning" style="margin-bottom:12px;"><div class="c-l0-warn-label">🟨 Partial input — analysis is approximate</div><div class="c-l0-warn-text">${esc(d.l0_verdict || '')}</div></div>`
             : '';
-          replyHtml = `<p style="margin-bottom:12px;font-size:14px;color:var(--t2);">${fmtReply(rd.reply || 'Analysis complete.')}</p>` + incompleteNote +
+          replyHtml = `<p style="margin-bottom:12px;font-size:14px;opacity:0.65;">Got it — I have everything I need.</p>` + incompleteNote +
             `<div class="c-analyze-cta">
           <div class="cta-text"><strong>Analysis ready — ${sector} · ${d.country || ''}</strong>Market data processed. Tap to see the full verdict, scores, and action plan.</div>
           <button class="c-analyze-btn" onclick="revealAnalysis(this)">View Analysis →</button>
@@ -5242,14 +6626,12 @@
           chatHistory.push({ role: 'assistant', content: (d.one_line_verdict || 'Not viable.') + ' ' + (d.what_is_missing || '') });
 
         } else if (rd.type === 'clarifying') {
-          // ── Single targeted follow-up — no "3 things needed" list ─────────────
+          // ── Single targeted follow-up — no progress indicators ────────────────
           const cs = rd.clarification_state || {};
           if (rd.clarification_state) {
             internalContext.clarification_state = cs;
-            updateGatherBar(cs);
           }
-          const missing = ['problem', 'solution', 'market'].filter(k => !cs['has_' + k]);
-          setInputHint('clarifying', missing);
+          setInputHint('default');
           setPhase('clarifying');
           replyHtml = `<p style="font-size:14px;color:var(--t1);line-height:1.6;">${fmtReply(rd.reply || '')}</p>`;
           chatHistory.push({ role: 'assistant', content: rd.reply || '' });
@@ -5261,135 +6643,23 @@
           chatHistory.push({ role: 'assistant', content: rd.reply || '' });
         }
 
+        // Fallback mode indicator — shown when LLM was unavailable and heuristic was used
+        if (rd.is_fallback) {
+          replyHtml += `<div style="margin-top:10px;padding:6px 10px;background:rgba(201,125,16,0.1);border:1px solid rgba(201,125,16,0.3);border-radius:6px;font-size:11px;color:var(--warn);display:flex;align-items:center;gap:6px;"><span>⚡</span><span>Limited mode — running on heuristics, not live AI. Check that the API key is set correctly.</span></div>`;
+        }
+
       } catch (err) {
         removeTyping();
-        console.warn('API request failed — using local fallback:', err);
+        console.error('[MIDAN] /interact failed:', err.message, '| API_BASE:', API_BASE);
 
-        if (analysisComplete) {
-          // Post-analysis advisor mode (offline)
-          setPhase('conversing');
-          const r = offlineReply(text, internalContext);
-          replyHtml = `<p>${r}</p>`;
-          chatHistory.push({ role: 'assistant', content: r });
-
-        } else {
-          // ── Offline intent classification (mirrors backend logic) ───────────────
-          const tl = text.toLowerCase().trim();
-          const wc = tl.split(/\s+/).length;
-          const cs = internalContext.clarification_state || {};
-
-          // OVERRIDE_COMMAND — user explicitly wants analysis now
-          const userMsgs = chatHistory.filter(m => m.role === 'user');
-          const accumulated = ((cs.accumulated_text || '') + ' ' + text).trim();
-
-          if (isOverrideCommand(text) && accumulated.trim().length > 10) {
-            const d = mockAnalysis(accumulated);
-            setPendingAnalysis(currentConvId, d);
-            internalContext = { ...internalContext, ...buildAnalysisContext(d) };
-            analysisComplete = true;
-            setPhase('presenting');
-            const sector = (d.sector || '').charAt(0).toUpperCase() + (d.sector || '').slice(1);
-            replyHtml = `<p style="margin-bottom:12px;font-size:14px;color:var(--t2);">Running it. <em>(Offline mode)</em></p>` +
-              `<div class="c-analyze-cta">
-            <div class="cta-text"><strong>Analysis ready — ${sector} · ${d.country || ''}</strong>Tap to see the full breakdown.</div>
-            <button class="c-analyze-btn" onclick="revealAnalysis(this)">View Analysis →</button>
-          </div>`;
-            clearGatherBar(); setInputHint('default');
-            chatHistory.push({ role: 'assistant', content: `[Offline analysis: ${d.sector}/${d.country}]` });
-
-            // CASUAL — name, ack, small talk
-          } else if (wc <= 5 && [
-            'ok', 'okay', 'cool', 'nice', 'got it', 'understood', 'noted', 'makes sense',
-            'i see', 'lol', 'yes', 'no', 'sure', 'right', 'alright', 'perfect', 'thanks', 'thank you', 'ty'
-          ].includes(tl)) {
-            replyHtml = `<p>${offlineReply(text, {})}</p>`;
-            chatHistory.push({ role: 'assistant', content: replyHtml.replace(/<[^>]+>/g, '') });
-
-            // CASUAL — personal intro
-          } else if (['call me ', 'my name is ', "i'm from ", 'i am from '].some(p => tl.startsWith(p))) {
-            const words = text.trim().split(/\s+/);
-            const name = words[words.length > 2 ? 2 : 1] || '';
-            const reply = name ? `Got it, ${name.charAt(0).toUpperCase() + name.slice(1)}. What are you working on?` : 'What are you working on?';
-            replyHtml = `<p>${reply}</p>`;
-            chatHistory.push({ role: 'assistant', content: reply });
-
-            // GREETING / META
-          } else if ((wc <= 5 && ['hi', 'hello', 'hey', 'yo', 'sup'].some(g => tl.startsWith(g))) ||
-            ['what do you do', 'who are you', 'how does', 'what is midan'].some(m => tl.includes(m))) {
-            const r = offlineReply(text, {});
-            replyHtml = `<p>${r}</p>`;
-            chatHistory.push({ role: 'assistant', content: r });
-
-            // Pure vague starter
-          } else if (isVagueStarter(text) && wc <= 12) {
-            replyHtml = `<p>Tell me what it is — one sentence is enough to start.</p>`;
-            chatHistory.push({ role: 'assistant', content: 'Tell me what it is.' });
-
-          } else {
-            // Check invalid patterns first
-            const invalidResult = mockInvalidCheck(tl);
-            if (invalidResult) {
-              replyHtml = buildRejectionCard(invalidResult, null);
-              chatHistory.push({ role: 'assistant', content: (invalidResult.one_line_verdict || '') });
-              addAIMessage(replyHtml);
-              saveCurrentConversation();
-              isProcessing = false;
-              document.getElementById('c-send-btn').disabled = false;
-              inp.focus();
-              return;
-            }
-
-            // Component extraction
-            const { comps, missing } = extractComponents(text, cs);
-            const newState = { ...comps, accumulated_text: accumulated, count: (cs.count || 0) + 1 };
-            const hardMissing = missing.filter(k => k === 'solution' || k === 'market');
-            const priorTurns = userMsgs.filter(m => m.content.trim().split(/\s+/).length >= 5).length;
-
-            // Anti-loop: after 2 substantive turns or override → force analysis
-            const forceAnalysis = priorTurns >= 2 && comps.is_substantial;
-
-            if ((!hardMissing.length && comps.is_substantial) || forceAnalysis) {
-              const d = mockAnalysis(accumulated);
-              setPendingAnalysis(currentConvId, d);
-              internalContext = { ...internalContext, ...buildAnalysisContext(d) };
-              analysisComplete = true;
-              setPhase('presenting');
-              const sector = (d.sector || '').charAt(0).toUpperCase() + (d.sector || '').slice(1);
-              const note = forceAnalysis ? 'Running with what I have.' : 'I have what I need.';
-              replyHtml = `<p style="margin-bottom:12px;font-size:14px;color:var(--t2);">${note} <em>(Offline mode — connect the API for live data.)</em></p>` +
-                `<div class="c-analyze-cta">
-              <div class="cta-text"><strong>Analysis ready — ${sector} · ${d.country || ''}</strong>Tap to see scores, market regime, and action plan.</div>
-              <button class="c-analyze-btn" onclick="revealAnalysis(this)">View Analysis →</button>
-            </div>`;
-              clearGatherBar(); setInputHint('default');
-              chatHistory.push({ role: 'assistant', content: `[Offline analysis: ${d.sector}/${d.country}]` });
-
-            } else {
-              // Single smart follow-up — never same question twice
-              internalContext.clarification_state = newState;
-              updateGatherBar(newState);
-              setPhase('clarifying');
-              setInputHint('clarifying', hardMissing.length ? hardMissing : missing);
-
-              // Track what was already asked
-              const asked = new Set();
-              chatHistory.filter(m => m.role === 'assistant').forEach(m => {
-                const mc = m.content.toLowerCase();
-                if (mc.includes('problem') || mc.includes('pain')) asked.add('problem');
-                if (mc.includes('market') || mc.includes('country') || mc.includes('customer type')) asked.add('market');
-                if (mc.includes('approach') || mc.includes('mechanism') || mc.includes('marketplace') || mc.includes('saas')) asked.add('solution');
-              });
-
-              let q = 'Add a bit more — what sector, which market, and the core mechanism.';
-              if (!comps.has_problem && !asked.has('problem')) q = 'What specific pain does this solve, and for which customer type exactly?';
-              else if (!comps.has_market && !asked.has('market')) q = 'Which country and customer type? E.g. Egyptian SMEs, UAE consumers, B2B or B2C.';
-              else if (!comps.has_solution && !asked.has('solution')) q = "What's the mechanism — marketplace, SaaS, service, or app? One sentence.";
-
-              replyHtml = buildClarifyBlock(q, false, null);
-              chatHistory.push({ role: 'assistant', content: q });
-            }
-          }
-        }
+        // Show a real error — never silently pretend the API worked.
+        const isNetworkErr = err instanceof TypeError && err.message.toLowerCase().includes('fetch');
+        const errMsg = isNetworkErr
+          ? `Can't reach the server at ${API_BASE}. Make sure the backend is running.`
+          : `Server error: ${err.message}`;
+        replyHtml = `<p style="color:#ff6b6b;font-size:13px;">⚠ ${errMsg}</p>`;
+        chatHistory.push({ role: 'assistant', content: errMsg });
+        setPhase(analysisComplete ? 'conversing' : 'idle');
       }
 
       addAIMessage(replyHtml);
@@ -5512,7 +6782,7 @@
       if (tas >= 68) chips.push('Am I fundable right now?');
       else chips.push('What must I prove before raising?');
       if (sector) chips.push(`Who should I target first in ${sector}?`);
-      return `<div class="c-action-chips">${chips.slice(0, 4).map(c => `<button class="c-action-chip" onclick="quickAction(${JSON.stringify(c)})">${c}</button>`).join('')}</div>`;
+      return `<div class="c-action-chips">${chips.slice(0, 4).map(c => `<button class="c-action-chip" data-action="${c.replace(/&/g,'&amp;').replace(/"/g,'&quot;')}">${c}</button>`).join('')}</div>`;
     }
 
     function quickAction(text) {
@@ -5524,6 +6794,18 @@
       inp.focus();
       handleSend();
     }
+
+    // Event delegation for post-analysis suggestion chips.
+    // Chips are injected dynamically via innerHTML — inline onclick with JSON.stringify
+    // produces double-quoted strings that break the HTML attribute boundary.
+    // Delegating to the stable #c-msgs parent sidesteps both issues.
+    document.getElementById('c-msgs').addEventListener('click', function(e) {
+      const chip = e.target.closest('.c-action-chip');
+      if (chip) {
+        const text = chip.dataset.action || chip.textContent.trim();
+        quickAction(text);
+      }
+    });
 
     /* ═══════════════════════════════════════
        INPUT
@@ -5543,16 +6825,879 @@
     cinput.addEventListener('input', () => {
       cinput.style.height = 'auto';
       cinput.style.height = Math.min(cinput.scrollHeight, 140) + 'px';
-      // Pre-emptive intelligence while typing
-      clearTimeout(_typingTimer);
-      const val = cinput.value;
-      if (!val || val.trim().length < 3) { hideSignalChips(); updateCompleteness(''); return; }
-      updateCompleteness(val);
-      _typingTimer = setTimeout(() => {
-        const signals = analyzeTypingSignals(val);
-        renderSignalChips(signals);
-      }, 280);
     });
+
+    /* ═══════════════════════════════════════════════════════════
+       WORLD: PERFORMANCE + DEVICE DETECTION
+    ═══════════════════════════════════════════════════════════ */
+    const isMobile = window.innerWidth < 768;
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const hasWebGL = (() => { try { return !!document.createElement('canvas').getContext('webgl'); } catch { return false; } })();
+    const USE_WEBGL = hasWebGL && !isMobile && !prefersReducedMotion;
+    const INSTANCE_COUNT = (window.innerWidth >= 1200 && window.devicePixelRatio <= 2) ? 1800 : 800;
+
+    /* ═══════════════════════════════════════════════════════════
+       WORLD: GLOBALS  (no THREE calls at module level)
+    ═══════════════════════════════════════════════════════════ */
+    let worldRenderer, worldCamera, worldScene, decisionField, fieldMaterial;
+    let landingActive = false;
+    let camTarget = { x: 0, y: 0 };
+    let camCurrent = { x: 0, y: 0 };
+    let mouseRaw    = { x: 0, y: 0 };   // plain objects until initWorld runs
+    let mouseLerped = { x: 0, y: 0 };
+    let lastTimestamp = 0;
+    let fpsFrameCount = 0, fpsLastCheck = 0;
+    let lenisInstance = null;
+    let worldInited = false;
+
+    // Initialized inside initWorld() once THREE is confirmed available
+    let fieldUniforms = null;
+
+    /* ═══════════════════════════════════════════════════════════
+       WORLD: ARROW GEOMETRY
+    ═══════════════════════════════════════════════════════════ */
+    function createArrowGeometry() {
+      const geo = new THREE.BufferGeometry();
+      const verts = new Float32Array([
+        0.18,  0.015, 0,  -0.12,  0.015, 0,  -0.12, -0.015, 0,
+        0.18,  0.015, 0,  -0.12, -0.015, 0,   0.18, -0.015, 0,
+        0.30,  0.000, 0,   0.18,  0.055, 0,   0.18, -0.055, 0
+      ]);
+      geo.setAttribute('position', new THREE.BufferAttribute(verts, 3));
+      return geo;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       WORLD: VERTEX + FRAGMENT SHADERS
+    ═══════════════════════════════════════════════════════════ */
+    const vertexShader = `
+      uniform float uTime;
+      uniform vec2  uMouse;
+      uniform float uAlignment;
+      uniform float uActivation;
+
+      attribute vec3  aBasePos;
+      attribute float aNaturalAngle;
+      attribute float aPhase;
+      attribute float aDepth;
+
+      varying float vOpacity;
+      varying float vSignal;
+
+      void main() {
+        float alignedAngle = 0.0;
+        float driftAngle = aNaturalAngle + sin(uTime * 0.25 + aPhase) * 0.4;
+        float currentAngle = mix(driftAngle, alignedAngle, uAlignment);
+
+        vec2 toMouse = uMouse * vec2(35.0, 20.0) - aBasePos.xy;
+        float mouseDist = length(toMouse);
+        float mouseWeight = smoothstep(6.0, 0.0, mouseDist) * 0.75;
+        float mouseAngle  = atan(toMouse.y, toMouse.x);
+        currentAngle = mix(currentAngle, mouseAngle, mouseWeight);
+
+        float burstWeight = uActivation * smoothstep(8.0, 0.0, length(aBasePos.xy)) * 0.6;
+        currentAngle = mix(currentAngle, atan(aBasePos.y, aBasePos.x), burstWeight);
+
+        float cosA = cos(currentAngle);
+        float sinA = sin(currentAngle);
+        vec2 rotated = vec2(
+          position.x * cosA - position.y * sinA,
+          position.x * sinA + position.y * cosA
+        );
+
+        vec3 worldPos = vec3(aBasePos.x + rotated.x, aBasePos.y + rotated.y, aBasePos.z);
+
+        float depthOpacity = 0.3 + aDepth * 0.5;
+        float distFromCenter = length(aBasePos.xy) / 35.0;
+        float vignetteOpacity = 1.0 - smoothstep(0.6, 1.0, distFromCenter);
+        float mouseBoost = smoothstep(6.0, 0.0, mouseDist) * 0.4;
+
+        vOpacity = depthOpacity * vignetteOpacity * (0.28 + mouseBoost);
+        vSignal  = mouseWeight + uActivation * smoothstep(5.0, 0.0, length(aBasePos.xy));
+
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(worldPos, 1.0);
+      }
+    `;
+
+    const fragmentShader = `
+      uniform vec3 uBaseColor;
+      varying float vOpacity;
+      varying float vSignal;
+
+      void main() {
+        vec3 baseCol   = vec3(0.7, 0.7, 0.65);
+        vec3 signalCol = uBaseColor;
+        vec3 finalColor = mix(baseCol, signalCol, vSignal);
+        gl_FragColor = vec4(finalColor, vOpacity);
+      }
+    `;
+
+    /* ═══════════════════════════════════════════════════════════
+       WORLD: INIT
+    ═══════════════════════════════════════════════════════════ */
+    function initWorld() {
+      if (worldInited) { resumeWorld(); return; }
+      worldInited = true;
+
+      // Initialize THREE-dependent globals now that we know THREE is loaded
+      mouseRaw    = new THREE.Vector2(0, 0);
+      mouseLerped = new THREE.Vector2(0, 0);
+      fieldUniforms = {
+        uTime:       { value: 0 },
+        uMouse:      { value: new THREE.Vector2(0, 0) },
+        uAlignment:  { value: 0 },
+        uActivation: { value: 0 },
+        uBaseColor:  { value: new THREE.Color(0xC4FF47) }
+      };
+
+      if (!USE_WEBGL) {
+        const fb = document.createElement('div');
+        fb.className = 'world-fallback';
+        document.getElementById('landing-screen').prepend(fb);
+        initLenisOnly();
+        return;
+      }
+
+      const canvas = document.getElementById('world-canvas');
+
+      // Renderer
+      worldRenderer = new THREE.WebGLRenderer({
+        canvas, antialias: false, alpha: false,
+        powerPreference: 'high-performance', stencil: false, depth: true
+      });
+      worldRenderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+      worldRenderer.setSize(innerWidth, innerHeight);
+      worldRenderer.setClearColor(0x080706, 1);
+      worldRenderer.shadowMap.enabled = false;
+
+      // Camera
+      worldCamera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 500);
+      worldCamera.position.set(0, 0, 38);
+
+      // Scene
+      worldScene = new THREE.Scene();
+
+      // Lights
+      const ambient = new THREE.AmbientLight(0xffffff, 0.05);
+      worldScene.add(ambient);
+      const signalPoint = new THREE.PointLight(0xC4FF47, 0.8);
+      signalPoint.position.set(0, 0, 10);
+      worldScene.add(signalPoint);
+
+      // Build Decision Field
+      const arrowGeo = createArrowGeometry();
+      const N = INSTANCE_COUNT;
+
+      const aBasePos      = new Float32Array(N * 3);
+      const aNaturalAngle = new Float32Array(N);
+      const aPhase        = new Float32Array(N);
+      const aDepth        = new Float32Array(N);
+
+      for (let i = 0; i < N; i++) {
+        const col = i % 45;
+        const row = Math.floor(i / 45);
+        const baseX = (col / 45 - 0.5) * 70 + (Math.random() - 0.5) * 4;
+        const baseY = (row / 40 - 0.5) * 40 + (Math.random() - 0.5) * 3;
+        const baseZ = (Math.random() - 0.5) * 12;
+        aBasePos[i*3]     = baseX;
+        aBasePos[i*3 + 1] = baseY;
+        aBasePos[i*3 + 2] = baseZ;
+        aNaturalAngle[i]  = Math.random() * Math.PI * 2;
+        aPhase[i]         = Math.random() * Math.PI * 2;
+        aDepth[i]         = (baseZ + 6) / 12;
+      }
+
+      arrowGeo.setAttribute('aBasePos',      new THREE.InstancedBufferAttribute(aBasePos,      3, false, 1));
+      arrowGeo.setAttribute('aNaturalAngle', new THREE.InstancedBufferAttribute(aNaturalAngle, 1, false, 1));
+      arrowGeo.setAttribute('aPhase',        new THREE.InstancedBufferAttribute(aPhase,        1, false, 1));
+      arrowGeo.setAttribute('aDepth',        new THREE.InstancedBufferAttribute(aDepth,        1, false, 1));
+
+      fieldMaterial = new THREE.ShaderMaterial({
+        uniforms: fieldUniforms,
+        vertexShader, fragmentShader,
+        transparent: true,
+        depthWrite: false
+      });
+
+      decisionField = new THREE.InstancedMesh(arrowGeo, fieldMaterial, N);
+
+      // Identity matrix for each instance
+      const dummy = new THREE.Object3D();
+      for (let i = 0; i < N; i++) {
+        dummy.updateMatrix();
+        decisionField.setMatrixAt(i, dummy.matrix);
+      }
+      decisionField.instanceMatrix.needsUpdate = true;
+      worldScene.add(decisionField);
+
+      // Vignette overlay quad
+      const vigGeo = new THREE.PlaneGeometry(2, 2);
+      const vigMat = new THREE.ShaderMaterial({
+        uniforms: {},
+        vertexShader: `void main(){gl_Position=vec4(position,1.0);}`,
+        fragmentShader: `
+          void main(){
+            vec2 uv = gl_FragCoord.xy / vec2(${innerWidth}.0, ${innerHeight}.0);
+            vec2 c = uv - 0.5;
+            float d = length(c * vec2(1.6, 1.0));
+            float v = smoothstep(0.3, 0.9, d) * 0.6;
+            gl_FragColor = vec4(0.031, 0.027, 0.024, v);
+          }
+        `,
+        transparent: true,
+        depthWrite: false,
+        depthTest: false
+      });
+      const vigQuad = new THREE.Mesh(vigGeo, vigMat);
+      vigQuad.renderOrder = 999;
+      worldScene.add(vigQuad);
+
+      // Mouse
+      window.addEventListener('mousemove', e => {
+        mouseRaw.x =  (e.clientX / innerWidth)  * 2 - 1;
+        mouseRaw.y = -(e.clientY / innerHeight) * 2 + 1;
+        camTarget.x = mouseRaw.x;
+        camTarget.y = mouseRaw.y;
+      });
+
+      // Resize
+      window.addEventListener('resize', debounce(() => {
+        if (!worldRenderer) return;
+        worldCamera.aspect = innerWidth / innerHeight;
+        worldCamera.updateProjectionMatrix();
+        worldRenderer.setSize(innerWidth, innerHeight);
+      }, 150));
+
+      // Tab visibility
+      document.addEventListener('visibilitychange', () => { landingActive = !document.hidden && !!document.getElementById('landing-screen').classList.contains('show'); });
+
+      // Lenis + ScrollTrigger
+      initLenis();
+
+      // Start render loop
+      landingActive = true;
+      requestAnimationFrame(masterRenderLoop);
+    }
+
+    function initLenis() {
+      if (typeof Lenis === 'undefined') { initLenisOnly(); return; }
+      lenisInstance = new Lenis({ lerp: 0.08, smoothWheel: true });
+      lenisInstance.on('scroll', () => { if (typeof ScrollTrigger !== 'undefined') ScrollTrigger.update(); });
+      if (typeof gsap !== 'undefined') {
+        gsap.ticker.add(t => lenisInstance.raf(t * 1000));
+        gsap.ticker.lagSmoothing(0);
+        if (typeof ScrollTrigger !== 'undefined') {
+          gsap.registerPlugin(ScrollTrigger);
+          // Master alignment driver — full-page scrub
+          ScrollTrigger.create({
+            trigger: '#landing-screen',
+            start: 'top top',
+            end: 'bottom bottom',
+            scrub: 0.8,
+            invalidateOnRefresh: true,
+            onUpdate: self => { fieldUniforms.uAlignment.value = self.progress; }
+          });
+          // Camera Z tightening
+          ScrollTrigger.create({
+            trigger: '#landing-screen',
+            start: 'top top',
+            end: 'bottom bottom',
+            scrub: 1.0,
+            onUpdate: self => {
+              if (worldCamera) worldCamera.position.z = 38 - self.progress * 6;
+            }
+          });
+          // Nav scrolled state
+          ScrollTrigger.create({
+            start: '60px top',
+            onEnter: () => document.getElementById('l-nav').classList.add('scrolled'),
+            onLeaveBack: () => document.getElementById('l-nav').classList.remove('scrolled')
+          });
+        }
+      }
+    }
+
+    function initLenisOnly() {
+      if (typeof gsap !== 'undefined' && typeof ScrollTrigger !== 'undefined') {
+        gsap.registerPlugin(ScrollTrigger);
+        ScrollTrigger.create({
+          start: '60px top',
+          onEnter: () => document.getElementById('l-nav').classList.add('scrolled'),
+          onLeaveBack: () => document.getElementById('l-nav').classList.remove('scrolled')
+        });
+      }
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       WORLD: RENDER LOOP
+    ═══════════════════════════════════════════════════════════ */
+    function masterRenderLoop(timestamp) {
+      requestAnimationFrame(masterRenderLoop);
+      if (!landingActive || !worldRenderer) return;
+
+      const dt = Math.min(timestamp - lastTimestamp, 50);
+      lastTimestamp = timestamp;
+      fieldUniforms.uTime.value = timestamp * 0.001;
+
+      // Camera orbit
+      camCurrent.x += (camTarget.x - camCurrent.x) * 0.035;
+      camCurrent.y += (camTarget.y - camCurrent.y) * 0.035;
+      worldCamera.position.x = camCurrent.x * 2.5;
+      worldCamera.position.y = camCurrent.y * 1.8;
+      worldCamera.lookAt(0, 0, 0);
+
+      // Mouse lerp
+      mouseLerped.lerp(mouseRaw, 0.045);
+      fieldUniforms.uMouse.value.copy(mouseLerped);
+
+      worldRenderer.render(worldScene, worldCamera);
+
+      // FPS guardian
+      fpsFrameCount++;
+      if (timestamp - fpsLastCheck > 2000) {
+        const fps = fpsFrameCount / 2;
+        fpsFrameCount = 0; fpsLastCheck = timestamp;
+        if (fps < 24) {
+          document.getElementById('world-canvas').style.display = 'none';
+          landingActive = false;
+        }
+      }
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       WORLD: SUSPEND / RESUME
+    ═══════════════════════════════════════════════════════════ */
+    function suspendWorld() { landingActive = false; }
+    function resumeWorld() {
+      landingActive = true;
+      if (typeof ScrollTrigger !== 'undefined') ScrollTrigger.refresh();
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       ANIM: UTILITIES
+    ═══════════════════════════════════════════════════════════ */
+    const GLYPHS = '█▒░≡∆◊⊕≈∫∑µ∂∞∅◈⌐¬';
+
+    function classifiedReveal(el, finalText, onComplete) {
+      if (!el) return;
+      const chars = finalText.split('');
+      let tick = 0;
+      const totalTicks = chars.length * 3.5;
+      const id = setInterval(() => {
+        el.textContent = chars.map((ch, i) => {
+          if (ch === ' ') return ' ';
+          const resolvedAt = i * 3;
+          if (tick >= resolvedAt) return ch;
+          return GLYPHS[Math.floor(Math.random() * GLYPHS.length)];
+        }).join('');
+        if (++tick > totalTicks) {
+          el.textContent = finalText;
+          clearInterval(id);
+          onComplete && onComplete();
+        }
+      }, 28);
+    }
+
+    function typewriter(el, text, speed, onComplete) {
+      if (!el) return;
+      el.textContent = '';
+      let i = 0;
+      const id = setInterval(() => {
+        el.textContent += text[i++];
+        if (i >= text.length) { clearInterval(id); onComplete && onComplete(); }
+      }, speed || 40);
+    }
+
+    function fireConvergencePulse(anchor, x, y) {
+      const rect = anchor ? anchor.getBoundingClientRect() : null;
+      const cx = rect ? rect.left + rect.width  / 2 : x;
+      const cy = rect ? rect.top  + rect.height / 2 : y;
+      [0, 1, 2].forEach(i => {
+        const ring = document.createElement('div');
+        ring.className = 'convergence-ring';
+        ring.style.cssText = `left:${cx}px;top:${cy}px;transform:translate(-50%,-50%) scale(0) rotate(${i*15}deg);opacity:1;`;
+        document.body.appendChild(ring);
+        if (typeof gsap !== 'undefined') {
+          gsap.to(ring, { scale: 3.5 + i*2, opacity: 0, duration: 1.0 + i*0.25, delay: i*0.18, ease: 'power2.out', onComplete: () => ring.remove() });
+        } else {
+          setTimeout(() => ring.remove(), 1500);
+        }
+      });
+    }
+
+    function initMagneticButton(btn) {
+      if (!btn || isMobile) return;
+      btn.addEventListener('mousemove', e => {
+        const r = btn.getBoundingClientRect();
+        const dx = e.clientX - (r.left + r.width / 2);
+        const dy = e.clientY - (r.top + r.height / 2);
+        if (typeof gsap !== 'undefined') gsap.to(btn, { x: dx*0.32, y: dy*0.32, duration: 0.5, ease: 'power2.out' });
+      });
+      btn.addEventListener('mouseleave', () => {
+        if (typeof gsap !== 'undefined') gsap.to(btn, { x: 0, y: 0, duration: 0.8, ease: 'elastic.out(1,0.4)' });
+      });
+      btn.addEventListener('mouseenter', e => { fireConvergencePulse(btn); });
+    }
+
+    function countUp(el, target, duration, suffix) {
+      if (!el || typeof gsap === 'undefined') { if (el) el.textContent = target + (suffix || ''); return; }
+      gsap.to({ val: 0 }, {
+        val: target, duration: duration || 0.65, ease: 'power2.out',
+        onUpdate: function() { el.textContent = Math.round(this.targets()[0].val) + (suffix || ''); }
+      });
+    }
+
+    function wordWipeReveal(parentEl, delayBase) {
+      if (!parentEl) return;
+      const words = parentEl.querySelectorAll('.word');
+      words.forEach((w, i) => {
+        w.style.opacity = '0';
+        w.style.clipPath = 'inset(0 100% 0 0)';
+        setTimeout(() => {
+          w.style.transition = 'clip-path 0.5s cubic-bezier(0.16,1,0.3,1), opacity 0.1s';
+          w.style.opacity = '1';
+          w.style.clipPath = 'inset(0 0% 0 0)';
+        }, (delayBase || 0) + i * 100);
+      });
+    }
+
+    function debounce(fn, delay) {
+      let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), delay); };
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       SECTION: HERO REVEAL
+    ═══════════════════════════════════════════════════════════ */
+    function initHeroReveal() {
+      const sysLabel   = document.getElementById('hero-sys-label');
+      const headline   = document.getElementById('hero-headline');
+      const realWord   = document.getElementById('hero-real');
+      const cursor     = document.getElementById('hero-cursor');
+      const sub        = document.getElementById('hero-sub');
+      const metrics    = document.getElementById('hero-metrics');
+      const ctaRow     = document.getElementById('hero-cta-row');
+      const words      = headline ? headline.querySelectorAll('.word') : [];
+
+      // t=0ms sys label typewriter
+      if (sysLabel) {
+        const txt = sysLabel.textContent.trim();
+        sysLabel.textContent = '';
+        sysLabel.style.opacity = '1';
+        typewriter(sysLabel, txt, 35);
+      }
+
+      // t=500ms headline word-wipe
+      setTimeout(() => wordWipeReveal(headline, 0), 500);
+
+      // t=1200ms "real" gets classified reveal + lime
+      setTimeout(() => {
+        if (realWord) {
+          realWord.style.color = '#C4FF47';
+          classifiedReveal(realWord, 'real');
+        }
+      }, 1200);
+
+      // t=1500ms cursor blinks in
+      setTimeout(() => { if (cursor) cursor.style.opacity = '1'; }, 1500);
+
+      // t=1700ms sub fades
+      setTimeout(() => {
+        if (sub) { sub.style.transition = 'opacity 0.6s ease, transform 0.6s ease'; sub.style.opacity = '1'; }
+      }, 1700);
+
+      // t=2100ms metrics
+      setTimeout(() => {
+        if (metrics) { metrics.style.transition = 'opacity 0.5s ease'; metrics.style.opacity = '1'; }
+      }, 2100);
+
+      // t=2600ms CTA row
+      setTimeout(() => {
+        if (ctaRow) { ctaRow.style.transition = 'opacity 0.5s ease'; ctaRow.style.opacity = '1'; }
+        // Magnetic buttons
+        initMagneticButton(document.getElementById('hero-cta-primary'));
+        initMagneticButton(document.getElementById('hero-cta-secondary'));
+      }, 2600);
+
+      // Hero scroll-out
+      if (typeof gsap !== 'undefined' && typeof ScrollTrigger !== 'undefined') {
+        const heroContent = document.getElementById('hero-content');
+        if (heroContent) {
+          gsap.to(heroContent, {
+            y: -60, opacity: 0, ease: 'power1.in',
+            scrollTrigger: { trigger: '#hero', start: 'top top', end: '25% top', scrub: true }
+          });
+        }
+      }
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       SECTION: INTELLIGENCE BRIEF
+    ═══════════════════════════════════════════════════════════ */
+    function initIntelBrief() {
+      const targets = [
+        { id: 'brief-val-0', val: 8,  suffix: '' },
+        { id: 'brief-val-1', val: 90, suffix: '' },
+        { id: 'brief-val-2', val: 5,  suffix: '' },
+        { id: 'brief-val-3', val: 30, suffix: 's' }
+      ];
+
+      const statement = document.getElementById('intel-brief-statement');
+      const cells = document.querySelectorAll('.intel-brief-cell');
+
+      const io = new IntersectionObserver(entries => {
+        entries.forEach(e => {
+          if (!e.isIntersecting) return;
+          io.unobserve(e.target);
+          // Animate statement words
+          if (statement && !statement.dataset.revealed) {
+            statement.dataset.revealed = '1';
+            const words = statement.textContent.trim().split(' ');
+            statement.innerHTML = words.map(w => `<span class="word" style="display:inline-block;opacity:0;transform:translateY(12px);transition:opacity 0.5s ease, transform 0.5s ease;">${w}&nbsp;</span>`).join('');
+            statement.querySelectorAll('.word').forEach((w, i) => {
+              setTimeout(() => { w.style.opacity = '1'; w.style.transform = 'translateY(0)'; }, i * 80);
+            });
+          }
+          // Triangulation + countup per cell
+          targets.forEach((t, i) => {
+            const el = document.getElementById(t.id);
+            const cell = document.getElementById('brief-cell-' + i);
+            const tri = cell ? cell.querySelector('.intel-brief-tri') : null;
+            const lbl = cell ? cell.querySelector('.intel-brief-label') : null;
+            setTimeout(() => {
+              if (tri) { tri.style.transition = 'opacity 0.4s'; tri.style.opacity = '1'; }
+              if (el) countUp(el, t.val, 0.8, t.suffix);
+              setTimeout(() => { if (lbl) { lbl.style.transition = 'opacity 0.4s'; lbl.style.opacity = '1'; } }, 300);
+            }, i * 200 + 400);
+          });
+        });
+      }, { threshold: 0.12, rootMargin: '0px 0px -60px 0px' });
+
+      if (statement) io.observe(statement);
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       SECTION: PRESSURE TEST
+    ═══════════════════════════════════════════════════════════ */
+    function initPressureTest() {
+      const panels = document.querySelectorAll('.pressure-panel');
+      const io = new IntersectionObserver(entries => {
+        entries.forEach(e => {
+          if (!e.isIntersecting) return;
+          io.unobserve(e.target);
+          // Word wipe on question
+          const q = e.target.querySelector('.pressure-question');
+          if (q) wordWipeReveal(q, 0);
+          // SVG draw-in for illustration
+          const svgLines = e.target.querySelectorAll('[stroke-dasharray]');
+          svgLines.forEach((line, i) => {
+            setTimeout(() => {
+              line.style.transition = 'stroke-dashoffset 0.8s cubic-bezier(0.4,0,0.2,1)';
+              line.style.strokeDashoffset = '0';
+            }, i * 120 + 300);
+          });
+          // Illustration opacity
+          const illus = e.target.querySelector('.pressure-illustration');
+          if (illus) { setTimeout(() => { illus.querySelector('svg').style.transition = 'opacity 0.6s'; illus.querySelector('svg').style.opacity = '1'; }, 200); }
+        });
+      }, { threshold: 0.15, rootMargin: '0px 0px -60px 0px' });
+
+      panels.forEach(p => io.observe(p));
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       SECTION: ENGINE BOOT
+    ═══════════════════════════════════════════════════════════ */
+    const NODE_ORDER = ['node-a0','node-a1','node-mc','node-sv','node-sa','node-sh','node-l2','node-l3','node-l4','node-a7'];
+    const PATH_ORDER = ['path-a0-a1','path-a1-mc','path-a1-sv','path-a1-sa','path-mc-sh','path-sv-sh','path-sa-sh','path-sh-l2','path-l2-l3','path-l3-l4','path-l4-a7'];
+
+    function bootEngine() {
+      const bootLabel = document.getElementById('engine-boot-label');
+      const headline  = document.getElementById('engine-headline');
+      const sub       = document.getElementById('engine-sub');
+
+      // [SYSTEM_BOOT] classified reveal
+      if (bootLabel) classifiedReveal(bootLabel, 'SYSTEM_BOOT', () => {
+        // Headline fades after label resolves
+        if (headline) { headline.style.transition = 'opacity 0.6s, transform 0.6s'; headline.style.opacity = '1'; }
+        setTimeout(() => { if (sub) { sub.style.transition = 'opacity 0.5s'; sub.style.opacity = '1'; } }, 400);
+      });
+      if (headline) { headline.style.opacity = '0'; }
+      if (sub) { sub.style.opacity = '0'; }
+
+      // Activation pulse in field
+      if (fieldUniforms) {
+        if (typeof gsap !== 'undefined') {
+          gsap.to(fieldUniforms.uActivation, { value: 1.0, duration: 0.8, ease: 'power2.out', delay: 0.5,
+            onComplete: () => gsap.to(fieldUniforms.uActivation, { value: 0, duration: 2.0, ease: 'power2.in' })
+          });
+        }
+      }
+
+      // Boot nodes + paths in sequence
+      NODE_ORDER.forEach((id, i) => {
+        const node = document.getElementById(id);
+        if (!node) return;
+        setTimeout(() => {
+          node.classList.remove('dormant');
+          node.classList.add(id === 'node-l4' ? 'peak' : 'active');
+        }, 1800 + i * 400);
+      });
+
+      PATH_ORDER.forEach((id, i) => {
+        const path = document.getElementById(id);
+        if (!path) return;
+        setTimeout(() => {
+          path.classList.add('lit');
+          path.style.transition = 'stroke-dashoffset 0.5s cubic-bezier(0.4,0,0.2,1), stroke 0.3s';
+          path.style.strokeDashoffset = '0';
+        }, 2000 + i * 350);
+      });
+
+      // Agent hover tooltips
+      const tooltip = document.getElementById('agent-tooltip');
+      document.querySelectorAll('.agent-node').forEach(node => {
+        node.addEventListener('mouseenter', e => {
+          if (!tooltip) return;
+          const id   = node.dataset.id;
+          const name = node.dataset.name;
+          const desc = node.dataset.desc;
+          document.getElementById('tt-id').textContent   = id   || '';
+          document.getElementById('tt-name').textContent = name || '';
+          document.getElementById('tt-desc').textContent = desc || '';
+          tooltip.style.display = 'block';
+        });
+        node.addEventListener('mousemove', e => {
+          if (!tooltip) return;
+          tooltip.style.left = (e.clientX + 16) + 'px';
+          tooltip.style.top  = (e.clientY - 32) + 'px';
+        });
+        node.addEventListener('mouseleave', () => { if (tooltip) tooltip.style.display = 'none'; });
+      });
+    }
+
+    function initEngineSection() {
+      if (typeof ScrollTrigger === 'undefined') {
+        // Fallback: IntersectionObserver
+        const io = new IntersectionObserver(entries => {
+          if (entries[0].isIntersecting) { io.disconnect(); bootEngine(); }
+        }, { threshold: 0.15 });
+        const eng = document.getElementById('engine'); if (eng) io.observe(eng);
+        return;
+      }
+      ScrollTrigger.create({
+        trigger: '#engine',
+        start: 'top 70%',
+        once: true,
+        onEnter: bootEngine
+      });
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       SECTION: ANALYSIS PROTOCOL PINS
+    ═══════════════════════════════════════════════════════════ */
+    function initProtocolPins() {
+      const panels = ['panel-entry','panel-signals','panel-engage','panel-reasoning','panel-verdict'];
+      const io = new IntersectionObserver(entries => {
+        entries.forEach(e => {
+          if (!e.isIntersecting) return;
+          io.unobserve(e.target);
+          const idx = panels.indexOf(e.target.id);
+          if (idx >= 0) animateProtocolPanel(idx);
+        });
+      }, { threshold: 0.2 });
+      panels.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) io.observe(el);
+      });
+    }
+
+    function animateProtocolPanel(idx) {
+      if (idx === 0) {
+        // Panel 1: typewriter sequence
+        const lines = ['p1-l1','p1-l2','p1-l3'];
+        const input = document.getElementById('p1-input');
+        const l4 = document.getElementById('p1-l4');
+        const l5 = document.getElementById('p1-l5');
+        lines.forEach((id, i) => {
+          const el = document.getElementById(id);
+          setTimeout(() => { if (el) { el.style.transition='opacity 0.3s'; el.style.opacity='1'; } }, i * 200);
+        });
+        setTimeout(() => {
+          if (input) { input.style.transition='opacity 0.5s'; input.style.opacity='1'; }
+        }, 600);
+        setTimeout(() => { if (l4) { l4.style.transition='opacity 0.3s'; l4.style.opacity='1'; } }, 1200);
+        setTimeout(() => { if (l5) { l5.style.transition='opacity 0.3s'; l5.style.opacity='1'; } }, 1800);
+      }
+
+      if (idx === 1) {
+        // Panel 2: token orbit
+        const container = document.getElementById('orbit-container');
+        if (!container || container.dataset.built) return;
+        container.dataset.built = '1';
+        const tokens = [
+          '[SECTOR: B2B_SaaS]','[MODEL: subscription]',
+          '[REGION: MENA]','[TARGET: freight_SME]',
+          '[STAGE: seed]','[COMPETITION: ?]'
+        ];
+        const orbits = [80, 130, 165];
+        const cx = 180, cy = 180;
+        tokens.forEach((txt, i) => {
+          const tok = document.createElement('div');
+          tok.className = 'orbit-token';
+          tok.textContent = txt;
+          const r = orbits[i % 3];
+          const startAngle = (i / tokens.length) * Math.PI * 2;
+          const x = cx + r * Math.cos(startAngle);
+          const y = cy + r * Math.sin(startAngle);
+          tok.style.left = x + 'px';
+          tok.style.top  = y + 'px';
+          container.appendChild(tok);
+          setTimeout(() => {
+            tok.style.transition = 'opacity 0.5s';
+            tok.style.opacity = '1';
+          }, i * 100 + 100);
+          const dir = i % 2 === 0 ? 1 : -1;
+          let angle = startAngle;
+          const orbit = () => {
+            angle += dir * 0.003;
+            tok.style.left = (cx + r * Math.cos(angle)) + 'px';
+            tok.style.top  = (cy + r * Math.sin(angle)) + 'px';
+            if (landingActive || true) requestAnimationFrame(orbit);
+          };
+          requestAnimationFrame(orbit);
+        });
+      }
+
+      if (idx === 3) {
+        // Panel 4: reasoning assembly + risk bars
+        const textLines = ['p4-r1','p4-r2','p4-r3','p4-r4','p4-r5','p4-synth'];
+        const p4c = document.getElementById('p4-classified');
+        if (p4c) classifiedReveal(p4c, 'L4_STRATEGIC_CORE: ACTIVE ──');
+
+        textLines.forEach((id, i) => {
+          setTimeout(() => {
+            const el = document.getElementById(id);
+            if (el) { el.style.transition = 'opacity 0.3s'; el.style.opacity = '1'; }
+          }, 800 + i * 150);
+        });
+
+        const bars = document.querySelectorAll('.risk-bar-row');
+        bars.forEach((row, i) => {
+          setTimeout(() => {
+            row.style.transition = 'opacity 0.3s';
+            row.style.opacity = '1';
+            const fill = row.querySelector('.risk-bar-fill');
+            const w = fill ? (fill.dataset.width || 70) : 70;
+            if (fill) setTimeout(() => { fill.style.width = w + '%'; }, 100);
+          }, 1400 + i * 200);
+        });
+      }
+
+      if (idx === 4) {
+        // Panel 5: verdict card materialization
+        const card = document.getElementById('verdict-card');
+        if (card && typeof gsap !== 'undefined') {
+          gsap.to(card, { clipPath: 'inset(0%)', duration: 0.4, ease: 'power2.out', onComplete: () => {
+            const fields = card.querySelectorAll('.verdict-card-field');
+            fields.forEach((f, i) => {
+              setTimeout(() => { f.style.transition = 'opacity 0.3s'; f.style.opacity = '1'; }, i * 150 + 100);
+            });
+            setTimeout(() => {
+              fireConvergencePulse(card);
+              const vr = document.getElementById('verdict-ready');
+              if (vr) { vr.style.transition = 'opacity 0.3s'; vr.style.opacity = '1'; }
+            }, 700);
+          }});
+        }
+      }
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       SECTION: OUTPUTS REVEAL
+    ═══════════════════════════════════════════════════════════ */
+    function initOutputsReveal() {
+      const cards = document.querySelectorAll('.l-out-card');
+      const centerIdx = Math.floor(cards.length / 2);
+      const io = new IntersectionObserver(entries => {
+        entries.forEach(e => {
+          if (!e.isIntersecting) return;
+          io.unobserve(e.target);
+          const idx = Array.from(cards).indexOf(e.target);
+          const dist = Math.abs(idx - centerIdx);
+          setTimeout(() => {
+            e.target.classList.add('revealed');
+            // Sparkline draw-in
+            const poly = e.target.querySelector('.card-sparkline polyline');
+            if (poly) setTimeout(() => poly.classList.add('drawn'), 300);
+          }, dist * 80);
+        });
+      }, { threshold: 0.1 });
+      cards.forEach(c => io.observe(c));
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       SECTION: FINAL CTA
+    ═══════════════════════════════════════════════════════════ */
+    function initCTAReveal() {
+      const io = new IntersectionObserver(entries => {
+        entries.forEach(e => {
+          if (!e.isIntersecting) return;
+          io.unobserve(e.target);
+          const stop  = document.getElementById('cta-stop');
+          const start = document.getElementById('cta-start');
+          if (stop)  { setTimeout(() => { stop.style.transition  = 'opacity 0.6s'; stop.style.opacity  = '1'; }, 0); }
+          if (start) { setTimeout(() => { start.style.transition = 'opacity 0.6s'; start.style.opacity = '1'; }, 500); }
+          const btn = document.getElementById('cta-main-btn');
+          if (btn) initMagneticButton(btn);
+        });
+      }, { threshold: 0.3 });
+      const cta = document.getElementById('final-cta');
+      if (cta) io.observe(cta);
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       OUTPUT CARDS: ADD SPARKLINES
+    ═══════════════════════════════════════════════════════════ */
+    function addSparklines() {
+      const sparkData = [
+        '0,40 20,35 40,45 60,28 80,38 100,22 120,32',
+        '0,50 20,42 40,55 60,38 80,48 100,35 120,44',
+        '0,30 20,38 40,25 60,42 80,30 100,45 120,35',
+        '0,45 20,38 40,50 60,35 80,42 100,30 120,40',
+        '0,55 20,45 40,58 60,40 80,52 100,38 120,48',
+        '0,35 20,42 40,30 60,48 80,36 100,52 120,42'
+      ];
+      document.querySelectorAll('.l-out-card').forEach((card, i) => {
+        if (!card.querySelector('.card-sparkline')) {
+          const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+          svg.setAttribute('viewBox', '0 0 120 60');
+          svg.setAttribute('class', 'card-sparkline');
+          svg.style.cssText = 'width:100%;height:32px;';
+          const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+          poly.setAttribute('points', sparkData[i % sparkData.length]);
+          poly.setAttribute('stroke-dasharray', '200');
+          poly.setAttribute('stroke-dashoffset', '200');
+          svg.appendChild(poly);
+          const preview = card.querySelector('.l-out-preview');
+          if (preview) preview.after(svg);
+          else card.appendChild(svg);
+        }
+      });
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       MASTER INIT — called by showLanding()
+    ═══════════════════════════════════════════════════════════ */
+    function initLandingAnimations() {
+      addSparklines();
+      initHeroReveal();
+      initIntelBrief();
+      initPressureTest();
+      initEngineSection();
+      initProtocolPins();
+      initOutputsReveal();
+      initCTAReveal();
+    }
 
 </script>
 </body>

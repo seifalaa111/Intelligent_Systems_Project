@@ -50,7 +50,7 @@ from midan.response import *  # noqa: F401,F403
 from midan.pipeline import *  # noqa: F401,F403
 
 # ── Endpoints + FastAPI app instance ────────────────────────────────────────
-# `api` (the FastAPI app) is exposed by midan.endpoints; importing * here
-# pulls in the app instance plus all six route handlers. Tests that do
-# `TestClient(api.api)` continue to work.
+# we expose `api` (the FastAPI app) from midan.endpoints; importing * here
+# pulls in the app instance plus all six route handlers so tests that do
+# `TestClient(api.api)` continue to work without modification.
 from midan.endpoints import *  # noqa: F401,F403

@@ -262,7 +262,7 @@ def test_project_endpoint_pre_analysis_payload_is_schema_compliant():
     payload = api.ResponsePayload(**body)
     assert payload.decision_state == 'PRE_ANALYSIS'
     assert payload.post_decision_mode is None
-    # Even pre-analysis carries all core blocks (with explicit unknown values)
+    # we require even pre-analysis payloads to carry all core blocks (with explicit unknown values)
     assert payload.risk_decomposition.market_risk.level == 'unknown'
 
 
@@ -271,7 +271,7 @@ def test_project_endpoint_decided_payload_is_schema_compliant():
     body = response.json()
     payload = api.ResponsePayload(**body)
     assert payload.decision_state in ('GO', 'CONDITIONAL', 'NO_GO')
-    assert payload.projection is not None  # legacy projection extension preserved
+    assert payload.projection is not None  # we preserve the legacy projection extension here
 
 
 def test_interact_endpoint_pre_analysis_for_greeting():
@@ -296,7 +296,7 @@ def test_interact_endpoint_rejected_for_adversarial_input():
     )
     body = response.json()
     payload = api.ResponsePayload(**body)
-    # Either REJECTED at L0 (most likely) or PRE_ANALYSIS routed by intent
+    # we accept either REJECTED at L0 (most likely) or PRE_ANALYSIS routed by intent
     assert payload.decision_state in ('REJECTED', 'PRE_ANALYSIS')
     if payload.decision_state == 'REJECTED':
         assert "L0.rejection_type" in payload.reasoning_trace.signal_references
@@ -371,7 +371,7 @@ def test_l4_decision_engine_output_is_passed_through_unchanged():
     l4 = raw["l4_decision"]
     payload = api.build_response_payload(raw, outcome='decided')
 
-    # Direct field-by-field passthrough check
+    # we do a direct field-by-field passthrough check to confirm no reinterpretation
     assert payload.decision_state          == l4["decision_state"]
     assert payload.decision_strength.tier  == l4["decision_strength"]["tier"]
     assert payload.decision_strength.basis == l4["decision_strength"]["basis"]
@@ -385,8 +385,8 @@ def test_l4_legacy_tas_score_remains_zero_decision_influence_after_schema():
     payload = api.build_response_payload(raw, outcome='decided')
     legacy_tas = raw["l4_decision"]["legacy_tas_score"]
     assert "ZERO" in legacy_tas["note"]
-    # The state was derived by the rule machine, not by TAS — so we can verify
-    # the rule trace doesn't reference legacy_tas_value as a decision input.
+    # we derived the state via the rule machine, not TAS — so we verify
+    # the rule trace doesn't reference legacy_tas_value as a decision input
     for step in payload.reasoning_trace.decision_reasoning_steps:
         for ev in step.evidence:
             assert "legacy_tas" not in ev
@@ -423,7 +423,7 @@ def test_l4_conflicting_signals_state_preserved_through_schema():
     payload = api.build_response_payload(raw, outcome='decided')
     assert payload.decision_state == 'CONFLICTING_SIGNALS'
     assert payload.post_decision_mode == 'RESOLVING_CONFLICT'
-    # Conflict ids must travel into the reasoning trace
+    # we require conflict IDs to travel through into the reasoning trace
     assert len(payload.reasoning_trace.conflict_ids) >= 1
 
 
@@ -432,7 +432,7 @@ def test_l4_conflicting_signals_state_preserved_through_schema():
 # ═══════════════════════════════════════════════════════════════
 
 def _valid_payload_dict(state: str = 'GO') -> dict:
-    """Minimal valid payload dict — used as a base for negative-validation tests."""
+    """Minimal valid payload dict — we use this as a base for negative-validation tests."""
     return {
         "success": True,
         "schema_version": "1.0",

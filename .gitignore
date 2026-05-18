@@ -26,11 +26,15 @@ verify_output.txt
 
 # Runtime logs (prediction log, server logs)
 logs/
+*.log
 server.log
 uvicorn_err.txt
 uvicorn_out.txt
 streamlit_err.txt
 streamlit_out.txt
+
+# Pip install artifacts
+=*
 
 # Backup files
 *.bak

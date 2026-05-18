@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MIDAN Intelligence Engine — Scoring Formulas Reference</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;color:#1a1a2e;background:#fff;line-height:1.7;padding:40px 60px;max-width:900px;margin:0 auto}
+@media print{body{padding:20px 40px;font-size:11pt}h1{font-size:20pt!important}.formula-card{break-inside:avoid}.no-print{display:none}}
+h1{font-size:28px;font-weight:800;color:#0f0f23;margin-bottom:6px;letter-spacing:-0.5px}
+.subtitle{font-size:14px;color:#64748b;margin-bottom:30px;border-bottom:2px solid #e2e8f0;padding-bottom:15px}
+h2{font-size:20px;font-weight:700;color:#1e293b;margin:35px 0 8px;padding:10px 14px;background:#f1f5f9;border-left:4px solid #3b82f6;border-radius:0 6px 6px 0}
+h2 .layer{font-size:12px;font-weight:500;color:#3b82f6;display:block}
+h3{font-size:14px;font-weight:600;color:#475569;margin:14px 0 6px;text-transform:uppercase;letter-spacing:0.5px}
+p,li{font-size:13.5px;color:#334155}
+ul{padding-left:22px;margin:4px 0 10px}
+li{margin-bottom:4px}
+.formula-card{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px 20px;margin:10px 0 18px}
+.formula{font-family:'JetBrains Mono',monospace;font-size:13px;color:#0f172a;background:#fff;border:1px solid #cbd5e1;border-radius:6px;padding:12px 16px;margin:8px 0;white-space:pre-wrap;line-height:1.8}
+.why-box{background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:10px 14px;margin:8px 0}
+.why-box strong{color:#1d4ed8;font-size:12px;text-transform:uppercase;letter-spacing:0.3px}
+.correct-box{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:10px 14px;margin:8px 0}
+.correct-box strong{color:#15803d;font-size:12px;text-transform:uppercase;letter-spacing:0.3px}
+table{width:100%;border-collapse:collapse;margin:8px 0;font-size:12.5px}
+th{background:#1e293b;color:#fff;padding:8px 12px;text-align:left;font-weight:600;font-size:11.5px}
+td{padding:7px 12px;border-bottom:1px solid #e2e8f0}
+tr:nth-child(even){background:#f8fafc}
+.tag{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;margin-left:6px}
+.tag-gate{background:#fef3c7;color:#92400e}
+.tag-routing{background:#dbeafe;color:#1e40af}
+.tag-legacy{background:#fecaca;color:#991b1b}
+.tag-decision{background:#d1fae5;color:#065f46}
+.tag-signal{background:#e0e7ff;color:#3730a3}
+.page-break{page-break-before:always}
+.cover{text-align:center;padding:80px 0 40px;border-bottom:3px solid #1e293b;margin-bottom:40px}
+.cover h1{font-size:36px;margin-bottom:12px}
+.cover .ver{font-size:13px;color:#94a3b8;margin-top:8px}
+.toc{margin:20px 0 40px}
+.toc a{color:#1e40af;text-decoration:none;font-size:13.5px}
+.toc li{margin-bottom:6px}
+.flow-summary{background:linear-gradient(135deg,#1e293b,#334155);color:#fff;border-radius:10px;padding:20px 24px;margin:20px 0}
+.flow-summary h3{color:#93c5fd;margin-top:0}
+.flow-summary code{background:rgba(255,255,255,0.15);padding:2px 6px;border-radius:4px;font-size:12px}
+</style>
+</head>
+<body>
+
+<div class="cover">
+<h1>MIDAN Intelligence Engine</h1>
+<p style="font-size:18px;color:#475569;font-weight:500">Complete Scoring Formulas Reference</p>
+<p class="ver">Pipeline Version 1.0 — All formulas in execution order</p>
+<p style="margin-top:20px;font-size:13px;color:#64748b">Intelligent Systems Project — Faculty of Computer Science</p>
+</div>
+
+<div class="toc">
+<h3 style="margin-bottom:10px">Table of Contents</h3>
+<ol>
+<li><a href="#f1">Logical Validity Score (L0 Gate)</a></li>
+<li><a href="#f2">L1 Aggregate Confidence (L1 Gate)</a></li>
+<li><a href="#f3">Effective Inflation (L2A Macro)</a></li>
+<li><a href="#f4">Macro Friction (L2A Macro)</a></li>
+<li><a href="#f5">SARIMA Trend Normalization (L2D)</a></li>
+<li><a href="#f6">FCM Fuzzy Membership (L2B.5)</a></li>
+<li><a href="#f7">SHAP Normalized Shares (L2C)</a></li>
+<li><a href="#f8">SHAP Cosine Similarity (L2C.5)</a></li>
+<li><a href="#f9">Novelty Score (RAG)</a></li>
+<li><a href="#f10">RAG Confidence + ARIMA Modifier (RAG)</a></li>
+<li><a href="#f11">XAI Score (L2C)</a></li>
+<li><a href="#f12">Idea Signal (L3 Scoring)</a></li>
+<li><a href="#f13">Intelligent Score — IS (L2D.5 Routing)</a></li>
+<li><a href="#f14">Legacy TAS (L4a Display)</a></li>
+<li><a href="#f15">Decision Quality Assessment (L4)</a></li>
+</ol>
+</div>
+
+<div class="flow-summary">
+<h3>Pipeline Flow Summary</h3>
+<p style="font-size:13px;line-height:1.8">
+<code>User Input</code> → <code>L0 Gate</code> (validity check) → <code>L1 Parser</code> (confidence-scored extraction) → <code>L2 Macro</code> (inflation, friction, SVM, FCM, SHAP, SARIMA) → <code>IS Composite</code> (5-signal routing) → <code>ReAct Router</code> (7-path tree) → <code>L3 Reasoning</code> (idea signal + structured analysis) → <code>L4 Decision Engine</code> (risk decomposition → state machine → GO/CONDITIONAL/NO_GO)
+</p>
+</div>
+
+<!-- ═══════════════ FORMULA 1 ═══════════════ -->
+<h2 id="f1"><span class="layer">Layer 0 — Input Gate</span>1. Logical Validity Score <span class="tag tag-gate">GATE</span></h2>
+<div class="formula-card">
+<h3>Formula</h3>
+<div class="formula">logical_validity_score ∈ [0.0, 1.0]    — fixed constant per rejection type, NOT computed</div>
+
+<table>
+<tr><th>Rejection Type</th><th>Score</th><th>Confidence</th></tr>
+<tr><td>adversarial_prompt</td><td>0.02</td><td>0.97</td></tr>
+<tr><td>logical_impossibility</td><td>0.02</td><td>0.97</td></tr>
+<tr><td>no_revenue_model</td><td>0.04</td><td>0.96</td></tr>
+<tr><td>unsustainable_economics</td><td>0.05</td><td>0.93</td></tr>
+<tr><td>spam_or_gibberish</td><td>0.05–0.08</td><td>0.90–0.95</td></tr>
+<tr><td>no_value_exchange</td><td>0.12</td><td>0.90</td></tr>
+<tr><td>contradictory_claims</td><td>0.18</td><td>0.92</td></tr>
+<tr><td>too_short</td><td>0.20</td><td>0.97</td></tr>
+<tr><td>vague_non_actionable</td><td>0.35</td><td>0.82</td></tr>
+<tr><td>LLM arbiter rejection</td><td>1.0 − conf</td><td>[0.85, 0.96]</td></tr>
+<tr style="background:#d1fae5"><td><strong>Pass (valid idea)</strong></td><td><strong>0.92</strong></td><td>—</td></tr>
+</table>
+
+<h3>What It Measures</h3>
+<p>How close the input is to being a real business concept. 0.0 = definitively not a business. 1.0 = definitively a real business.</p>
+
+<div class="why-box">
+<strong>Why This Design</strong>
+<p>Scores are hand-calibrated to reflect severity ordering: physically impossible ideas (0.02) are worse than vague ones (0.35). This is a gate, not a model — scores are ordinal labels that rank rejection severity. The LLM arbiter's score is <code>1 − confidence</code> because higher LLM confidence in rejection means lower validity. Pass-through is 0.92 (not 1.0) because passing L0 doesn't guarantee viability.</p>
+</div>
+
+<div class="correct-box">
+<strong>Why It's Correct</strong>
+<p>A gate needs correct ordering (impossible < no revenue < vague < valid), not statistical calibration. The scores enforce that ordering by construction.</p>
+</div>
+</div>
+
+<!-- ═══════════════ FORMULA 2 ═══════════════ -->
+<h2 id="f2"><span class="layer">Layer 1 — Parser</span>2. Aggregate Confidence <span class="tag tag-gate">GATE</span></h2>
+<div class="formula-card">
+<h3>Formula</h3>
+<div class="formula">aggregate_confidence = mean( confidence[f]  for f in required_fields )
+
+where required_fields = {business_model, target_segment, stage, differentiation_score}
+      confidence[f] ∈ [0.0, 1.0]  — per-field extraction confidence from LLM
+
+Gate: halts pipeline if aggregate_confidence < 0.50
+Field becomes UNKNOWN if its individual confidence < 0.55</div>
+
+<h3>What It Measures</h3>
+<p>A sufficiency gate ensuring the LLM extracted the required fields with enough certainty. Below threshold → pipeline asks for clarification instead of guessing.</p>
+
+<div class="why-box">
+<strong>Why This Design</strong>
+<p>Arithmetic mean treats all required fields equally. We gate on the mean rather than any single field because one low-confidence field shouldn't block if the others are strong — L2–L4 can compensate for one uncertain input but not for systemic ambiguity.</p>
+</div>
+
+<div class="correct-box">
+<strong>Why It's Correct</strong>
+<p>The mean penalizes evenly when multiple fields are weak, but allows one borderline field through when the rest are high. This matches the design intent: graceful degradation for one uncertain field, hard stop for widespread uncertainty.</p>
+</div>
+</div>
+
+<!-- ═══════════════ FORMULA 3 ═══════════════ -->
+<h2 id="f3"><span class="layer">Layer 2A — Macro Vector</span>3. Effective Inflation <span class="tag tag-signal">SIGNAL</span></h2>
+<div class="formula-card">
+<h3>Formula</h3>
+<div class="formula">scale = base_inflation / 33.9
+
+effective_inflation = clip( eff_inf_offset × scale,  1.0,  100.0 )
+
+where:
+  base_inflation  = country-level inflation rate (COUNTRY_MACRO_DEFAULTS)
+  eff_inf_offset  = sector-specific inflation sensitivity (SECTOR_EFF_MACRO)
+  33.9            = Egypt's inflation rate (reference denominator)</div>
+
+<h3>What It Measures</h3>
+<p>Converts raw country inflation into a sector-adjusted effective inflation reflecting how much inflation actually impacts this particular sector.</p>
+
+<div class="why-box">
+<strong>Why This Design</strong>
+<p>Fintech (offset 7.5) experiences less inflation pass-through than ecommerce (offset 36.0) because digital services have lower COGS exposure. Dividing by 33.9 normalizes so the SVM sees values trained on Egypt-calibrated data regardless of country. Clipping prevents degenerate inputs.</p>
+</div>
+
+<div class="correct-box">
+<strong>Why It's Correct</strong>
+<p>Proportional rescaling: <code>new = reference × (country / reference_country)</code>. Preserves relative ordering of sectors across countries while keeping magnitude in the SVM's training range.</p>
+</div>
+</div>
+
+<!-- ═══════════════ FORMULA 4 ═══════════════ -->
+<h2 id="f4"><span class="layer">Layer 2A — Macro Vector</span>4. Macro Friction <span class="tag tag-signal">SIGNAL</span></h2>
+<div class="formula-card">
+<h3>Formula</h3>
+<div class="formula">macro_friction = clip( effective_inflation + unemployment − gdp_growth,  −50,  100 )</div>
+
+<h3>What It Measures</h3>
+<p>A single scalar capturing how much the macro environment resists startup creation. Higher friction = harder to operate.</p>
+
+<div class="why-box">
+<strong>Why This Design</strong>
+<ul>
+<li><strong>Inflation adds friction</strong> — higher costs erode margins</li>
+<li><strong>Unemployment adds friction</strong> — weaker consumer spending, harder hiring</li>
+<li><strong>GDP growth reduces friction</strong> — expanding economy creates demand</li>
+</ul>
+<p>The subtraction makes it a net resistance score: a growing economy partially offsets inflation and unemployment drag.</p>
+</div>
+
+<div class="correct-box">
+<strong>Why It's Correct</strong>
+<p>A signed linear combination where each component has clear directional interpretation. It's a proxy designed to separate favorable from hostile environments — exactly what the SVM needs as a feature input.</p>
+</div>
+</div>
+
+<!-- ═══════════════ FORMULA 5 ═══════════════ -->
+<h2 id="f5"><span class="layer">Layer 2D — Time Series</span>5. SARIMA Trend Normalization <span class="tag tag-signal">SIGNAL</span></h2>
+<div class="formula-card">
+<h3>Formula</h3>
+<div class="formula">forecast_mean = mean( max(0, v)  for v in sarima_forecast_values )
+
+sarima_trend = clip( forecast_mean / 50.0,  0.15,  0.90 )
+
+Default = 0.50 (neutral) when no SARIMA model exists for the sector</div>
+
+<h3>What It Measures</h3>
+<p>Normalized sector trajectory in [0.15, 0.90]. Higher = sector is growing, lower = sector is declining.</p>
+
+<div class="why-box">
+<strong>Why This Design</strong>
+<ul>
+<li><code>max(0, v)</code> floors negative forecasts — negative deal counts are nonsensical</li>
+<li>Dividing by 50.0 maps forecasts to 0–1 range (50 deals/period = neutral midpoint)</li>
+<li>Clip to [0.15, 0.90] prevents extremes: no sector should contribute zero or dominating weight</li>
+</ul>
+</div>
+
+<div class="correct-box">
+<strong>Why It's Correct</strong>
+<p>Min-max normalization with a domain-informed midpoint. The divisor of 50 was calibrated from training data. Asymmetric clip ensures no signal saturation in either direction.</p>
+</div>
+</div>
+
+
+<!-- ═══════════════ FORMULA 6 ═══════════════ -->
+<h2 id="f6" class="page-break"><span class="layer">Layer 2B.5 — Fuzzy Clustering</span>6. FCM Fuzzy Membership <span class="tag tag-signal">SIGNAL</span></h2>
+<div class="formula-card">
+<h3>Formula</h3>
+<div class="formula">dᵢ = ‖x_pca − centerᵢ‖₂          (Euclidean distance to cluster i)
+
+exp = 2 / (m − 1)                 (m = fuzziness = 2.0  →  exp = 2.0)
+
+uᵢ = (1 / dᵢᵉˣᵖ) / Σⱼ (1 / dⱼᵉˣᵖ)   (standard FCM membership)
+
+entropy = −Σᵢ uᵢ · ln(uᵢ) / ln(K)    (normalized Shannon entropy)
+
+is_ambiguous = (entropy > 0.85)</div>
+
+<h3>What It Measures</h3>
+<p>Parallel fuzzy signal alongside SVM hard classification. When memberships are flat (e.g. 0.40/0.35/0.25), the regime is genuinely ambiguous and the SVM hard label is less trustworthy.</p>
+
+<div class="why-box">
+<strong>Why This Design</strong>
+<p>Standard FCM formula (Bezdek, 1981) with fuzziness m=2.0 (literature default). Shannon entropy normalized by ln(K) maps to [0,1] regardless of cluster count. Threshold 0.85 means membership is >85% of maximum entropy — nearly uniform.</p>
+</div>
+
+<div class="correct-box">
+<strong>Why It's Correct</strong>
+<p>FCM membership guarantees Σuᵢ = 1 (partition of unity) and each uᵢ ∈ (0,1). Normalizing entropy by ln(K) makes the ambiguity threshold portable across different cluster counts. This is a well-established soft clustering formulation.</p>
+</div>
+</div>
+
+<!-- ═══════════════ FORMULA 7 ═══════════════ -->
+<h2 id="f7"><span class="layer">Layer 2C — Explainability</span>7. SHAP Normalized Shares <span class="tag tag-signal">SIGNAL</span></h2>
+<div class="formula-card">
+<h3>Formula</h3>
+<div class="formula">rawₖ = |SHAP_valueₖ|                (absolute SHAP value per feature)
+
+shareₖ = rawₖ / Σⱼ rawⱼ             (fractional share, sums to 1.0)
+
+Soft cap: if shareₖ > 0.65 →
+    overflow = shareₖ − 0.65
+    redistribute overflow equally to uncapped features
+    (maintains Σ shares = 1.0)</div>
+
+<h3>What It Measures</h3>
+<p>Converts raw SHAP values into fractional importance shares summing to 1.0, used in UI bar charts and downstream cosine similarity.</p>
+
+<div class="why-box">
+<strong>Why This Design</strong>
+<p>Absolute values because we care about magnitude of influence (SHAP can be ±). Normalization makes values comparable across inputs. The 65% soft cap prevents one feature from dominating the visualization. We use the predicted class's SHAP values, not mean across classes — mean dilutes the actual prediction's signal.</p>
+</div>
+
+<div class="correct-box">
+<strong>Why It's Correct</strong>
+<p>Division by total preserves relative ranking while making values comparable. The soft cap with redistribution maintains the sum=1.0 invariant while preventing visual collapse.</p>
+</div>
+</div>
+
+<!-- ═══════════════ FORMULA 8 ═══════════════ -->
+<h2 id="f8"><span class="layer">Layer 2C.5 — Implicit RAG</span>8. SHAP Cosine Similarity <span class="tag tag-signal">SIGNAL</span></h2>
+<div class="formula-card">
+<h3>Formula</h3>
+<div class="formula">query_vec = [shap_share₁, shap_share₂, ..., shap_share₅]     (current input)
+mean_vec  = cluster_mean_shap[top_cluster]                      (training mean)
+
+                    query_vec · mean_vec
+shap_cosine = clip( ———————————————————————— ,  0.0,  1.0 )
+                    ‖query_vec‖ × ‖mean_vec‖
+
+Default = 0.5 when artifact unavailable or zero-norm vector</div>
+
+<h3>What It Measures</h3>
+<p>Attribution consistency: is the model reasoning about this case the same way it learned to reason about typical cases in this cluster?</p>
+<ul>
+<li><strong>1.0</strong> → attributions identical to cluster mean (typical)</li>
+<li><strong>0.5</strong> → neutral default (unavailable data)</li>
+<li><strong>0.0</strong> → attributions orthogonal to cluster mean (atypical)</li>
+</ul>
+
+<div class="why-box">
+<strong>Why This Design</strong>
+<p>Cosine similarity is direction-only, ignoring magnitude — we compare the pattern of feature importance, not scale. Clip to [0,1] because negative cosine is meaningless here. Default 0.5 (not 0.0) prevents unfair penalization when artifact is missing.</p>
+</div>
+
+<div class="correct-box">
+<strong>Why It's Correct</strong>
+<p>Cosine similarity between two vectors measures the angle between them, normalized to [−1,1]. Clipping to [0,1] converts to a similarity degree. This is the standard method for measuring attribution pattern consistency in XAI literature.</p>
+</div>
+</div>
+
+<!-- ═══════════════ FORMULA 9 ═══════════════ -->
+<h2 id="f9"><span class="layer">RAG — Retrieval</span>9. Novelty Score <span class="tag tag-routing">ROUTING</span></h2>
+<div class="formula-card">
+<h3>Formula</h3>
+<div class="formula">query_vec = L2_normalize( [x_scaled (5D),  shap_shares (5D)] )    → 10D vector
+
+max_cosine = max( cosine_similarity(query_vec, neighbor)  for neighbor in kNN )
+
+novelty_score = clip( 1.0 − max_cosine,  0.0,  1.0 )
+
+is_novel = (novelty_score > 0.40)    → RAG suppressed for novel cases</div>
+
+<h3>What It Measures</h3>
+<p>How far the current input is from any training point in the combined macro + attribution space.</p>
+<ul>
+<li><strong>0.0</strong> → identical to a training point (known territory)</li>
+<li><strong>1.0</strong> → completely orthogonal to all training points (fully novel)</li>
+</ul>
+
+<div class="why-box">
+<strong>Why This Design</strong>
+<p>Combined 10D vector captures both what the input looks like (macro) and how the model reasons about it (SHAP). L2-normalization converts FAISS inner-product search into cosine. <code>1 − max_cosine</code> because the closest neighbor's similarity is the best evidence of precedent.</p>
+</div>
+
+<div class="correct-box">
+<strong>Why It's Correct</strong>
+<p>Cosine distance = 1 − cosine similarity is a standard metric. Threshold 0.40 means even the most similar training point shares <60% directional similarity — a conservative threshold catching genuinely out-of-distribution cases. RAG is suppressed because votes from distant neighbors produce fake confidence, not real evidence.</p>
+</div>
+</div>
+
+<!-- ═══════════════ FORMULA 10 ═══════════════ -->
+<h2 id="f10"><span class="layer">RAG — Retrieval</span>10. RAG Confidence + ARIMA Modifier <span class="tag tag-routing">ROUTING</span></h2>
+<div class="formula-card">
+<h3>Formula</h3>
+<div class="formula">raw_confidence = votes_for_winner / k        (majority vote fraction, k=5)
+
+ARIMA modifier:
+  if sarima_trend ≥ 0.65:    confidence = min(1.0, raw_confidence + 0.10)
+  elif sarima_trend ≤ 0.35:  confidence = raw_confidence × 0.70
+  else:                      confidence = raw_confidence</div>
+
+<h3>What It Measures</h3>
+<p>Confidence in the k-NN majority vote regime label, modulated by sector trend direction. Improving sectors make historical precedents more predictive; declining sectors make them less reliable.</p>
+
+<div class="why-box">
+<strong>Why This Design</strong>
+<ul>
+<li><strong>Amplification</strong> (+0.10 additive): improving sector → small confidence bonus</li>
+<li><strong>Dampening</strong> (×0.70 multiplicative): declining sector → proportional penalty</li>
+<li>Asymmetry is intentional: downside uncertainty is more dangerous than upside certainty is valuable</li>
+</ul>
+</div>
+
+<div class="correct-box">
+<strong>Why It's Correct</strong>
+<p>Additive boosts prevent weak-evidence amplification (0.40→0.50, not ×1.25). Multiplicative penalties preserve zero-at-zero (if raw=0, dampened=0). This follows the precautionary principle: discount unreliable precedent more aggressively than reward confirming precedent.</p>
+</div>
+</div>
+
+
+<!-- ═══════════════ FORMULA 11 ═══════════════ -->
+<h2 id="f11" class="page-break"><span class="layer">Layer 2C — Explainability</span>11. XAI Score <span class="tag tag-signal">SIGNAL</span></h2>
+<div class="formula-card">
+<h3>Formula</h3>
+<div class="formula">xai_score = confidence × max(shap_shares)
+
+where:
+  confidence   = SVM regime classification probability (winning class)
+  shap_shares  = normalized SHAP feature importance shares [5 features]</div>
+
+<h3>What It Measures</h3>
+<p>Explainability index: how focused and confident the model's reasoning is. High = confident AND one feature dominates. Low = uncertain or diffuse explanation.</p>
+
+<div class="why-box"><strong>Why This Design</strong>
+<p>Multiplication means both factors must be high for a high score. A confident but diffuse explanation scores low; a focused but uncertain model also scores low. This captures the conjunction: "I know what I'm doing AND I can point to one reason why."</p></div>
+
+<div class="correct-box"><strong>Why It's Correct</strong>
+<p>Product of two [0,1] values stays in [0,1]. It captures the conjunction property exactly. Feeds legacy TAS at 15% weight.</p></div>
+</div>
+
+<!-- ═══════════════ FORMULA 12 ═══════════════ -->
+<h2 id="f12"><span class="layer">Layer 3 — Idea Scoring</span>12. Idea Signal <span class="tag tag-signal">SIGNAL</span></h2>
+<div class="formula-card">
+<h3>Formula</h3>
+<div class="formula">base_fit = FIT_TABLE[ (regime, business_model, target_segment) ]
+
+diff_mult = 0.78 + (differentiation_score − 1) × diff_scale[bm_type]
+
+stage_delta     = stage_deltas[bm_type][stage]
+comp_delta      = comp_deltas[bm_type][competitive_intensity]
+reg_delta       = reg_deltas[sector][regulatory_risk] + b2b_relief
+ready_delta     = (market_readiness − 3) × ready_scale[bm_type]
+
+# Hostile regime amplifier:
+if stage ∈ {idea, validation} AND regime ∈ {CONTRACTING, HIGH_FRICTION}:
+    stage_delta ×= 1.35
+
+idea_signal = clip( base_fit × diff_mult + stage_delta + comp_delta
+                    + reg_delta + ready_delta,   0.12,  0.95 )</div>
+
+<h3>Key Lookup Tables (examples)</h3>
+<table>
+<tr><th>Regime × Model × Segment</th><th>Base Fit</th></tr>
+<tr><td>GROWTH_MARKET × saas × b2b</td><td>0.91</td></tr>
+<tr><td>GROWTH_MARKET × marketplace × b2c</td><td>0.87</td></tr>
+<tr><td>EMERGING_MARKET × saas × b2b</td><td>0.84</td></tr>
+<tr><td>HIGH_FRICTION × saas × b2b</td><td>0.72</td></tr>
+<tr><td>CONTRACTING × marketplace × b2c</td><td>0.28</td></tr>
+</table>
+
+<h3>BM-Conditional Weight Profiles (examples)</h3>
+<table>
+<tr><th>BM Type</th><th>diff_scale</th><th>Dominant Risk</th><th>Stage: idea</th><th>Comp: high</th></tr>
+<tr><td>marketplace</td><td>0.07</td><td>liquidity</td><td>−0.14</td><td>−0.16</td></tr>
+<tr><td>saas</td><td>0.13</td><td>differentiation</td><td>−0.07</td><td>−0.08</td></tr>
+<tr><td>commission</td><td>0.09</td><td>regulatory</td><td>−0.10</td><td>−0.11</td></tr>
+<tr><td>service</td><td>0.09</td><td>scalability</td><td>−0.05</td><td>−0.05</td></tr>
+<tr><td>hardware</td><td>0.12</td><td>capital</td><td>−0.15</td><td>−0.10</td></tr>
+</table>
+
+<h3>What It Measures</h3>
+<p>Encodes domain knowledge about which business models thrive in which market regimes. This is the PRIMARY driver of output variability across different ideas.</p>
+
+<div class="why-box"><strong>Why This Design</strong>
+<p>Multiplicative differentiation (<code>base × diff_mult</code>) means differentiation matters MORE in favorable regimes and LESS in hostile ones. Additive adjustments (stage, competition, regulation, readiness) shift independently. Each BM type has structurally different success drivers encoded via conditional weights. Hostile regime amplifier (×1.35) captures compounded survival risk for early-stage ideas in contracting markets.</p></div>
+
+<div class="correct-box"><strong>Why It's Correct</strong>
+<p>Separates structural fit (multiplicative) from adjustment deltas (additive). This mirrors economic reality: differentiation amplifies whatever advantage the regime provides, while stage/competition/regulation shift the baseline independently. Clip to [0.12, 0.95] prevents degenerate extremes.</p></div>
+</div>
+
+<!-- ═══════════════ FORMULA 13 ═══════════════ -->
+<h2 id="f13" class="page-break"><span class="layer">Layer 2D.5 — Routing</span>13. Intelligent Score (IS) <span class="tag tag-routing">ROUTING</span></h2>
+<div class="formula-card">
+<h3>Formula</h3>
+<div class="formula">IS = 0.20×S + 0.25×gap_svm + 0.20×μ_fcm + 0.15×arima + 0.20×shap_cosine
+
+Correlated Trio Discount:
+  if gap_svm > 0.80 AND μ_fcm > 0.80 AND shap_cosine > 0.80:
+      trio = 0.25×gap + 0.20×μ + 0.20×cos
+      IS = IS − trio + trio × 0.85          (15% discount on trio contribution)</div>
+
+<h3>Signal Components</h3>
+<table>
+<tr><th>Signal</th><th>Weight</th><th>Source</th><th>Formula</th></tr>
+<tr><td>S (regime favorability)</td><td>0.20</td><td>Static lookup</td><td>GROWTH=0.85, EMERGING=0.65, HIGH_FRICTION=0.40, CONTRACTING=0.20</td></tr>
+<tr><td>gap_svm</td><td>0.25</td><td>SVM proba</td><td>sorted(proba)[0] − sorted(proba)[1] (probability margin)</td></tr>
+<tr><td>μ_fcm</td><td>0.20</td><td>FCM</td><td>Top-cluster membership ∈ [0,1]</td></tr>
+<tr><td>arima</td><td>0.15</td><td>SARIMA</td><td>Normalized sector trajectory ∈ [0.15, 0.90]</td></tr>
+<tr><td>shap_cosine</td><td>0.20</td><td>SHAP + FCM</td><td>Cosine similarity to cluster mean ∈ [0,1]</td></tr>
+</table>
+
+<h3>What It Measures</h3>
+<p>IS is a <strong>routing composite</strong> — it determines which reasoning path (1–7) the ReAct router takes. It is NOT a decision signal. L4 makes the actual decision.</p>
+
+<div class="why-box"><strong>Why This Design</strong>
+<ul>
+<li><strong>gap_svm highest weight (0.25)</strong>: captures how decisive the classification was, not just which class won</li>
+<li><strong>arima lowest weight (0.15)</strong>: only genuinely independent signal, but most volatile/stale</li>
+<li><strong>Trio discount</strong>: gap, μ, and shap_cosine share x_scaled geometry; when all >0.80, they signal "easy known case" not independent evidence; 15% discount prevents confidence inflation</li>
+<li><strong>S is asymmetric</strong>: GROWTH(0.85) vs CONTRACTING(0.20) — larger gap on downside because downside risk matters more for routing</li>
+</ul></div>
+
+<div class="correct-box"><strong>Why It's Correct</strong>
+<p>Weighted linear combination of [0,1] signals with consistent directionality (higher = more favorable). Trio discount addresses statistical dependence between geometrically-correlated signals. Without it, IS would over-count the same evidence three times in easy cases.</p></div>
+</div>
+
+<!-- ═══════════════ FORMULA 14 ═══════════════ -->
+<h2 id="f14"><span class="layer">Layer 4a — Display Only</span>14. Legacy TAS (Total Assessment Score) <span class="tag tag-legacy">LEGACY</span></h2>
+<div class="formula-card">
+<h3>Formula</h3>
+<div class="formula">TAS = confidence × 0.30  +  sarima_trend × 0.20  +  idea_signal × 0.35  +  xai_score × 0.15
+
+Signal Tier:
+  Strong   ≥ 0.76
+  Moderate ≥ 0.60
+  Mixed    ≥ 0.44
+  Weak     < 0.44</div>
+
+<p style="background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:10px 14px;margin:8px 0;font-size:13px"><strong>⚠️ ZERO decision influence.</strong> TAS is preserved for backward compatibility and display only. The real decision is made by the L4 decision engine (state machine). TAS determines the action plan text badges (GO/CONDITIONAL/HIGH RISK/NO-GO).</p>
+
+<div class="why-box"><strong>Why This Design</strong>
+<ul>
+<li><strong>idea_signal (0.35)</strong>: highest weight — most idea-specific information</li>
+<li><strong>confidence (0.30)</strong>: how certain the macro classification is</li>
+<li><strong>sarima_trend (0.20)</strong>: temporal dimension — sector improving or declining?</li>
+<li><strong>xai_score (0.15)</strong>: rewards focused, confident explanations</li>
+</ul></div>
+
+<div class="correct-box"><strong>Why It's Correct</strong>
+<p>Weighted average of [0,1] signals stays in [0,1]. Weights prioritize idea-specific fit over macro classification — two ideas in the same market get different scores based on their model, segment, and differentiation.</p></div>
+</div>
+
+<!-- ═══════════════ FORMULA 15 ═══════════════ -->
+<h2 id="f15" class="page-break"><span class="layer">Layer 4 — Decision Engine</span>15. Decision Quality Assessment <span class="tag tag-decision">DECISION</span></h2>
+<div class="formula-card">
+<h3>Formula</h3>
+<div class="formula">Input Completeness (ic):
+  if agg_conf ≥ 0.75 AND no unknown_required:     ic = "high"
+  elif agg_conf ≥ 0.55 AND ≤1 unknown_required:   ic = "medium"
+  else:                                            ic = "low"
+
+Signal Agreement (sa):
+  check_1: L3 business_model available?
+  check_2: No insufficient L3 modules?
+  check_3: No high-severity L4 conflicts?
+  sa = "high" (3/3)  |  "medium" (2/3)  |  "low" (≤1/3)
+
+Assumption Density (ad):
+  h_ratio = heuristic_signals / (heuristic + grounded_signals)
+  ad = "high" (≥0.70)  |  "medium" (≥0.50)  |  "low" (otherwise)
+
+Overall Uncertainty (continuous blending):
+  mech_contribution = mechanism_uncertainty / 0.30     (maps 0–0.30 → 0–1)
+  bad_tiers = count(ic=="low") + count(sa=="low") + count(ad=="high")
+              + mech_contribution                       (continuous sum)
+
+  if bad_tiers ≥ 2 OR sarima_stale:   overall = "high"
+  elif bad_tiers ≥ 1:                  overall = "moderate"
+  else:                                overall = "low"</div>
+
+<h3>What It Measures</h3>
+<p>Replaces numeric confidence with a structured, multi-axis quality assessment. Each axis measures a different reliability dimension.</p>
+
+<div class="why-box"><strong>Why This Design</strong>
+<ul>
+<li><strong>Three independent axes</strong> prevent a single "confidence" number from hiding dimensional failures</li>
+<li><strong>Mechanism uncertainty</strong> blended continuously — hard-switching on a threshold would lose information</li>
+<li>The mapping <code>mech_uncertainty / 0.30</code> normalizes to [0,1] for proportional contribution</li>
+</ul></div>
+
+<div class="correct-box"><strong>Why It's Correct</strong>
+<p>Continuous blending (discrete + continuous) correctly handles boundary cases. A mechanism_uncertainty of 0.20 adds 0.67 to the count — not enough alone for "high," but enough when combined with one discrete bad tier. This preserves structural ambiguity when ambiguity is real.</p></div>
+</div>
+
+<!-- ═══════════════ END ═══════════════ -->
+<div style="margin-top:50px;padding-top:20px;border-top:2px solid #e2e8f0;text-align:center;color:#94a3b8;font-size:12px">
+<p>MIDAN Intelligence Engine — Scoring Formulas Reference Document</p>
+<p>Generated for Intelligent Systems Project — All 15 formulas in pipeline execution order</p>
+</div>
+

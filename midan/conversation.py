@@ -36,7 +36,7 @@ _VAGUE_STARTERS = [
     'i want to build', 'i want to create', 'i want to start',
 ]
 
-# ── Casual / personal conversation — no idea content ──────────────────────────
+# ── we use these prefixes to detect casual / personal turns with no idea content ──
 _CASUAL_PREFIXES = [
     'call me ', 'my name is ', 'i am ', "i'm ", 'im ',
     'i live in ', 'i am from ', "i'm from ", 'from ',
@@ -50,7 +50,7 @@ _CASUAL_SHORT_SET = {
     'thanks again', 'ty', 'thx', 'not yet', 'maybe', 'later', 'soon',
 }
 
-# ── Override commands — user explicitly demands immediate analysis ─────────────
+# ── we treat these as override commands when the user explicitly demands immediate analysis ──
 _OVERRIDE_COMMANDS = [
     'analyze now', 'run it', 'full breakdown', 'analyze this', 'just analyze',
     'go ahead and analyze', 'run analysis', 'skip the questions', 'stop asking',
@@ -186,8 +186,8 @@ _EXPLICIT_MECHANISM_SIGNALS = {
 # explicit user control commands.
 # ═══════════════════════════════════════════════════════════════
 
-# Post-decision conversation modes — drive different chat behavior, not just
-# different text. Returned by _post_decision_route, consumed by chat builders.
+# we define post-decision conversation modes here — they drive different chat behavior,
+# not just different text; returned by _post_decision_route and consumed by chat builders
 POST_DECISION_MODES = (
     'STANDARD_ADVISOR',     # GO / CONDITIONAL / NO_GO — interpretive advisor mode
     'RESOLVING_CONFLICT',   # CONFLICTING_SIGNALS — must surface conflict + ask resolution
@@ -197,10 +197,19 @@ POST_DECISION_MODES = (
 
 
 _ROUTING_LOG = __import__('logging').getLogger("midan.routing")
+_TRACE_LOG   = __import__('logging').getLogger("midan.trace")
+if not _TRACE_LOG.handlers:
+    import logging as _logging_c, pathlib as _pathlib_c
+    _trace_path_c = _pathlib_c.Path(__file__).parent.parent / "trace.log"
+    _trace_fh_c = _logging_c.FileHandler(str(_trace_path_c), mode="a", encoding="utf-8")
+    _trace_fh_c.setFormatter(_logging_c.Formatter("%(asctime)s %(levelname)s %(message)s"))
+    _TRACE_LOG.addHandler(_trace_fh_c)
+    _TRACE_LOG.setLevel(_logging_c.DEBUG)
+    _TRACE_LOG.propagate = False
 
-# Decision states the chat layer is allowed to act on as a "post-decision"
-# routing input. Anything outside this set means the L4 envelope is missing
-# or pre-analysis — chat must NOT render an opener that exposes UNKNOWN.
+# we enumerate valid post-decision states the chat layer is allowed to act on;
+# anything outside this set means the L4 envelope is missing or pre-analysis —
+# we must NOT render an opener that exposes UNKNOWN to the user
 _VALID_DECISION_STATES = {
     'GO', 'CONDITIONAL', 'NO_GO',
     'INSUFFICIENT_DATA', 'HIGH_UNCERTAINTY', 'CONFLICTING_SIGNALS',
@@ -234,7 +243,7 @@ def _post_decision_route(context: dict) -> dict:
             'reason': 'missing_or_invalid_decision_state_in_context',
         }
 
-    # The L4 envelope is the canonical post-analysis payload. Pull it out once.
+    # we pull the L4 envelope out once — it's the canonical post-analysis payload
     l4 = context.get('l4_decision') or {}
 
     if state == 'CONFLICTING_SIGNALS':
@@ -269,7 +278,7 @@ def _post_decision_route(context: dict) -> dict:
             'reason': 'last attempt halted because required L1/L3 fields were unavailable',
         }
 
-    # GO / CONDITIONAL / NO_GO / unknown → standard advisor mode
+    # GO / CONDITIONAL / NO_GO / unknown → we fall through to standard advisor mode
     return {
         'mode': 'STANDARD_ADVISOR',
         'state': state or None,
@@ -297,9 +306,8 @@ def _classify_intent(text: str, context: dict, messages: list) -> dict:
     wc = len(t.split())
 
     # ── 2. Post-analysis clarification (checked BEFORE override) ─────────────
-    # Detection is via L4 decision_state — the canonical post-decision marker.
-    # Falls back to legacy tas_score for back-compat with frontends that haven't
-    # migrated to the L4 envelope yet.
+    # we detect post-analysis turns via L4 decision_state — that's the canonical post-decision marker;
+    # we fall back to legacy tas_score for frontends that haven't migrated to the L4 envelope yet
     has_l4_decision  = bool(context.get('decision_state'))
     has_legacy_tas   = bool(context.get('tas_score'))
     if has_l4_decision or has_legacy_tas:
@@ -320,14 +328,14 @@ def _classify_intent(text: str, context: dict, messages: list) -> dict:
         and not any(s in t for s in SECTOR_KEYWORDS.get('fintech', []) + SECTOR_KEYWORDS.get('saas', []))
     )
     if (is_personal_prefix or is_short_ack) and no_idea_signals:
+        _TRACE_LOG.info("[TRACE][_classify_intent] → CASUAL (is_personal_prefix=%s, is_short_ack=%s)", is_personal_prefix, is_short_ack)
         return {'intent': 'CASUAL', 'should_analyze': False, 'reason': 'personal_conversation'}
 
     # ── 4. Extract idea components (problem, solution, market) ────────────────
     comps = _extract_components(text, context.get('clarification_state'))
-    # Strict completeness gate — minimum 2 of 3 components must be present in
-    # the accumulated conversation. Below this, NO override and NO anti-loop
-    # trigger can force analysis. The L1 confidence gate inside process_idea
-    # is the second line of defence; this is the first.
+    # we enforce a strict completeness gate here — minimum 2 of 3 components must be present
+    # in the accumulated conversation; below this, no override and no anti-loop trigger can force
+    # analysis; the L1 confidence gate inside process_idea is the second line of defence, this is the first
     components_present = sum([
         comps['has_problem'], comps['has_solution'], comps['has_market'],
     ])
@@ -345,8 +353,8 @@ def _classify_intent(text: str, context: dict, messages: list) -> dict:
         return {'intent': 'PARTIAL_IDEA', 'should_analyze': False,
                 'reason': 'override_blocked_insufficient_signals'}
 
-    # ── Anti-loop guard: after ≥2 substantive partial turns, force analysis
-    # ONLY if completeness is now met. Never analyse with < 2 components.
+    # ── we added this anti-loop guard to force analysis after 2+ substantive partial turns,
+    # but ONLY if completeness is met — we never analyse with < 2 components
     user_msgs = [m for m in messages if m.role == 'user']
     prior_partial = sum(
         1 for m in user_msgs[:-1]
@@ -357,106 +365,126 @@ def _classify_intent(text: str, context: dict, messages: list) -> dict:
         return {'intent': 'ANALYSIS_REQUEST', 'should_analyze': True, 'reason': 'anti_loop_forced'}
 
     # ── 5. Sufficient signals for immediate analysis ──────────────────────────
-    # Stricter than before — 2-of-3 components AND ≥10 words. Pure word-count
-    # fallback removed: a 15-word vague rant must still go through clarification.
+    # we made this stricter — 2-of-3 components AND ≥10 words are both required;
+    # we removed the pure word-count fallback: a 15-word vague rant must still go through clarification
     if has_minimum_completeness:
         return {'intent': 'ANALYSIS_REQUEST', 'should_analyze': True, 'reason': 'sufficient_signals'}
 
     # ── 6. Partial — some signals, single follow-up needed ───────────────────
+    _TRACE_LOG.info("[TRACE][_classify_intent] → PARTIAL_IDEA (comps_present=%d, accum_wc=%d)",
+                    sum([comps['has_problem'], comps['has_solution'], comps['has_market']]),
+                    len(comps.get('accumulated_text', '').split()))
     return {'intent': 'PARTIAL_IDEA', 'should_analyze': False, 'reason': 'insufficient_signals'}
 
 
 def _casual_response(text: str) -> str:
-    """Natural reply for casual / personal messages. Never triggers the pipeline."""
+    """
+    Heuristic fallback for casual / personal messages when Gemini is unavailable.
+    Persona: direct, dry, peer-to-peer. No corporate-speak.
+    """
     t = text.lower().strip()
+    _TRACE_LOG.warning("[TRACE][_casual_response] LLM SKIPPED — heuristic casual | input=%r", text[:80])
 
-    # Name introduction
     for prefix in ('call me ', 'my name is '):
         if t.startswith(prefix):
             name = t[len(prefix):].strip().split()[0].capitalize()
-            return f"Got it, {name}. What are you working on?"
+            result = f"Got it, {name}. What are you working on?"
+            _TRACE_LOG.warning("[TRACE][_casual_response] FINAL STRING: %r", result)
+            return result
 
-    # Location / background intro
     for prefix in ("i'm from ", 'i am from ', 'from '):
         if t.startswith(prefix):
             place = text[len(prefix):].strip().split()[0].capitalize()
-            return f"{place} — that's a live market for a few sectors. What's the idea?"
+            result = f"{place} — active market. What's the idea?"
+            _TRACE_LOG.warning("[TRACE][_casual_response] FINAL STRING: %r", result)
+            return result
 
     for prefix in ("i'm a ", 'i am a ', 'i studied '):
         if t.startswith(prefix):
-            return "Good context. What startup idea are you pressure-testing?"
+            _TRACE_LOG.warning("[TRACE][_casual_response] FINAL STRING: 'Good context. What are you building?'")
+            return "Good context. What are you building?"
 
-    # Acknowledgments
     if t in {'ok', 'okay', 'cool', 'nice', 'got it', 'understood', 'noted', 'makes sense', 'i see', 'right', 'alright'}:
-        return "What's the idea you're working on?"
+        _TRACE_LOG.warning("[TRACE][_casual_response] FINAL STRING: 'What's the idea?'")
+        return "What's the idea?"
     if t in {'thanks', 'thank you', 'ty', 'thx', 'thanks again'}:
-        return "Anytime. What else do you want to pressure-test?"
+        _TRACE_LOG.warning("[TRACE][_casual_response] FINAL STRING: 'Anytime...'")
+        return "Anytime. Anything else to pressure-test?"
     if t in {'yes', 'sure', 'yep', 'agreed', 'perfect', 'great', 'awesome'}:
-        return "Tell me the idea and I'll run the numbers."
+        _TRACE_LOG.warning("[TRACE][_casual_response] FINAL STRING: 'Drop the idea...'")
+        return "Drop the idea and I'll run it."
     if t in {'no', 'nope', 'not yet', 'maybe', 'later'}:
-        return "Whenever you're ready — drop the idea and I'll analyze it."
+        _TRACE_LOG.warning("[TRACE][_casual_response] FINAL STRING: 'Whenever you're ready.'")
+        return "Whenever you're ready."
 
-    # Generic casual
-    return "What are you building? Drop the idea and I'll run a full analysis."
+    _TRACE_LOG.warning("[TRACE][_casual_response] FINAL STRING: 'What are you building?' (default)")
+    return "What are you building?"
 
 
 def _smart_followup(text: str, messages: list, context_state: Optional[dict] = None) -> str:
     """
-    Ask ONE targeted follow-up question for a PARTIAL_IDEA turn.
-    Tracks prior questions to avoid repetition.
-    Never asks more than one question per turn.
+    Context-aware heuristic follow-up for the pre-analysis phase.
+    Tracks what the assistant already asked so it never repeats the same question.
+    Returns exactly ONE targeted question — the next missing piece.
+
+    The tracking patterns must match the exact strings this function returns,
+    plus any strings the Gemini system prompt might generate. Keep them in sync.
     """
+    _TRACE_LOG.warning("[TRACE][_smart_followup] LLM SKIPPED — heuristic followup | input=%r", text[:80])
     comps = _extract_components(text, context_state)
 
-    # Track what has already been asked
+    # Scan prior assistant messages to detect what was already asked.
+    # Patterns must be broad enough to match both this function's own output
+    # AND Gemini's paraphrases of the same question.
     asked: set = set()
     for m in messages:
         if m.role != 'assistant':
             continue
         mc = m.content.lower()
-        if any(w in mc for w in ('problem', 'pain', 'what exactly', 'what specific')):
+        # problem-related patterns
+        if any(w in mc for w in (
+            'problem', 'pain', 'breaks', 'broken', 'goes wrong', 'what exactly',
+            'for whom', 'who has', 'who specifically has', 'the thing that',
+        )):
             asked.add('problem')
-        if any(w in mc for w in ('market', 'geography', 'country', 'who exactly', 'customer type', 'which region')):
+        # market-related patterns
+        if any(w in mc for w in (
+            'country', 'geography', 'market', 'customer type', 'which region',
+            'type of customer', 'which country', 'who specifically', 'geography',
+        )):
             asked.add('market')
-        if any(w in mc for w in ('approach', 'mechanism', 'app', 'marketplace', 'saas', 'platform', 'how does it work')):
+        # solution-related patterns
+        if any(w in mc for w in (
+            'how does it work', 'how does it actually', 'mechanism',
+            'marketplace', 'saas', 'service', 'platform',
+            'how does this work', 'how are you solving',
+        )):
             asked.add('solution')
 
-    # Ask about the most important missing component not yet asked about.
-    # Tone: a consultant guiding the conversation, not a form filler.
     if not comps['has_problem'] and 'problem' not in asked:
-        return (
-            "Walk me through the actual pain — what specifically goes wrong today, "
-            "and for whom?"
-        )
+        _TRACE_LOG.warning("[TRACE][_smart_followup] FINAL STRING: 'What specifically breaks today — and for whom?'")
+        return "What specifically breaks today — and for whom?"
     if not comps['has_market'] and 'market' not in asked:
-        return (
-            "Where does this live — country and customer type? "
-            "Could be Egyptian SMEs, UAE consumers, restaurants in Riyadh, whatever fits."
-        )
+        _TRACE_LOG.warning("[TRACE][_smart_followup] FINAL STRING: 'Which country, and what type of customer?'")
+        return "Which country, and what type of customer?"
     if not comps['has_solution'] and 'solution' not in asked:
-        return (
-            "How does it actually work — a marketplace, a SaaS tool, a service, an app? "
-            "One line is enough."
-        )
+        _TRACE_LOG.warning("[TRACE][_smart_followup] FINAL STRING: 'How does it work — marketplace, SaaS, service, app?'")
+        return "How does it work — marketplace, SaaS, service, app?"
 
-    # All targeted questions already asked — say plainly what's still missing
-    # so the conversation moves forward instead of looping.
+    # All three queued — list what's still missing so conversation moves forward
     still_missing = []
     if not comps['has_problem']:
-        still_missing.append("the specific problem")
+        still_missing.append("the problem")
     if not comps['has_market']:
-        still_missing.append("the market (country and customer type)")
+        still_missing.append("the market")
     if not comps['has_solution']:
-        still_missing.append("the mechanism (SaaS / marketplace / service / app)")
+        still_missing.append("the approach")
     if still_missing:
-        return (
-            "I still need " + ", ".join(still_missing) +
-            " before I can run a real read. Two sentences covering them is enough."
-        )
-    return (
-        "Round it out a bit — sector, market, and how it works. Two sentences is enough "
-        "and we can move."
-    )
+        result = "Still need " + " and ".join(still_missing) + " — two sentences is enough."
+        _TRACE_LOG.warning("[TRACE][_smart_followup] FINAL STRING: %r", result)
+        return result
+    _TRACE_LOG.warning("[TRACE][_smart_followup] FINAL STRING: 'Two sentences on the market and approach and we can move.'")
+    return "Two sentences on the market and approach and we can move."
 
 
 _OP_REPLY_LOG = __import__('logging').getLogger("midan.operator_reply")
@@ -465,6 +493,6 @@ _OP_REPLY_LOG = __import__('logging').getLogger("midan.operator_reply")
 
 
 
-# Export everything defined in this module — including underscore-prefixed
-# helpers — so other midan submodules can wildcard-import the full surface.
+# we export everything defined in this module — including underscore-prefixed helpers —
+# so other midan submodules can wildcard-import the full surface
 __all__ = [name for name in list(globals().keys()) if not name.startswith('__')]

@@ -92,7 +92,7 @@ class RedditCollector(BaseCollector):
         for subreddit_name in REDDIT_SUBREDDITS:
             try:
                 subreddit = self.reddit.subreddit(subreddit_name)
-                # Search for the startup name
+                # we search the subreddit for the startup name to surface relevant discussions
                 search_results = subreddit.search(
                     startup_name,
                     limit=REDDIT_MAX_POSTS_PER_SEARCH,
@@ -115,13 +115,13 @@ class RedditCollector(BaseCollector):
     def _parse_submission(self, submission, startup_name: str,
                           subreddit_name: str) -> dict | None:
         """Parse a Reddit submission into a raw entry."""
-        # Build content from post + top comments
+        # we combine post title, body, and top comments into a single content block
         content_parts = [
             f"[TITLE] {submission.title}",
             f"[BODY] {submission.selftext}" if submission.selftext else "",
         ]
 
-        # Get top-level comments (limit to top 10)
+        # we cap at the top 10 comments so we don't bloat the raw entry
         try:
             submission.comments.replace_more(limit=0)
             for comment in submission.comments[:10]:

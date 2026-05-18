@@ -112,7 +112,7 @@ class BaseExtractor(ABC):
             min_score = rules.get("min_score", 2)
             priority = rules.get("priority", 10)
 
-            # Score calculation with word-boundary awareness for short keywords
+            # we apply word-boundary awareness here to avoid short-keyword false positives
             primary_hits = sum(2 for kw in primary if self._kw_in_text(kw, text_lower))
             secondary_hits = sum(1 for kw in secondary if self._kw_in_text(kw, text_lower))
             negative_hits = sum(3 for kw in negative if self._kw_in_text(kw, text_lower))
@@ -125,7 +125,7 @@ class BaseExtractor(ABC):
         if not candidates:
             return ""
 
-        # Sort by score (descending), then by priority (ascending)
+        # we sort by score descending then priority ascending so ties break deterministically
         candidates.sort(key=lambda x: (-x[1], x[2]))
 
         winner = candidates[0][0]
@@ -203,7 +203,7 @@ class BaseExtractor(ABC):
 
         best = max(scores, key=scores.get)
         if scores[best] >= 2:
-            # Extract evidence
+            # we require at least 2 hits before we trust the level classification
             evidence = self._extract_matching_phrases(text, level_keywords[best], context_window=100)
             return best, evidence[:2]
         return "", []
@@ -280,13 +280,13 @@ class BaseExtractor(ABC):
                 if pos == -1:
                     break
 
-                # Extract surrounding context
+                # we capture surrounding context to give the snippet enough meaning
                 start = max(0, pos - context_window)
                 end = min(len(text), pos + len(keyword) + context_window)
 
                 snippet = text[start:end].strip()
 
-                # Try to start/end at sentence boundary
+                # we try to align snippet boundaries to sentence ends for cleaner output
                 dot_before = snippet.rfind(".", 0, context_window)
                 if dot_before > 0:
                     snippet = snippet[dot_before + 1:].strip()
@@ -295,7 +295,7 @@ class BaseExtractor(ABC):
                 if dot_after > 0:
                     snippet = snippet[:dot_after + 1].strip()
 
-                # Deduplicate
+                # we deduplicate by the first 50 chars to avoid near-identical evidence strings
                 snippet_key = snippet[:50].lower()
                 if snippet_key not in seen and len(snippet) > 20:
                     seen.add(snippet_key)
